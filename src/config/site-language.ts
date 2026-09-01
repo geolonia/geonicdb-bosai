@@ -12,6 +12,21 @@ export const SITE_LANGUAGE_LABELS: Record<SiteLanguage, string> = {
   ko: "한국어",
 };
 
+/**
+ * 言語切替UIのアイコン（国旗絵文字）。
+ *
+ * 言語と国は本来1:1ではない（英語は多数の国で話される）ため、国旗は
+ * **視認性のための装飾**として扱い、必ず `SITE_LANGUAGE_LABELS` の
+ * 言語名を併記する。スクリーンリーダーには `aria-hidden` で読ませない。
+ */
+export const SITE_LANGUAGE_FLAGS: Record<SiteLanguage, string> = {
+  ja: "🇯🇵",
+  en: "🇬🇧",
+  "zh-CN": "🇨🇳",
+  vi: "🇻🇳",
+  ko: "🇰🇷",
+};
+
 const HTML_LANG: Record<SiteLanguage, string> = {
   ja: "ja",
   en: "en",

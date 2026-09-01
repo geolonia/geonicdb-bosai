@@ -62,15 +62,39 @@ describe("EmergencyBanner variants", () => {
 });
 
 describe("SiteHeader language switch", () => {
-  it("calls onLangChange with the selected language", async () => {
+  it("calls onLangChange when a language button is clicked", async () => {
     const user = userEvent.setup();
     const onLangChange = vi.fn();
     render(
       <SiteHeader strings={testStrings} lang="ja" onLangChange={onLangChange} />,
     );
-    await user.selectOptions(screen.getByLabelText(testStrings.langLabel), [
-      "en",
-    ]);
+    await user.click(screen.getByRole("button", { name: /English/ }));
     expect(onLangChange).toHaveBeenCalledWith("en");
+  });
+
+  it("marks the active language with aria-current", () => {
+    render(
+      <SiteHeader strings={testStrings} lang="ja" onLangChange={vi.fn()} />,
+    );
+    expect(screen.getByRole("button", { name: /日本語/ })).toHaveAttribute(
+      "aria-current",
+      "true",
+    );
+    expect(
+      screen.getByRole("button", { name: /English/ }),
+    ).not.toHaveAttribute("aria-current");
+  });
+
+  // near-miss: 国旗は装飾。読み上げ・名前解決は言語名テキストで行う
+  it("hides flag emoji from assistive technology", () => {
+    render(
+      <SiteHeader strings={testStrings} lang="ja" onLangChange={vi.fn()} />,
+    );
+    const japanese = screen.getByRole("button", { name: /日本語/ });
+    // アクセシブルネームに国旗絵文字が混ざらない
+    expect(japanese).toHaveAccessibleName("日本語");
+    expect(japanese.querySelector('[aria-hidden="true"]')?.textContent).toBe(
+      "🇯🇵",
+    );
   });
 });
