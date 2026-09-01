@@ -35,7 +35,7 @@ db.on("error", (err) => { /* ... */ });
 ## やること
 
 1. `scripts/sync-geonicdb.ts`（Node実行、クライアントバンドルには含めない）を作る:
-   - `src/config/geonicdb.ts` の `createGeonicdbClient()` で接続（`GEONICDB_URL` 等の環境変数が必要。未設定ならエラーメッセージを出して終了する）
+   - `src/config/geonicdb.ts` の `createGeonicdbSyncClient()` で接続（`GEONICDB_SYNC_API_KEY` 優先、未設定時は `GEONICDB_API_KEY`。`GEONICDB_URL` 等。未設定ならエラーメッセージを出して終了する。ポリシー／キー作成は `docs/geonicdb-setup.md`）
    - `connect()` → `subscribe({ entityTypes: ["bosai-Notice", "bosai-EmergencyBanner", "bosai-AlertLevel"] })`
    - `entityCreated` / `entityUpdated` イベント受信時、`entity.type` で分岐:
      - `bosai-Notice`: 既存の `parseNotice`（`validate-top-page-data.ts`）でパースし、`language` を見て該当する `public/mock/notices/<language>.json` の `items` 配列を、同じ `id` があれば置き換え、無ければ先頭に追加して書き込む

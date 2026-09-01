@@ -6,7 +6,7 @@
  */
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { createGeonicdbClient } from "../src/config/geonicdb";
+import { createGeonicdbSyncClient } from "../src/config/geonicdb";
 import {
   SYNC_ENTITY_TYPES,
   applyEntityDelete,
@@ -45,12 +45,14 @@ async function main(): Promise<void> {
 
   let db;
   try {
-    db = createGeonicdbClient();
+    // GEONICDB_SYNC_API_KEY 優先、未設定時は GEONICDB_API_KEY にフォールバック
+    db = createGeonicdbSyncClient();
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(
       `[sync:geonicdb] 接続設定エラー: ${message}\n` +
-        `.env に GEONICDB_URL（必要なら GEONICDB_API_KEY / GEONICDB_TENANT）を設定してください。`,
+        `.env に GEONICDB_URL（必要なら GEONICDB_SYNC_API_KEY または GEONICDB_API_KEY / GEONICDB_TENANT）を設定してください。\n` +
+        `ポリシー・APIキーの作成は npm run setup:geonicdb（docs/geonicdb-setup.md）。`,
     );
     process.exit(1);
   }
