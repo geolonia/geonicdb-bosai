@@ -17,28 +17,24 @@
 
 ## 2. アーキテクチャ方針
 
-### 2.1 バックエンド: GeonicDB を書き込み・リアルタイム層に限定使用
+### 2.1 バックエンド: GeonicDB へクライアントサイドから直接AJAX（2026-09-01 改訂）
 
-`docs/research/guidelines.md` 3.2 節 H（可用性・輻輳耐性）で確認した通り、防災サイトの最重要な非機能要件は「災害時、平時比100〜1000倍のアクセス集中に耐えること」。GeonicDB（Context Broker）を住民向けの読み取り経路に直接置くと単一障害点になるため、以下の分離を採用する。
+**方針転換**: 当初は「GeonicDBには住民のブラウザから直接アクセスさせない、間に短TTLキャッシュ層を挟む」という設計だったが、キャッシュ層は別途バックエンドサービスの実装が必要になり、テンプレートとしての単純さを損なうと判断した。**`@geolonia/geonicdb-sdk` の React hooks（`useLdEntities`）を使い、住民のブラウザから GeonicDB の NGSI-LD API へ直接 AJAX する。**
 
 ```
-[職員]                     [GeonicDB]                [CDNキャッシュ層]              [住民]
-  |  NGSI-LD Entity更新       |                             |                          |
-  |  (避難所開設状況等)  -->  |  NGSI-LD Subscription        |                          |
-  |                           |  --> Webhook               |                          |
-  |                           |        |                    |                          |
-  |                           |        v                    |                          |
-  |                           |  [キャッシュ無効化 or 短TTL失効] |                       |
-  |                           |                             |                          |
-  |  [静的HTMLシェル (完全静的export、無期限CDNキャッシュ可)] -----------------------> |
-  |                                                          |                          |
-  |                                    ブラウザからのAJAX(fetch) --> [短TTL JSON API] --> 住民
+[職員]                     [GeonicDB]                              [住民のブラウザ]
+  |  NGSI-LD Entity更新       |                                          |
+  |  (geonic CLI /            |  useLdEntities(client, {                |
+  |   Claude Desktop MCP) -->  |    type: "bosai-Notice",                |
+  |  bosai-write ポリシー      |    q: 'language=="ja"'                  |
+  |                           |  })  <-- anonymous（匿名）モード ------- |
+  |                           |      bosai-public-read ポリシーでGET許可 |
 ```
 
-- **職員側（管理画面）**: GeonicDB の NGSI-LD API を直接叩く。避難所の開設状況、避難情報の発令・解除等はここで更新する。二重入力を避けるため、L アラート等との連携は将来課題として設計に余地を残す（3.2 H の [任意] 項目）。
-- **住民側（公開ページ）**: HTML/CSS/JS 本体は**完全静的（ビルド時に確定、ISR不要）**とし、無期限に近いTTLでCDNキャッシュする。避難所開設状況・警戒レベルなど**更新される値はページ本体に焼き込まず、クライアントサイドの AJAX（`fetch`）で取得**する。
-- **GeonicDB には住民のブラウザから直接アクセスさせない。** AJAX の宛先は、GeonicDB の前段に置く**短TTL（例: 10〜30秒）のJSON APIをCDNでキャッシュした層**とする。GeonicDB 側のWebhookでこのキャッシュを能動的に無効化する（またはTTL失効に任せる）ことで、更新反映と輻輳耐性を両立させる。これにより、平時比100〜1000倍のアクセス集中が発生しても、大半のリクエストはCDNエッジで捌かれ GeonicDB 本体には届かない。
-- 緊急バナー・警戒レベル表示など「即時性が求められる情報」も同じAJAX方式に統一する（東京都ガイドライン guidelines.md 1.12(b) の「意図的に軽量な専用ページ・短TTL」という設計思想を、ページ単位ではなくAPIレスポンス単位で踏襲する）。
+- **職員側（書き込み）**: GeonicDB の NGSI-LD API を `geonic` CLI や Claude Desktop（MCP）経由で直接操作する。`bosai-write` ポリシー + `bosai-staff-write` APIキーを使用（`docs/geonicdb-setup.md`）。職員向け管理画面（Web UI）は当面実装しない（`REQUIREMENTS.md` 5節）。
+- **住民側（読み取り）**: SDKを **匿名モード（`anonymous: true`）** で初期化し、APIキーを一切クライアントに埋め込まない。読み取り可否はサーバー側のXACMLポリシー `bosai-public-read`（`role: anonymous`、`entityType: bosai-*` に一致、`GET`のみ許可）で制御する。クライアントの設定値（`NEXT_PUBLIC_GEONICDB_URL` / `NEXT_PUBLIC_GEONICDB_TENANT`）はどちらも秘密情報ではない（ベースURLとテナント名のみ、書き込み権限は持たない）。
+- **既知のトレードオフ**: `docs/research/guidelines.md` 3.2節Hが求める「災害時の輻輳耐性」は、この直接AJAX構成では GeonicDB 本体の可用性に依存する（静的HTMLシェル自体は引き続きCDN配信できるが、動的部分はGeonicDBが落ちれば表示できない）。本テンプレートでは実装の単純さを優先してこのトレードオフを受け入れる。輻輳耐性を優先する場合は、GeonicDBの前段にキャッシュ層を置く構成（旧設計、`git log` で参照可能）に戻すことも選択肢として残す。
+- 緊急バナー・警戒レベル・お知らせのいずれも同じ `useLdEntities` パターンで取得する。言語切替時は `q: 'language=="<lang>"'` を変えて再フェッチする。
 
 ### 2.2 フロントエンド技術スタック: Next.js
 
@@ -82,6 +78,7 @@
 - CAP形式でのフィード出力
 - オフライン対応（Service Worker）
 - SOBO-WEB / 防災DXデータ連携基盤との連携
+- **職員向け管理画面（GeonicDB書き込みUI）の実装**: 当面は Claude Desktop 等のMCP経由でGeonicDBへ直接書き込む運用とする（2026-09-01 方針決定）。`src/config/geonicdb.ts` の接続設定はこの運用でも将来の管理画面実装でも使えるよう残しておく
 
 ## 6. Issue 分割方針
 
