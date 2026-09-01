@@ -1,53 +1,47 @@
-import type { SiteLanguage } from "@/types/top-page";
+import type { SiteLanguage } from "@/config/site-language";
+import { toDateLocale } from "@/config/site-language";
 
-export const UI_STRINGS: Record<
-  SiteLanguage,
-  {
-    siteTitle: string;
-    municipalityName: string;
-    langLabel: string;
-    langJa: string;
-    langJaEasy: string;
-    langEn: string;
-    alertLevelHeading: string;
-    alertLevelPrefix: string;
-    alertLevelUpdated: string;
-    quickLinksHeading: string;
-    newsHeading: string;
-    newsUpdated: string;
-    footerAccessibility: string;
-    footerContact: string;
-    footerContactValue: string;
-    comingSoon: string;
-    loading: string;
-    loadError: string;
-    bannerLoadingLabel: string;
-    quickLinks: {
-      shelters: string;
-      hazard: string;
-      evacuation: string;
-      preparedness: string;
-    };
-    bannerVariants: {
-      緊急安全確保: string;
-      避難指示: string;
-      高齢者等避難: string;
-      注意喚起: string;
-      お知らせ: string;
-    };
-    alertLevelMeta: Record<
-      1 | 2 | 3 | 4 | 5,
-      { action: string; officialNote?: string }
-    >;
-  }
-> = {
+export type UiStrings = {
+  siteTitle: string;
+  municipalityName: string;
+  langLabel: string;
+  alertLevelHeading: string;
+  alertLevelPrefix: string;
+  alertLevelUpdated: string;
+  quickLinksHeading: string;
+  newsHeading: string;
+  newsUpdated: string;
+  footerAccessibility: string;
+  footerContact: string;
+  footerContactValue: string;
+  comingSoon: string;
+  loading: string;
+  loadError: string;
+  bannerLoadingLabel: string;
+  quickLinks: {
+    shelters: string;
+    hazard: string;
+    evacuation: string;
+    preparedness: string;
+  };
+  bannerVariants: {
+    緊急安全確保: string;
+    避難指示: string;
+    高齢者等避難: string;
+    注意喚起: string;
+    お知らせ: string;
+  };
+  alertLevelMeta: Record<
+    1 | 2 | 3 | 4 | 5,
+    { action: string; officialNote?: string }
+  >;
+};
+
+export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
   ja: {
     siteTitle: "防災情報",
     municipalityName: "○○市（テンプレート）",
     langLabel: "表示言語",
-    langJa: "日本語",
-    langJaEasy: "やさしい日本語",
-    langEn: "English",
     alertLevelHeading: "現在の警戒レベル",
     alertLevelPrefix: "警戒レベル",
     alertLevelUpdated: "更新",
@@ -89,49 +83,50 @@ export const UI_STRINGS: Record<
     },
   },
   "ja-easy": {
-    siteTitle: "ぼうさい じょうほう",
+    siteTitle: "ぼうさいの じょうほう",
     municipalityName: "○○し（テンプレート）",
-    langLabel: "ことば",
-    langJa: "にほんご",
-    langJaEasy: "やさしい にほんご",
-    langEn: "English",
-    alertLevelHeading: "いまの けいかい レベル",
-    alertLevelPrefix: "けいかい レベル",
-    alertLevelUpdated: "こうしん",
-    quickLinksHeading: "すぐ に みる",
+    langLabel: "ことばを えらぶ",
+    alertLevelHeading: "いまの けいかいレベル",
+    alertLevelPrefix: "けいかいレベル",
+    alertLevelUpdated: "なおした とき",
+    quickLinksHeading: "すぐ みる",
     newsHeading: "あたらしい おしらせ",
-    newsUpdated: "こうしん",
-    footerAccessibility: "ウェブ アクセシビリティ ほうしん",
-    footerContact: "おといあわせ",
-    footerContactValue: "ぼうさい たんとう: 000-0000-0000",
-    comingSoon: "じゅんびちゅう",
-    loading: "よみこみちゅう…",
-    loadError: "じょうほうを よみこめませんでした。しばらくして もういちど ためしてください。",
-    bannerLoadingLabel: "きんきゅう じょうほうを よみこみちゅう",
+    newsUpdated: "なおした とき",
+    footerAccessibility: "みやすい ウェブページの ほうしん",
+    footerContact: "といあわせ",
+    footerContactValue: "ぼうさいの たんとう: 000-0000-0000",
+    comingSoon: "まだ じゅんび中",
+    loading: "よみこんでいます…",
+    loadError:
+      "じょうほうを よめませんでした。すこし まってから もういちど ためしてください。",
+    bannerLoadingLabel: "だいじな じょうほうを よみこんでいます",
     quickLinks: {
       shelters: "ひなんじょを さがす",
-      hazard: "ハザードマップ",
-      evacuation: "ひなん じょうほう",
-      preparedness: "ぼうさいの じゅんび",
+      hazard: "きけんな ばしょの ちず",
+      evacuation: "ひなんの じょうほう",
+      preparedness: "さいがいの じゅんび",
     },
+    // 公式用語の音写ではなく、行動が分かる言い換え（docs/i18n.md）
     bannerVariants: {
-      緊急安全確保: "きんきゅう あんぜん かくほ",
-      避難指示: "ひなん しじ",
-      高齢者等避難: "こうれいしゃ ひなん",
-      注意喚起: "ちゅうい かんき",
+      緊急安全確保: "今すぐ あんぜんな ばしょへ",
+      避難指示: "すぐに ひなんしてください",
+      高齢者等避難: "おとしよりは ひなんしてください",
+      注意喚起: "きをつけてください",
       お知らせ: "おしらせ",
     },
     alertLevelMeta: {
-      1: { action: "さいがいに そなえる こころを もつ" },
-      2: { action: "じぶんの ひなん こうどうを かくにん" },
-      3: { action: "こうれいしゃは ひなん、ほかの ひとは じゅんび" },
+      1: { action: "さいがいに そなえてください" },
+      2: { action: "ひなんの ほうほうを かくにんしてください" },
+      3: {
+        action: "おとしよりは ひなん。ほかの ひとは じゅんび",
+      },
       4: {
-        action: "きけんな ところから みんな ひなん",
-        officialNote: "けいかい レベル4までに みんな ひなん",
+        action: "きけんな ばしょから みんな ひなん",
+        officialNote: "けいかいレベル4までに みんな ひなんしてください",
       },
       5: {
         action: "いのちが あぶない。すぐに あんぜんに",
-        officialNote: "レベル5は もう あぶない かもしれません",
+        officialNote: "レベル5は もう あぶない ときです",
       },
     },
   },
@@ -139,9 +134,6 @@ export const UI_STRINGS: Record<
     siteTitle: "Disaster Information",
     municipalityName: "○○ City (Template)",
     langLabel: "Language",
-    langJa: "Japanese",
-    langJaEasy: "Easy Japanese",
-    langEn: "English",
     alertLevelHeading: "Current Alert Level",
     alertLevelPrefix: "Alert level",
     alertLevelUpdated: "Updated",
@@ -182,11 +174,144 @@ export const UI_STRINGS: Record<
       },
     },
   },
+  "zh-CN": {
+    siteTitle: "防灾信息",
+    municipalityName: "○○市（模板）",
+    langLabel: "语言",
+    alertLevelHeading: "当前警戒级别",
+    alertLevelPrefix: "警戒级别",
+    alertLevelUpdated: "更新",
+    quickLinksHeading: "快捷链接",
+    newsHeading: "最新消息",
+    newsUpdated: "更新",
+    footerAccessibility: "网页无障碍方针",
+    footerContact: "联系方式",
+    footerContactValue: "防灾负责: 000-0000-0000",
+    comingSoon: "准备中",
+    loading: "加载中…",
+    loadError: "无法加载信息。请稍后再试。",
+    bannerLoadingLabel: "正在加载紧急信息",
+    quickLinks: {
+      shelters: "查找避难所",
+      hazard: "灾害风险地图",
+      evacuation: "避难信息",
+      preparedness: "防灾准备",
+    },
+    bannerVariants: {
+      緊急安全確保: "紧急安全确保",
+      避難指示: "避难指示",
+      高齢者等避難: "老年人等避难",
+      注意喚起: "提醒注意",
+      お知らせ: "通知",
+    },
+    alertLevelMeta: {
+      1: { action: "提高防灾意识" },
+      2: { action: "确认自己的避难行动" },
+      3: { action: "老年人等请避难，其他人做好准备" },
+      4: {
+        action: "所有人立即离开危险场所避难",
+        officialNote: "请在警戒级别4之前完成避难",
+      },
+      5: {
+        action: "危及生命。请立即确保安全",
+        officialNote: "级别5可能意味着已进入危险阶段",
+      },
+    },
+  },
+  vi: {
+    siteTitle: "Thông tin phòng chống thiên tai",
+    municipalityName: "Thành phố ○○ (Mẫu)",
+    langLabel: "Ngôn ngữ",
+    alertLevelHeading: "Mức cảnh báo hiện tại",
+    alertLevelPrefix: "Mức cảnh báo",
+    alertLevelUpdated: "Cập nhật",
+    quickLinksHeading: "Liên kết nhanh",
+    newsHeading: "Tin tức mới",
+    newsUpdated: "Cập nhật",
+    footerAccessibility: "Chính sách tiếp cận web",
+    footerContact: "Liên hệ",
+    footerContactValue: "Bộ phận phòng chống thiên tai: 000-0000-0000",
+    comingSoon: "Đang chuẩn bị",
+    loading: "Đang tải…",
+    loadError: "Không thể tải thông tin. Vui lòng thử lại sau.",
+    bannerLoadingLabel: "Đang tải thông tin khẩn cấp",
+    quickLinks: {
+      shelters: "Tìm nơi sơ tán",
+      hazard: "Bản đồ rủi ro",
+      evacuation: "Thông tin sơ tán",
+      preparedness: "Chuẩn bị phòng tai",
+    },
+    bannerVariants: {
+      緊急安全確保: "Đảm bảo an toàn khẩn cấp",
+      避難指示: "Chỉ thị sơ tán",
+      高齢者等避難: "Người cao tuổi sơ tán",
+      注意喚起: "Cảnh báo",
+      お知らせ: "Thông báo",
+    },
+    alertLevelMeta: {
+      1: { action: "Chuẩn bị tinh thần trước thiên tai" },
+      2: { action: "Xác nhận hành động sơ tán của bạn" },
+      3: {
+        action: "Người cao tuổi hãy sơ tán; người khác chuẩn bị",
+      },
+      4: {
+        action: "Mọi người rời nơi nguy hiểm ngay",
+        officialNote: "Hãy sơ tán trước mức cảnh báo 4",
+      },
+      5: {
+        action: "Nguy hiểm đến tính mạng. Đảm bảo an toàn ngay",
+        officialNote: "Mức 5 có thể đã quá muộn để chờ đợi",
+      },
+    },
+  },
+  ko: {
+    siteTitle: "방재 정보",
+    municipalityName: "○○시(템플릿)",
+    langLabel: "언어",
+    alertLevelHeading: "현재 경계 수준",
+    alertLevelPrefix: "경계 수준",
+    alertLevelUpdated: "업데이트",
+    quickLinksHeading: "바로가기",
+    newsHeading: "새 소식",
+    newsUpdated: "업데이트",
+    footerAccessibility: "웹 접근성 방침",
+    footerContact: "문의",
+    footerContactValue: "방재 담당: 000-0000-0000",
+    comingSoon: "준비 중",
+    loading: "불러오는 중…",
+    loadError: "정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    bannerLoadingLabel: "긴급 정보를 불러오는 중",
+    quickLinks: {
+      shelters: "대피소 찾기",
+      hazard: "위험 지도",
+      evacuation: "대피 정보",
+      preparedness: "방재 준비",
+    },
+    bannerVariants: {
+      緊急安全確保: "긴급 안전 확보",
+      避難指示: "대피 지시",
+      高齢者等避難: "고령자 등 대피",
+      注意喚起: "주의 환기",
+      お知らせ: "알림",
+    },
+    alertLevelMeta: {
+      1: { action: "재해에 대한 대비 의식을 높이세요" },
+      2: { action: "자신의 대피 행동을 확인하세요" },
+      3: { action: "고령자 등은 대피, 다른 사람은 준비" },
+      4: {
+        action: "위험한 곳에서 전원 대피",
+        officialNote: "경계 수준 4까지 전원 대피하세요",
+      },
+      5: {
+        action: "생명이 위험합니다. 즉시 안전을 확보하세요",
+        officialNote: "수준 5는 이미 위험한 단계일 수 있습니다",
+      },
+    },
+  },
 };
 
 export function formatDateTime(iso: string, lang: SiteLanguage): string {
-  const locale = lang === "en" ? "en-US" : "ja-JP";
-  return new Intl.DateTimeFormat(locale, {
+  return new Intl.DateTimeFormat(toDateLocale(lang), {
     dateStyle: "medium",
     timeStyle: "short",
     timeZone: "Asia/Tokyo",

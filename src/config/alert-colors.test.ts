@@ -3,6 +3,7 @@ import {
   ALERT_LEVEL_COLORS,
   BANNER_VARIANT_COLORS,
 } from "@/config/alert-colors";
+import { SITE_LANGUAGES } from "@/config/site-language";
 import { UI_STRINGS } from "@/config/ui-strings";
 
 describe("alert-colors", () => {
@@ -30,7 +31,7 @@ describe("alert-colors", () => {
   });
 
   it("provides localized alert level metadata for each language", () => {
-    for (const lang of ["ja", "ja-easy", "en"] as const) {
+    for (const lang of SITE_LANGUAGES) {
       expect(UI_STRINGS[lang].alertLevelMeta[5].action.length).toBeGreaterThan(
         0,
       );

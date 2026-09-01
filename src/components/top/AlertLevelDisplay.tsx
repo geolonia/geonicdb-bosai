@@ -3,7 +3,8 @@
 import { ALERT_LEVEL_COLORS } from "@/config/alert-colors";
 import { formatDateTime, UI_STRINGS } from "@/config/ui-strings";
 import { resolveLocalizedString } from "@/lib/localized-string";
-import type { AlertLevelData, SiteLanguage } from "@/types/top-page";
+import type { SiteLanguage } from "@/config/site-language";
+import type { AlertLevelData } from "@/types/top-page";
 
 type Props = {
   data: AlertLevelData;

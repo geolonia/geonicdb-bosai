@@ -1,16 +1,14 @@
 "use client";
 
-import type { SiteLanguage } from "@/types/top-page";
+import {
+  SITE_LANGUAGE_LABELS,
+  SITE_LANGUAGES,
+  type SiteLanguage,
+} from "@/config/site-language";
+import type { UiStrings } from "@/config/ui-strings";
 
 type Props = {
-  strings: {
-    siteTitle: string;
-    municipalityName: string;
-    langLabel: string;
-    langJa: string;
-    langJaEasy: string;
-    langEn: string;
-  };
+  strings: Pick<UiStrings, "siteTitle" | "municipalityName" | "langLabel">;
   lang: SiteLanguage;
   onLangChange: (lang: SiteLanguage) => void;
 };
@@ -30,32 +28,25 @@ export function SiteHeader({ strings, lang, onLangChange }: Props) {
             <h1 className="site-header__title">{strings.siteTitle}</h1>
           </div>
         </div>
-        <nav className="site-header__lang" aria-label={strings.langLabel}>
-          <ul className="site-header__lang-list">
-            {(
-              [
-                ["ja", strings.langJa],
-                ["ja-easy", strings.langJaEasy],
-                ["en", strings.langEn],
-              ] as const
-            ).map(([code, label]) => (
-              <li key={code}>
-                <button
-                  type="button"
-                  className={
-                    lang === code
-                      ? "site-header__lang-btn site-header__lang-btn--active"
-                      : "site-header__lang-btn"
-                  }
-                  aria-pressed={lang === code}
-                  onClick={() => onLangChange(code)}
-                >
-                  {label}
-                </button>
-              </li>
+        <div className="site-header__lang">
+          <label className="site-header__lang-label" htmlFor="site-lang">
+            {strings.langLabel}
+          </label>
+          <select
+            id="site-lang"
+            className="site-header__lang-select"
+            value={lang}
+            onChange={(event) =>
+              onLangChange(event.target.value as SiteLanguage)
+            }
+          >
+            {SITE_LANGUAGES.map((code) => (
+              <option key={code} value={code}>
+                {SITE_LANGUAGE_LABELS[code]}
+              </option>
             ))}
-          </ul>
-        </nav>
+          </select>
+        </div>
       </div>
     </header>
   );

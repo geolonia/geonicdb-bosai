@@ -19,8 +19,10 @@ import {
 import { QuickLinks } from "@/components/top/QuickLinks";
 import { SiteFooter } from "@/components/top/SiteFooter";
 import { SiteHeader } from "@/components/top/SiteHeader";
+import { toHtmlLang } from "@/config/site-language";
 import { UI_STRINGS } from "@/config/ui-strings";
 import { fetchPublicJson } from "@/lib/fetch-public-json";
+import { usePreferredLanguage } from "@/lib/use-preferred-language";
 import {
   parseAlertLevel,
   parseEmergencyBanner,
@@ -30,7 +32,6 @@ import type {
   AlertLevelData,
   EmergencyBannerData,
   NewsItem,
-  SiteLanguage,
 } from "@/types/top-page";
 
 const MOCK_PATHS = {
@@ -53,7 +54,7 @@ function parseResource<T>(
 }
 
 export function TopPage() {
-  const [lang, setLang] = useState<SiteLanguage>("ja");
+  const [lang, setLang] = usePreferredLanguage();
   const [banner, setBanner] = useState<EmergencyBannerData | null>(null);
   const [bannerStatus, setBannerStatus] = useState<LoadStatus>("loading");
   const [alertLevel, setAlertLevel] = useState<AlertLevelData | null>(null);
@@ -63,7 +64,7 @@ export function TopPage() {
   const strings = UI_STRINGS[lang];
 
   useEffect(() => {
-    document.documentElement.lang = lang === "ja-easy" ? "ja" : lang;
+    document.documentElement.lang = toHtmlLang(lang);
   }, [lang]);
 
   useEffect(() => {
