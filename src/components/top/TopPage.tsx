@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useLdEntities } from "@geolonia/geonicdb-sdk/react";
 import {
   AlertLevelDisplay,
@@ -27,6 +27,7 @@ import {
   languagePropertyQuery,
 } from "@/lib/geonicdb-public-client";
 import { usePreferredLanguage } from "@/lib/use-preferred-language";
+import { useBosaiLiveUpdates } from "@/lib/use-bosai-live-updates";
 import {
   parseAlertLevel,
   parseEmergencyBanner,
@@ -114,6 +115,22 @@ export function TopPage() {
   useEffect(() => {
     document.documentElement.lang = toHtmlLang(lang);
   }, [lang]);
+
+  const refetchBanner = useCallback(() => {
+    void bannerQuery.refetch();
+  }, [bannerQuery]);
+  const refetchAlertLevel = useCallback(() => {
+    void alertQuery.refetch();
+  }, [alertQuery]);
+  const refetchNotices = useCallback(() => {
+    void noticesQuery.refetch();
+  }, [noticesQuery]);
+
+  useBosaiLiveUpdates({
+    "bosai-Notice": refetchNotices,
+    "bosai-EmergencyBanner": refetchBanner,
+    "bosai-AlertLevel": refetchAlertLevel,
+  });
 
   const banner: BosaiEmergencyBanner | null = parseFirst(
     bannerQuery.entities,

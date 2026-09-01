@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
   getGeonicdbPublicClient,
+  getGeonicdbWsClient,
   languagePropertyQuery,
   resetGeonicdbPublicClientForTests,
   resolveGeonicdbPublicConfig,
@@ -16,6 +17,19 @@ describe("resolveGeonicdbPublicConfig", () => {
       baseUrl: "https://geonicdb.geolonia.com",
       tenant: "miya",
     });
+  });
+
+  it("includes wsApiKey only when NEXT_PUBLIC_GEONICDB_WS_API_KEY is set", () => {
+    const withoutKey = resolveGeonicdbPublicConfig({
+      NEXT_PUBLIC_GEONICDB_URL: "https://geonicdb.geolonia.com",
+    });
+    expect(withoutKey.wsApiKey).toBeUndefined();
+
+    const withKey = resolveGeonicdbPublicConfig({
+      NEXT_PUBLIC_GEONICDB_URL: "https://geonicdb.geolonia.com",
+      NEXT_PUBLIC_GEONICDB_WS_API_KEY: "gdb_test_key",
+    });
+    expect(withKey.wsApiKey).toBe("gdb_test_key");
   });
 
   it("rejects missing NEXT_PUBLIC_GEONICDB_URL", () => {
@@ -55,6 +69,47 @@ describe("getGeonicdbPublicClient", () => {
     resetGeonicdbPublicClientForTests();
     const a = getGeonicdbPublicClient();
     const b = getGeonicdbPublicClient();
+    expect(a).toBe(b);
+  });
+});
+
+describe("getGeonicdbWsClient", () => {
+  const prevUrl = process.env.NEXT_PUBLIC_GEONICDB_URL;
+  const prevWsKey = process.env.NEXT_PUBLIC_GEONICDB_WS_API_KEY;
+
+  afterEach(() => {
+    resetGeonicdbPublicClientForTests();
+    if (prevUrl === undefined) delete process.env.NEXT_PUBLIC_GEONICDB_URL;
+    else process.env.NEXT_PUBLIC_GEONICDB_URL = prevUrl;
+    if (prevWsKey === undefined) {
+      delete process.env.NEXT_PUBLIC_GEONICDB_WS_API_KEY;
+    } else {
+      process.env.NEXT_PUBLIC_GEONICDB_WS_API_KEY = prevWsKey;
+    }
+  });
+
+  it("returns null when config cannot be resolved (no URL)", () => {
+    delete process.env.NEXT_PUBLIC_GEONICDB_URL;
+    delete process.env.NEXT_PUBLIC_GEONICDB_WS_API_KEY;
+    resetGeonicdbPublicClientForTests();
+    expect(getGeonicdbWsClient()).toBeNull();
+  });
+
+  // near-miss: URLはあるがWSキーが無い場合もnull（RESTのみで動作継続）
+  it("returns null when URL is set but WS API key is not", () => {
+    process.env.NEXT_PUBLIC_GEONICDB_URL = "https://geonicdb.geolonia.com";
+    delete process.env.NEXT_PUBLIC_GEONICDB_WS_API_KEY;
+    resetGeonicdbPublicClientForTests();
+    expect(getGeonicdbWsClient()).toBeNull();
+  });
+
+  it("returns a client singleton when WS API key is set", () => {
+    process.env.NEXT_PUBLIC_GEONICDB_URL = "https://geonicdb.geolonia.com";
+    process.env.NEXT_PUBLIC_GEONICDB_WS_API_KEY = "gdb_test_key";
+    resetGeonicdbPublicClientForTests();
+    const a = getGeonicdbWsClient();
+    const b = getGeonicdbWsClient();
+    expect(a).not.toBeNull();
     expect(a).toBe(b);
   });
 });
