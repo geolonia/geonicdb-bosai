@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "description": "自治体向け防災サイトのテンプレート（Next.js + GeonicDB）",
+  "engines": {
+    "node": ">=20.9.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",

@@ -47,4 +47,31 @@ describe("resolveGeonicdbConfig", () => {
     expect(config.apiKey).toBeUndefined();
     expect(config.tenant).toBeUndefined();
   });
+
+  it("accepts tenant names with lowercase letters, digits, and underscore", () => {
+    const config = resolveGeonicdbConfig({
+      GEONICDB_URL: "https://geonicdb.geolonia.com",
+      GEONICDB_TENANT: "demo_tenant1",
+    });
+    expect(config.tenant).toBe("demo_tenant1");
+  });
+
+  // near-miss: ハイフンは見た目は妥当だがテナント仕様外
+  it("rejects tenant names that include a hyphen", () => {
+    expect(() =>
+      resolveGeonicdbConfig({
+        GEONICDB_URL: "https://geonicdb.geolonia.com",
+        GEONICDB_TENANT: "demo-tenant",
+      }),
+    ).toThrow(/GEONICDB_TENANT must match/);
+  });
+
+  it("rejects tenant names with uppercase letters", () => {
+    expect(() =>
+      resolveGeonicdbConfig({
+        GEONICDB_URL: "https://geonicdb.geolonia.com",
+        GEONICDB_TENANT: "Demo",
+      }),
+    ).toThrow(/GEONICDB_TENANT must match/);
+  });
 });

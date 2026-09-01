@@ -7,9 +7,11 @@
 
 ## セットアップ
 
+Node.js **20.9.0 以上**が必要です。
+
 ```bash
 npm install
-cp .env.example .env   # 職員向け GeonicDB 接続が必要な場合のみ
+test -f .env || cp .env.example .env   # 職員向け GeonicDB 接続が必要な場合のみ（既存 .env は上書きしない）
 npm run dev
 ```
 

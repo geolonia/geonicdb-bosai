@@ -9,6 +9,9 @@ export type GeonicdbConfig = {
 /** テスト注入しやすいよう、process.env 互換の薄い辞書型。 */
 export type EnvLike = Record<string, string | undefined>;
 
+/** Fiware-Service / GeonicDB tenant 名として許可する形式。 */
+const TENANT_PATTERN = /^[a-z0-9_]+$/;
+
 function readOptional(env: EnvLike, key: string): string | undefined {
   const value = env[key]?.trim();
   return value ? value : undefined;
@@ -42,6 +45,9 @@ export function resolveGeonicdbConfig(
   const baseUrl = raw.replace(/\/+$/, "");
   const apiKey = readOptional(env, "GEONICDB_API_KEY");
   const tenant = readOptional(env, "GEONICDB_TENANT");
+  if (tenant && !TENANT_PATTERN.test(tenant)) {
+    throw new Error(`GEONICDB_TENANT must match ${TENANT_PATTERN}: ${tenant}`);
+  }
 
   return {
     baseUrl,
