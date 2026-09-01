@@ -1,15 +1,17 @@
 import { describe, expect, it } from "vitest";
 import {
   ALERT_LEVEL_COLORS,
-  ALERT_LEVEL_LABELS,
   BANNER_VARIANT_COLORS,
 } from "@/config/alert-colors";
+import { UI_STRINGS } from "@/config/ui-strings";
 
 describe("alert-colors", () => {
   it("defines all five alert levels with text colors", () => {
     expect(Object.keys(ALERT_LEVEL_COLORS)).toEqual(["1", "2", "3", "4", "5"]);
     for (const level of [1, 2, 3, 4, 5] as const) {
-      expect(ALERT_LEVEL_LABELS[level].action.length).toBeGreaterThan(0);
+      expect(UI_STRINGS.ja.alertLevelMeta[level].action.length).toBeGreaterThan(
+        0,
+      );
     }
   });
 
@@ -25,5 +27,13 @@ describe("alert-colors", () => {
 
   it("uses dark text on yellow level 2 for contrast", () => {
     expect(ALERT_LEVEL_COLORS[2].text).toBe("#1a1a1a");
+  });
+
+  it("provides localized alert level metadata for each language", () => {
+    for (const lang of ["ja", "ja-easy", "en"] as const) {
+      expect(UI_STRINGS[lang].alertLevelMeta[5].action.length).toBeGreaterThan(
+        0,
+      );
+    }
   });
 });

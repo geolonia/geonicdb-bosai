@@ -10,6 +10,7 @@ export const UI_STRINGS: Record<
     langJaEasy: string;
     langEn: string;
     alertLevelHeading: string;
+    alertLevelPrefix: string;
     alertLevelUpdated: string;
     quickLinksHeading: string;
     newsHeading: string;
@@ -18,12 +19,26 @@ export const UI_STRINGS: Record<
     footerContact: string;
     footerContactValue: string;
     comingSoon: string;
+    loading: string;
+    loadError: string;
+    bannerLoadingLabel: string;
     quickLinks: {
       shelters: string;
       hazard: string;
       evacuation: string;
       preparedness: string;
     };
+    bannerVariants: {
+      緊急安全確保: string;
+      避難指示: string;
+      高齢者等避難: string;
+      注意喚起: string;
+      お知らせ: string;
+    };
+    alertLevelMeta: Record<
+      1 | 2 | 3 | 4 | 5,
+      { action: string; officialNote?: string }
+    >;
   }
 > = {
   ja: {
@@ -34,6 +49,7 @@ export const UI_STRINGS: Record<
     langJaEasy: "やさしい日本語",
     langEn: "English",
     alertLevelHeading: "現在の警戒レベル",
+    alertLevelPrefix: "警戒レベル",
     alertLevelUpdated: "更新",
     quickLinksHeading: "クイックリンク",
     newsHeading: "新着・お知らせ",
@@ -42,11 +58,34 @@ export const UI_STRINGS: Record<
     footerContact: "お問い合わせ",
     footerContactValue: "防災担当: 000-0000-0000",
     comingSoon: "準備中",
+    loading: "読み込み中…",
+    loadError: "情報を読み込めませんでした。時間をおいて再度お試しください。",
+    bannerLoadingLabel: "緊急情報を読み込み中",
     quickLinks: {
       shelters: "避難所を探す",
       hazard: "ハザードマップ",
       evacuation: "避難情報",
       preparedness: "防災の備え",
+    },
+    bannerVariants: {
+      緊急安全確保: "緊急安全確保",
+      避難指示: "避難指示",
+      高齢者等避難: "高齢者等避難",
+      注意喚起: "注意喚起",
+      お知らせ: "お知らせ",
+    },
+    alertLevelMeta: {
+      1: { action: "災害への心構えを高める" },
+      2: { action: "自らの避難行動を確認" },
+      3: { action: "高齢者等は避難、他の人は準備" },
+      4: {
+        action: "危険な場所から全員避難",
+        officialNote: "警戒レベル4までに全員避難",
+      },
+      5: {
+        action: "命の危険。直ちに安全確保",
+        officialNote: "レベル5は既に危険な段階に入っている可能性があります",
+      },
     },
   },
   "ja-easy": {
@@ -57,6 +96,7 @@ export const UI_STRINGS: Record<
     langJaEasy: "やさしい にほんご",
     langEn: "English",
     alertLevelHeading: "いまの けいかい レベル",
+    alertLevelPrefix: "けいかい レベル",
     alertLevelUpdated: "こうしん",
     quickLinksHeading: "すぐ に みる",
     newsHeading: "あたらしい おしらせ",
@@ -65,11 +105,34 @@ export const UI_STRINGS: Record<
     footerContact: "おといあわせ",
     footerContactValue: "ぼうさい たんとう: 000-0000-0000",
     comingSoon: "じゅんびちゅう",
+    loading: "よみこみちゅう…",
+    loadError: "じょうほうを よみこめませんでした。しばらくして もういちど ためしてください。",
+    bannerLoadingLabel: "きんきゅう じょうほうを よみこみちゅう",
     quickLinks: {
       shelters: "ひなんじょを さがす",
       hazard: "ハザードマップ",
       evacuation: "ひなん じょうほう",
       preparedness: "ぼうさいの じゅんび",
+    },
+    bannerVariants: {
+      緊急安全確保: "きんきゅう あんぜん かくほ",
+      避難指示: "ひなん しじ",
+      高齢者等避難: "こうれいしゃ ひなん",
+      注意喚起: "ちゅうい かんき",
+      お知らせ: "おしらせ",
+    },
+    alertLevelMeta: {
+      1: { action: "さいがいに そなえる こころを もつ" },
+      2: { action: "じぶんの ひなん こうどうを かくにん" },
+      3: { action: "こうれいしゃは ひなん、ほかの ひとは じゅんび" },
+      4: {
+        action: "きけんな ところから みんな ひなん",
+        officialNote: "けいかい レベル4までに みんな ひなん",
+      },
+      5: {
+        action: "いのちが あぶない。すぐに あんぜんに",
+        officialNote: "レベル5は もう あぶない かもしれません",
+      },
     },
   },
   en: {
@@ -80,6 +143,7 @@ export const UI_STRINGS: Record<
     langJaEasy: "Easy Japanese",
     langEn: "English",
     alertLevelHeading: "Current Alert Level",
+    alertLevelPrefix: "Alert level",
     alertLevelUpdated: "Updated",
     quickLinksHeading: "Quick Links",
     newsHeading: "News & Updates",
@@ -88,11 +152,34 @@ export const UI_STRINGS: Record<
     footerContact: "Contact",
     footerContactValue: "Disaster Management: 000-0000-0000",
     comingSoon: "Coming soon",
+    loading: "Loading…",
+    loadError: "Could not load information. Please try again later.",
+    bannerLoadingLabel: "Loading emergency information",
     quickLinks: {
       shelters: "Find Shelters",
       hazard: "Hazard Map",
       evacuation: "Evacuation Info",
       preparedness: "Preparedness",
+    },
+    bannerVariants: {
+      緊急安全確保: "Emergency safety alert",
+      避難指示: "Evacuation order",
+      高齢者等避難: "Elderly evacuation",
+      注意喚起: "Advisory",
+      お知らせ: "Notice",
+    },
+    alertLevelMeta: {
+      1: { action: "Prepare for disasters" },
+      2: { action: "Check your evacuation plan" },
+      3: { action: "Elderly should evacuate; others prepare" },
+      4: {
+        action: "Evacuate immediately from dangerous areas",
+        officialNote: "Everyone should evacuate by alert level 4",
+      },
+      5: {
+        action: "Life-threatening. Secure safety immediately",
+        officialNote: "Level 5 may mean it is already too late to wait",
+      },
     },
   },
 };

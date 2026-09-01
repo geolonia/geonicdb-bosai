@@ -1,7 +1,8 @@
 "use client";
 
-import { ALERT_LEVEL_COLORS, ALERT_LEVEL_LABELS } from "@/config/alert-colors";
+import { ALERT_LEVEL_COLORS } from "@/config/alert-colors";
 import { formatDateTime, UI_STRINGS } from "@/config/ui-strings";
+import { resolveLocalizedString } from "@/lib/localized-string";
 import type { AlertLevelData, SiteLanguage } from "@/types/top-page";
 
 type Props = {
@@ -12,7 +13,8 @@ type Props = {
 
 export function AlertLevelDisplay({ data, lang, strings }: Props) {
   const colors = ALERT_LEVEL_COLORS[data.level];
-  const meta = ALERT_LEVEL_LABELS[data.level];
+  const meta = strings.alertLevelMeta[data.level];
+  const label = resolveLocalizedString(data.label, lang);
 
   return (
     <section className="alert-level" aria-labelledby="alert-level-heading">
@@ -30,7 +32,7 @@ export function AlertLevelDisplay({ data, lang, strings }: Props) {
         </span>
         <div className="alert-level__text">
           <p className="alert-level__label">
-            警戒レベル {data.level}：{data.label}
+            {strings.alertLevelPrefix} {data.level}：{label}
           </p>
           <p className="alert-level__action">{meta.action}</p>
           {meta.officialNote ? (
@@ -53,7 +55,22 @@ export function AlertLevelPlaceholder({
   return (
     <section className="alert-level" aria-labelledby="alert-level-heading">
       <h2 id="alert-level-heading">{strings.alertLevelHeading}</h2>
-      <p aria-busy="true">読み込み中…</p>
+      <p aria-busy="true">{strings.loading}</p>
+    </section>
+  );
+}
+
+export function AlertLevelError({
+  heading,
+  message,
+}: {
+  heading: string;
+  message: string;
+}) {
+  return (
+    <section className="alert-level" aria-labelledby="alert-level-heading">
+      <h2 id="alert-level-heading">{heading}</h2>
+      <p role="status">{message}</p>
     </section>
   );
 }

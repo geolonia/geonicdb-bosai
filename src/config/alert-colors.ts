@@ -19,20 +19,3 @@ export const BANNER_VARIANT_COLORS = {
 } as const;
 
 export type BannerVariant = keyof typeof BANNER_VARIANT_COLORS;
-
-export const ALERT_LEVEL_LABELS: Record<
-  AlertLevel,
-  { action: string; officialNote?: string }
-> = {
-  1: { action: "災害への心構えを高める" },
-  2: { action: "自らの避難行動を確認" },
-  3: { action: "高齢者等は避難、他の人は準備" },
-  4: {
-    action: "危険な場所から全員避難",
-    officialNote: "警戒レベル4までに全員避難",
-  },
-  5: {
-    action: "命の危険。直ちに安全確保",
-    officialNote: "レベル5は既に危険な段階に入っている可能性があります",
-  },
-};

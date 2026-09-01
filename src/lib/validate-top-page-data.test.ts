@@ -90,7 +90,7 @@ describe("parseEmergencyBanner", () => {
     ).toThrow(/Invalid banner variant/);
   });
 
-  // near-miss: level number string is not a valid variant name
+  // near-miss: numeric string as variant name
   it("rejects numeric string as variant", () => {
     expect(() =>
       parseEmergencyBanner({
@@ -101,6 +101,29 @@ describe("parseEmergencyBanner", () => {
         updatedAt: "2026-09-01T09:00:00+09:00",
       }),
     ).toThrow(/Invalid banner variant/);
+  });
+
+  it("rejects invalid updatedAt", () => {
+    expect(() =>
+      parseEmergencyBanner({
+        variant: "お知らせ",
+        heading: "test",
+        description: "test",
+        link: null,
+        updatedAt: "not-a-date",
+      }),
+    ).toThrow(/valid ISO date-time/);
+  });
+
+  it("parses localized heading object", () => {
+    const data = parseEmergencyBanner({
+      variant: "お知らせ",
+      heading: { ja: "日本語", en: "English" },
+      description: "test",
+      link: null,
+      updatedAt: "2026-09-01T09:00:00+09:00",
+    });
+    expect(data.heading).toEqual({ ja: "日本語", en: "English" });
   });
 });
 
@@ -142,6 +165,16 @@ describe("parseAlertLevel", () => {
       }),
     ).toThrow(/Invalid alert level/);
   });
+
+  it("rejects invalid updatedAt", () => {
+    expect(() =>
+      parseAlertLevel({
+        level: 1,
+        label: "test",
+        updatedAt: "invalid",
+      }),
+    ).toThrow(/valid ISO date-time/);
+  });
 });
 
 describe("parseNewsList", () => {
@@ -159,5 +192,21 @@ describe("parseNewsList", () => {
     });
     expect(data.items).toHaveLength(1);
     expect(data.items[0]?.updatedAt).toContain("2026");
+  });
+
+  it("rejects invalid updatedAt on news item", () => {
+    expect(() =>
+      parseNewsList({
+        items: [
+          {
+            id: "news-001",
+            title: "test",
+            summary: "test",
+            category: "test",
+            updatedAt: "not-a-date",
+          },
+        ],
+      }),
+    ).toThrow(/valid ISO date-time/);
   });
 });
