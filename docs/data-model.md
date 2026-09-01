@@ -9,7 +9,7 @@
 
 - **1エンティティ = 1言語**。多言語コンテンツは、言語ごとに別エンティティとして持つ（NGSI-LDの `LanguageProperty`／`languageMap` は使わない）。理由: 職員が言語ごとに個別入力・更新する運用（`guidelines.md` 3.1.D の「定型文テンプレートで即時多言語化」）と相性がよく、GeonicDBの購読（Subscription）も言語単位で発火できる。
 - 同一コンテンツの翻訳同士は `translationGroup` プロパティで束ねる。
-- 対応言語は `src/config/site-language.ts` の6言語と一致させる: `ja` / `ja-easy` / `en` / `zh-CN` / `vi` / `ko`
+- 対応言語は `src/config/site-language.ts` の5言語と一致させる: `ja` / `en` / `zh-CN` / `vi` / `ko`
 - 本文（`body`）は **Markdown ソース**として保存する。アプリ側（クライアント）でHTML相当（React要素）にパースして表示する。**`dangerouslySetInnerHTML` は使わず、`markdown-to-jsx` 等の直接React要素化するパーサーを使うこと**（XSS経路を構造的に塞ぐ。issue #3 のセキュリティレビューで `link.href` のスキーム検証を要求した経緯があるため、Markdown内のリンクも同じ検証関数を通すこと）。
 - エンティティ type 名は `bosai-` プレフィックス + PascalCase。
 - id は `urn:ngsi-ld:<type>:<translationGroup>:<language>` の形式。
@@ -18,7 +18,7 @@
 
 | プロパティ | 型 | 説明 |
 |---|---|---|
-| `language` | Property\<string\> | `ja` / `ja-easy` / `en` / `zh-CN` / `vi` / `ko` のいずれか |
+| `language` | Property\<string\> | `ja` / `en` / `zh-CN` / `vi` / `ko` のいずれか |
 | `translationGroup` | Property\<string\> | 同一コンテンツの翻訳をまとめるID |
 | `updatedAt` | Property\<DateTime\>（ISO 8601） | 最終更新日時。トップページの「更新: ...」表示に使う |
 

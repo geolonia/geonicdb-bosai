@@ -1,19 +1,11 @@
 /** 対応言語コード（優先順位順。docs/i18n.md 参照）。 */
-export const SITE_LANGUAGES = [
-  "ja",
-  "ja-easy",
-  "en",
-  "zh-CN",
-  "vi",
-  "ko",
-] as const;
+export const SITE_LANGUAGES = ["ja", "en", "zh-CN", "vi", "ko"] as const;
 
 export type SiteLanguage = (typeof SITE_LANGUAGES)[number];
 
 /** 言語切替UI用の表示名（各言語の自称。現在のUI言語に依存しない）。 */
 export const SITE_LANGUAGE_LABELS: Record<SiteLanguage, string> = {
   ja: "日本語",
-  "ja-easy": "やさしい日本語",
   en: "English",
   "zh-CN": "简体中文",
   vi: "Tiếng Việt",
@@ -22,8 +14,6 @@ export const SITE_LANGUAGE_LABELS: Record<SiteLanguage, string> = {
 
 const HTML_LANG: Record<SiteLanguage, string> = {
   ja: "ja",
-  // BCP47 にやさしい日本語用サブタグはないため ja を使う（docs/i18n.md）
-  "ja-easy": "ja",
   en: "en",
   "zh-CN": "zh-CN",
   vi: "vi",
@@ -43,7 +33,6 @@ export function isSiteLanguage(value: unknown): value is SiteLanguage {
 
 const DATE_LOCALE: Record<SiteLanguage, string> = {
   ja: "ja-JP",
-  "ja-easy": "ja-JP",
   en: "en-US",
   "zh-CN": "zh-CN",
   vi: "vi-VN",

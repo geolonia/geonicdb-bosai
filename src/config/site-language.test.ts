@@ -9,20 +9,12 @@ import {
 import { UI_STRINGS } from "@/config/ui-strings";
 
 describe("site-language", () => {
-  it("defines six languages in priority order", () => {
-    expect([...SITE_LANGUAGES]).toEqual([
-      "ja",
-      "ja-easy",
-      "en",
-      "zh-CN",
-      "vi",
-      "ko",
-    ]);
+  it("defines five languages in priority order", () => {
+    expect([...SITE_LANGUAGES]).toEqual(["ja", "en", "zh-CN", "vi", "ko"]);
   });
 
   it("maps each language to the correct html lang attribute", () => {
     expect(toHtmlLang("ja")).toBe("ja");
-    expect(toHtmlLang("ja-easy")).toBe("ja");
     expect(toHtmlLang("en")).toBe("en");
     expect(toHtmlLang("zh-CN")).toBe("zh-CN");
     expect(toHtmlLang("vi")).toBe("vi");
@@ -35,11 +27,16 @@ describe("site-language", () => {
     expect(isSiteLanguage("zh-CN")).toBe(true);
   });
 
+  // near-miss: 旧コード ja-easy は対応言語から外した
+  it("rejects legacy ja-easy as a site language", () => {
+    expect(isSiteLanguage("ja-easy")).toBe(false);
+  });
+
   it("provides date locales for all languages", () => {
+    expect(toDateLocale("ja")).toBe("ja-JP");
     expect(toDateLocale("zh-CN")).toBe("zh-CN");
     expect(toDateLocale("vi")).toBe("vi-VN");
     expect(toDateLocale("ko")).toBe("ko-KR");
-    expect(toDateLocale("ja-easy")).toBe("ja-JP");
   });
 });
 
@@ -55,15 +52,6 @@ describe("UI_STRINGS i18n coverage", () => {
       ).toBeGreaterThan(0);
       expect(SITE_LANGUAGE_LABELS[lang].length).toBeGreaterThan(0);
     }
-  });
-
-  it("does not reuse Japanese banner labels for ja-easy action copy", () => {
-    expect(UI_STRINGS["ja-easy"].bannerVariants["emergency-safety"]).not.toBe(
-      UI_STRINGS.ja.bannerVariants["emergency-safety"],
-    );
-    expect(UI_STRINGS["ja-easy"].bannerVariants["emergency-safety"]).toMatch(
-      /あんぜん/,
-    );
   });
 
   it("provides distinct zh-CN / vi / ko site titles", () => {

@@ -62,7 +62,7 @@ describe("getGeonicdbPublicClient", () => {
 describe("languagePropertyQuery", () => {
   it("builds an NGSI-LD q filter for site languages", () => {
     expect(languagePropertyQuery("ja")).toBe('language=="ja"');
-    expect(languagePropertyQuery("ja-easy")).toBe('language=="ja-easy"');
     expect(languagePropertyQuery("zh-CN")).toBe('language=="zh-CN"');
+    expect(languagePropertyQuery("ko")).toBe('language=="ko"');
   });
 });

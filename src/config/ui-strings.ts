@@ -82,54 +82,6 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
       },
     },
   },
-  "ja-easy": {
-    siteTitle: "ぼうさいの じょうほう",
-    municipalityName: "○○し（テンプレート）",
-    langLabel: "ことばを えらぶ",
-    alertLevelHeading: "いまの けいかいレベル",
-    alertLevelPrefix: "けいかいレベル",
-    alertLevelUpdated: "なおした とき",
-    quickLinksHeading: "すぐ みる",
-    newsHeading: "あたらしい おしらせ",
-    newsUpdated: "なおした とき",
-    footerAccessibility: "みやすい ウェブページの ほうしん",
-    footerContact: "といあわせ",
-    footerContactValue: "ぼうさいの たんとう: 000-0000-0000",
-    comingSoon: "まだ じゅんび中",
-    loading: "よみこんでいます…",
-    loadError:
-      "じょうほうを よめませんでした。すこし まってから もういちど ためしてください。",
-    bannerLoadingLabel: "だいじな じょうほうを よみこんでいます",
-    quickLinks: {
-      shelters: "ひなんじょを さがす",
-      hazard: "きけんな ばしょの ちず",
-      evacuation: "ひなんの じょうほう",
-      preparedness: "さいがいの じゅんび",
-    },
-    // 公式用語の音写ではなく、行動が分かる言い換え（docs/i18n.md）
-    bannerVariants: {
-      "emergency-safety": "今すぐ あんぜんな ばしょへ",
-      "evacuation-order": "すぐに ひなんしてください",
-      "elderly-evacuation": "おとしよりは ひなんしてください",
-      advisory: "きをつけてください",
-      notice: "おしらせ",
-    },
-    alertLevelMeta: {
-      1: { action: "さいがいに そなえてください" },
-      2: { action: "ひなんの ほうほうを かくにんしてください" },
-      3: {
-        action: "おとしよりは ひなん。ほかの ひとは じゅんび",
-      },
-      4: {
-        action: "きけんな ばしょから みんな ひなん",
-        officialNote: "けいかいレベル4までに みんな ひなんしてください",
-      },
-      5: {
-        action: "いのちが あぶない。すぐに あんぜんに",
-        officialNote: "レベル5は もう あぶない ときです",
-      },
-    },
-  },
   en: {
     siteTitle: "Disaster Information",
     municipalityName: "○○ City (Template)",
