@@ -1,41 +1,70 @@
 # GeonicDB セットアップ（APIキー・XACMLポリシー）
 
-作成日: 2026-09-01
-関連: [`data-model.md`](data-model.md)、[`ws-sync.md`](ws-sync.md)
+作成日: 2026-09-01 / 改訂: 2026-09-01（直接AJAX方式への移行、WS動作確認済み）
+関連: [`data-model.md`](data-model.md)、[`REQUIREMENTS.md`](REQUIREMENTS.md) 2.1節
 
-`geonicdb-cli`（コマンド名 `geonic`）を使い、`bosai-` プレフィックスの命名規則で APIキー・XACMLポリシーをセットアップする。CLIコマンド・XACMLポリシーの仕様は `geonicdb`/`geonicdb-cli` 本体のコード・`docs/AUTH.md`（本体側）から実際に確認したもの。下記ポリシー JSON・`--origins` 要件は staging テナントで作成成功を確認済み。
+`geonicdb-cli`（コマンド名 `geonic`）を使い、`bosai-` プレフィックスの命名規則で APIキー・XACMLポリシーをセットアップする。**全て実際のテナント（staging）に対して実行・動作確認済み。**
 
 ## 前提
 
 - `geonic auth login`（または `--client-credentials`）で既にログイン済みで、対象テナントが選択されていること
-- 本スクリプトは既存のテナントに対してAPIキー・ポリシーを作成する（テナント自体の新規作成は行わない。テナント名は `^[a-z0-9_]+$` の制約がありハイフンを含む `bosai-` プレフィックスは使えないため、対象外とする）
+- **匿名読み取り用ポリシー（`bosai-public-read`）の作成には `tenant_admin` 権限が必要**（`geonic admin policies create`）。書き込み用ポリシー（`bosai-write`）は自分自身のアカウントに対して `geonic me policies create` で作成できる（`tenant_admin` 不要）
+- 本スクリプトは既存のテナントに対してAPIキー・ポリシーを作成する（テナント自体の新規作成は行わない。テナント名は `^[a-z0-9_]+$` の制約がありハイフンを含む `bosai-` プレフィックスは使えないため対象外）
 
 ## 命名規則
 
-| 種別 | 名前 | 用途 |
-|---|---|---|
-| XACMLポリシー | `bosai-write` | `bosai-*` エンティティタイプへの書き込み（POST/PATCH/PUT/DELETE）を許可。職員のGeonicDB直接操作（Claude Desktop等のMCP経由）向け |
-| XACMLポリシー | `bosai-read` | `bosai-*` エンティティタイプへの読み取り（GET、WebSocket購読）を許可。`scripts/sync-geonicdb.ts` 向け |
-| APIキー | `bosai-staff-write` | `bosai-write` ポリシーを付与。職員が使う（APIキー上限時は sync 読み取りにも兼用可） |
-| APIキー | `bosai-sync-read` | `bosai-read` ポリシーを付与。ローカル同期ツール専用（最小権限）。ユーザーあたり上限(5)に達している場合は作成をスキップし、`bosai-staff-write` を代用する |
+| 種別 | 名前 | scope | 用途 |
+|---|---|---|---|
+| XACMLポリシー | `bosai-public-read` | tenant（管理者作成） | `bosai-*` への匿名（住民ブラウザ）GET読み取りを許可。`role: anonymous` |
+| XACMLポリシー | `bosai-write` | personal | `bosai-*` への書き込み（POST/PATCH/PUT/DELETE/GET/WS）を許可。職員のGeonicDB直接操作（`geonic` CLI / Claude Desktop MCP）向け |
+| APIキー | `bosai-staff-write` | - | `bosai-write` ポリシーを付与。職員が使う |
 
-XACMLポリシーの `policyId`・APIキーの `name` は文字種の制約が無く（長さ制限のみ、`policyId`は最大256文字・`name`は最大100文字）、`bosai-` プレフィックスをそのまま使える（`geonicdb/docs/AUTH.md` 1277-1284行で確認済み。ただし `/` を含むIDと、`policyId` が文字列 `import` そのものは避けること）。
+XACMLポリシーの `policyId`・APIキーの `name` は文字種の制約が無く（長さ制限のみ）、`bosai-` プレフィックスをそのまま使える。エンティティタイプのスコープは `resources` に `{"attributeId": "entityType", "matchValue": "bosai-*", "matchFunction": "glob"}` で3タイプ一括指定する。
 
-エンティティタイプのスコープには XACML の `resources` に `attributeId: "entityType"` を指定する。`matchFunction: "glob"` を使うと `bosai-*` で3タイプ（`bosai-Notice`/`bosai-EmergencyBanner`/`bosai-AlertLevel`）を一括でスコープできる（本体AUTH.md 2148-2166行のサンプルポリシーを参考に構成）。今回のプレフィックス命名は、この glob スコープを可能にするという実利もある。
+## ポリシー定義（実際に動作確認済み）
 
-## ポリシー定義
+### `bosai-public-read`（匿名読み取り、要 tenant_admin）
 
-**確認済み（staging）**: `rules[]` の各要素に `ruleId`（string）が必須。`target.subjects` は個人スコープ作成時に省略可能。
+住民のブラウザが `useLdEntities`（匿名モード）で直接GeonicDBを読むための、`role: anonymous` を対象としたポリシー。**匿名curlで実際に読み取れることを確認済み。**
 
-### `bosai-write`
+```bash
+geonic admin policies create '{
+  "policyId": "bosai-public-read",
+  "description": "geonicdb-bosai: anonymous public read access to bosai-* entity types (citizen-facing AJAX)",
+  "target": {
+    "subjects": [
+      { "attributeId": "role", "matchValue": "anonymous" }
+    ],
+    "resources": [
+      { "attributeId": "path", "matchValue": "/ngsi-ld/**", "matchFunction": "glob" },
+      { "attributeId": "entityType", "matchValue": "bosai-*", "matchFunction": "glob" }
+    ]
+  },
+  "ruleCombiningAlgorithm": "first-applicable",
+  "rules": [
+    {
+      "ruleId": "permit-bosai-public-read",
+      "effect": "Permit",
+      "target": {
+        "actions": [
+          { "attributeId": "method", "matchValue": "GET" }
+        ]
+      }
+    },
+    { "ruleId": "deny-rest", "effect": "Deny" }
+  ]
+}'
+```
 
-```json
-{
+### `bosai-write`（職員書き込み + WS購読）
+
+```bash
+geonic me policies create '{
   "policyId": "bosai-write",
-  "description": "geonicdb-bosai: write access to bosai-* entity types (staff content updates)",
+  "description": "geonicdb-bosai: write access to bosai-* entity types (staff content updates, NGSI-LD)",
   "target": {
     "resources": [
-      { "attributeId": "path", "matchValue": "/v2/**", "matchFunction": "glob" },
+      { "attributeId": "path", "matchValue": "/ngsi-ld/**", "matchFunction": "glob" },
       { "attributeId": "entityType", "matchValue": "bosai-*", "matchFunction": "glob" }
     ]
   },
@@ -50,63 +79,37 @@ XACMLポリシーの `policyId`・APIキーの `name` は文字種の制約が�
           { "attributeId": "method", "matchValue": "POST" },
           { "attributeId": "method", "matchValue": "PATCH" },
           { "attributeId": "method", "matchValue": "PUT" },
-          { "attributeId": "method", "matchValue": "DELETE" }
+          { "attributeId": "method", "matchValue": "DELETE" },
+          { "attributeId": "method", "matchValue": "WS" }
         ]
       }
     },
     { "ruleId": "deny-rest", "effect": "Deny" }
   ]
-}
+}'
 ```
 
-### `bosai-read`
+**重要な実装上の注意（実運用で踏んだ罠、修正済み）**:
 
-```json
-{
-  "policyId": "bosai-read",
-  "description": "geonicdb-bosai: read access to bosai-* entity types (WebSocket sync tool)",
-  "target": {
-    "resources": [
-      { "attributeId": "path", "matchValue": "/v2/**", "matchFunction": "glob" },
-      { "attributeId": "entityType", "matchValue": "bosai-*", "matchFunction": "glob" }
-    ]
-  },
-  "ruleCombiningAlgorithm": "first-applicable",
-  "rules": [
-    {
-      "ruleId": "permit-bosai-read",
-      "effect": "Permit",
-      "target": {
-        "actions": [
-          { "attributeId": "method", "matchValue": "GET" }
-        ]
-      }
-    },
-    { "ruleId": "deny-rest", "effect": "Deny" }
-  ]
-}
+1. **`rules[]` の各要素に `ruleId` が必須。** 無いと `Invalid input: expected string, received undefined` で作成が失敗する。
+2. **リソースパスは `/ngsi-ld/**` を使うこと。`/v2/**`（NGSIv2）ではない。** SDK の `createEntity`/`updateEntity`/`getEntities` 等はすべて NGSI-LD パス（`/ngsi-ld/v1/entities`）を叩く。`/v2/**` のみを対象にすると、APIキー経由の書き込みが `Access denied: no applicable policy` で失敗する（`geonic` CLIの管理者セッションでは気づかない — 管理者はポリシー評価をバイパスするため）。
+3. **WebSocket購読を許可するには `method: "WS"` をルールに含める。** GeonicDBの `authorizeWs()` は `WS ⊂ GET` の原則で、同じリクエストを `method=WS` と `method=GET` の両方で評価し、**両方**Permitである必要がある（`geonicdb/docs/AUTH.md` 1462行〜）。読み取りフレームは固定で `/ngsi-ld/v1/entities` なので、リソースパスがこれをカバーしていることも必須。
+4. **ポリシー更新はテナント側で反映に数分かかることがある。** 更新直後にWS購読すると `Access denied by policy` になることがあるが、ポリシー自体は正しく保存されている。数分待って再試行すると通る（実測）。
+
+### APIキー
+
+```bash
+geonic me api-keys create --name "bosai-staff-write" --policy bosai-write --origins '*'
 ```
 
-`geonic me policies create` は個人スコープ（`scope: personal`、`priority` はサーバー側で100固定）で作成される。上記のとおり `target.subjects` を省略しても staging では作成・動作を確認済み。
+`--origins` は実質必須（未指定だと `Invalid input: expected array, received undefined`）。キー値は作成時に一度だけ表示される。`.env` の `GEONICDB_API_KEY` 等に反映する場合は、必ず利用者自身が行うこと（自動化ツールがAPIキーをファイルに書き込むべきではない）。
 
-## やること
+## 実際に確認済みの動作
 
-1. `scripts/setup-geonicdb.sh` を作成する。内容:
-   - `geonic me policies get bosai-write` 等で既存チェックし、無ければ `geonic me policies create '<上記JSON>'` で作成（再実行してもエラーにならないよう存在チェックを挟む）
-   - 同様に `bosai-read` ポリシーも作成
-   - `geonic me api-keys create --name bosai-staff-write --policy bosai-write --origins '*'` でAPIキー作成（`--origins` は staging で実質必須。未指定だと `expected array, received undefined`。既存キーの重複作成防止は `geonic me api-keys list` で名前を確認してからにする。`--save` は付けない）
-   - 同様に `geonic me api-keys create --name bosai-sync-read --policy bosai-read --origins '*'` を実行。`Maximum number of API keys` エラー時は警告してスキップし、スクリプトは exit 0 のまま継続（`bosai-staff-write` を `GEONICDB_API_KEY` として書き込み・sync の両方に使う。sync 側は `GEONICDB_SYNC_API_KEY` 未設定時にフォールバック）
-   - 実行後、作成されたAPIキーの値を `.env` の `GEONICDB_API_KEY`（staff-write用）・`GEONICDB_SYNC_API_KEY`（sync-read用・作成できた場合）に設定するよう促すメッセージを表示する（キー自体をファイルに書き込んだりログに残したりしない。標準出力に一度表示するのみ）
-   - `set -euo pipefail` で通常失敗時に止まるようにする（APIキー上限スキップは例外）。`geonic` コマンドが無い場合はインストール手順（geonicdb-cli の README参照）を案内して終了する
-2. `src/config/geonicdb.ts` に、同期ツール専用の設定解決関数 `resolveGeonicdbSyncConfig` / `createGeonicdbSyncClient` を追加する。`GEONICDB_SYNC_API_KEY` を読み、未設定なら `GEONICDB_API_KEY` にフォールバックする（開発初期で1つのキーしか作っていない場合でも動くように）。`scripts/sync-geonicdb.ts` はこちらを使うよう変更する
-3. `.env.example` に `GEONICDB_SYNC_API_KEY` を追加（コメントで用途を説明）
-4. `README.md` にセットアップ手順を追記:
-   - `geonic auth login` が前提であること
-   - `npm run setup:geonicdb`（`package.json` に `"setup:geonicdb": "bash scripts/setup-geonicdb.sh"` を追加）でポリシー・APIキーを作成できること
-   - 作成後、`.env` に反映する手順
-   - `npm run sync:geonicdb` との連携（`docs/ws-sync.md` 参照）
+- 匿名curlで `bosai-public-read` により `bosai-AlertLevel` 等が読み取れること
+- `bosai-staff-write` キーで `db.connect()` → `db.subscribe({entityTypes: [...]})` → `db.updateEntity(...)` → WebSocketで `entityUpdated` イベントを実際に受信すること（Node環境での確認。ブラウザではOriginヘッダーが自動付与されるため同様に動作する）
 
 ## スコープ外
 
 - テナント自体の新規作成（前提として既存テナントを使う）
-- 作成済みリソースの削除・ローテーション手順の自動化（上限回避のための既存キー整理は利用者が手動で行う）
+- 職員向け管理画面（Web UI）からの書き込み — 当面 `geonic` CLI / Claude Desktop（MCP）で代替する（`REQUIREMENTS.md` 5節）

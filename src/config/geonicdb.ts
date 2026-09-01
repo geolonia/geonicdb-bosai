@@ -65,36 +65,3 @@ export function createGeonicdbClient(env: EnvLike = process.env): GeonicDB {
     tenant: config.tenant,
   });
 }
-
-/**
- * WebSocket 同期ツール（scripts/sync-geonicdb.ts）向けの接続設定。
- *
- * `GEONICDB_SYNC_API_KEY` を優先し、未設定なら `GEONICDB_API_KEY` にフォールバックする
- *（開発初期で staff-write キーのみの場合でも動くように）。
- * URL / tenant の解決は `resolveGeonicdbConfig` と同じ。
- *
- * 関連: docs/geonicdb-setup.md（XACML bosai-read / API キー bosai-sync-read）
- */
-export function resolveGeonicdbSyncConfig(
-  env: EnvLike = process.env,
-): GeonicdbConfig {
-  const base = resolveGeonicdbConfig(env);
-  const syncKey =
-    readOptional(env, "GEONICDB_SYNC_API_KEY") ??
-    readOptional(env, "GEONICDB_API_KEY");
-  return {
-    baseUrl: base.baseUrl,
-    ...(syncKey ? { apiKey: syncKey } : {}),
-    ...(base.tenant ? { tenant: base.tenant } : {}),
-  };
-}
-
-/** 同期ツール専用の GeonicDB SDK クライアントを生成する。 */
-export function createGeonicdbSyncClient(env: EnvLike = process.env): GeonicDB {
-  const config = resolveGeonicdbSyncConfig(env);
-  return new GeonicDB({
-    baseUrl: config.baseUrl,
-    apiKey: config.apiKey,
-    tenant: config.tenant,
-  });
-}

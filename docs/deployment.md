@@ -12,7 +12,7 @@ HTTP ヘッダーの実設定はホスティング側の責務（ラウンド2�
 |---|---|
 | ハッシュ付き JS/CSS（`/_next/static/**`） | `public, max-age=31536000, immutable` |
 | HTML（`*.html` / `/`） | 短 TTL（例: `public, max-age=60, must-revalidate`）または CDN で即時無効化可能に |
-| モック JSON / 将来の短 TTL API レスポンス（`/mock/**` 等） | 短 TTL（例: 数秒〜数分）。緊急情報は `REQUIREMENTS.md` 2.1 の短 TTL 方針に従う |
+| GeonicDB NGSI-LD 応答（ブラウザから直接 AJAX） | GeonicDB / CDN のキャッシュ方針に従う。公開ページは匿名 GET（`REQUIREMENTS.md` 2.1） |
 
 ## 画像
 

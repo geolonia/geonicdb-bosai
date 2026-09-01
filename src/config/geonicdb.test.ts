@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  resolveGeonicdbConfig,
-  resolveGeonicdbSyncConfig,
-} from "@/config/geonicdb";
+import { resolveGeonicdbConfig } from "@/config/geonicdb";
 
 describe("resolveGeonicdbConfig", () => {
   it("resolves a valid https endpoint and strips trailing slashes", () => {
@@ -76,46 +73,5 @@ describe("resolveGeonicdbConfig", () => {
         GEONICDB_TENANT: "Demo",
       }),
     ).toThrow(/GEONICDB_TENANT must match/);
-  });
-});
-
-describe("resolveGeonicdbSyncConfig", () => {
-  it("prefers GEONICDB_SYNC_API_KEY over GEONICDB_API_KEY", () => {
-    const config = resolveGeonicdbSyncConfig({
-      GEONICDB_URL: "https://geonicdb.geolonia.com",
-      GEONICDB_API_KEY: "staff_key",
-      GEONICDB_SYNC_API_KEY: "sync_key",
-      GEONICDB_TENANT: "demo",
-    });
-    expect(config).toEqual({
-      baseUrl: "https://geonicdb.geolonia.com",
-      apiKey: "sync_key",
-      tenant: "demo",
-    });
-  });
-
-  it("falls back to GEONICDB_API_KEY when sync key is unset", () => {
-    const config = resolveGeonicdbSyncConfig({
-      GEONICDB_URL: "https://geonicdb.geolonia.com/",
-      GEONICDB_API_KEY: "staff_key",
-    });
-    expect(config.apiKey).toBe("staff_key");
-  });
-
-  // near-miss: 空白のみの SYNC キーは未設定扱い → staff キーへフォールバック
-  it("treats whitespace-only GEONICDB_SYNC_API_KEY as unset and falls back", () => {
-    const config = resolveGeonicdbSyncConfig({
-      GEONICDB_URL: "https://geonicdb.geolonia.com",
-      GEONICDB_API_KEY: "staff_key",
-      GEONICDB_SYNC_API_KEY: "   ",
-    });
-    expect(config.apiKey).toBe("staff_key");
-  });
-
-  it("omits apiKey when neither sync nor staff key is set", () => {
-    const config = resolveGeonicdbSyncConfig({
-      GEONICDB_URL: "https://geonicdb.geolonia.com",
-    });
-    expect(config.apiKey).toBeUndefined();
   });
 });

@@ -1,4 +1,9 @@
 import type { NextConfig } from "next";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const projectRoot = path.dirname(fileURLToPath(import.meta.url));
+const embedStub = path.join(projectRoot, "src/stubs/geolonia-embed.ts");
 
 /**
  * 住民向け公開サイトは完全静的 export（REQUIREMENTS.md 2.2）。
@@ -8,6 +13,9 @@ import type { NextConfig } from "next";
  *
  * ルートが増えたら重いクライアント UI は next/dynamic で分割する
  *（現状はトップのクイックリンク先未実装のため未使用）。
+ *
+ * `@geolonia/geonicdb-sdk/react` は GeonicDbMap のために `@geolonia/embed` を
+ * 動的 import するが、本テンプレートは hooks のみ使うため stub に寄せる。
  */
 const nextConfig: NextConfig = {
   output: "export",
@@ -18,6 +26,19 @@ const nextConfig: NextConfig = {
   },
   // ハッシュ付き静的アセットは CDN で長期キャッシュ（docs/deployment.md）
   poweredByHeader: false,
+  turbopack: {
+    resolveAlias: {
+      "@geolonia/embed": "./src/stubs/geolonia-embed.ts",
+    },
+  },
+  webpack: (config) => {
+    config.resolve = config.resolve ?? {};
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      "@geolonia/embed": embedStub,
+    };
+    return config;
+  },
 };
 
 export default nextConfig;

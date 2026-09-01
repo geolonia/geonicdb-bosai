@@ -215,51 +215,57 @@ describe("parseNoticeList", () => {
     expect(data.items[0]?.translationGroup).toBe("2026-multilingual-launch");
   });
 
-  it("parses all six language notice mock files", async () => {
-    const { readFileSync } = await import("node:fs");
-    const { resolve } = await import("node:path");
-    for (const lang of ["ja", "ja-easy", "en", "zh-CN", "vi", "ko"] as const) {
-      const raw = JSON.parse(
-        readFileSync(
-          resolve(process.cwd(), `public/mock/notices/${lang}.json`),
-          "utf8",
-        ),
-      );
-      const data = parseNoticeList(raw);
-      expect(data.items.length).toBeGreaterThanOrEqual(3);
-      expect(
-        data.items.some((n) => n.translationGroup === "2026-multilingual-launch"),
-      ).toBe(true);
-    }
-  });
+  it("parses Property-form entities as returned by useLdEntities / getEntities", () => {
+    const banner = parseEmergencyBanner({
+      id: "urn:ngsi-ld:bosai-EmergencyBanner:current-banner:ja",
+      type: "bosai-EmergencyBanner",
+      language: { type: "Property", value: "ja" },
+      translationGroup: { type: "Property", value: "current-banner" },
+      variant: { type: "Property", value: "notice" },
+      heading: { type: "Property", value: "高齢者等避難を解除しました" },
+      body: {
+        type: "Property",
+        value: "高齢者等避難を解除しました。今後の気象情報にご注意ください。",
+      },
+      linkHref: { type: "Property", value: "/evacuation" },
+      linkText: { type: "Property", value: "避難情報を見る" },
+      updatedAt: { type: "Property", value: "2026-09-01T18:00:00+09:00" },
+    });
+    expect(banner.heading).toBe("高齢者等避難を解除しました");
+    expect(banner.variant).toBe("notice");
 
-  it("parses level-3 elderly-evacuation scenario mocks for all languages", async () => {
-    const { readFileSync } = await import("node:fs");
-    const { resolve } = await import("node:path");
-    for (const lang of ["ja", "ja-easy", "en", "zh-CN", "vi", "ko"] as const) {
-      const banner = parseEmergencyBanner(
-        JSON.parse(
-          readFileSync(
-            resolve(process.cwd(), `public/mock/emergency-banner/${lang}.json`),
-            "utf8",
-          ),
-        ),
-      );
-      expect(banner.variant).toBe("elderly-evacuation");
-      expect(banner.linkHref).toBe("/evacuation");
-      expect(banner.updatedAt).toBe("2026-09-01T16:30:00+09:00");
+    const alert = parseAlertLevel({
+      id: "urn:ngsi-ld:bosai-AlertLevel:current-alert-level:ja",
+      type: "bosai-AlertLevel",
+      language: { type: "Property", value: "ja" },
+      translationGroup: { type: "Property", value: "current-alert-level" },
+      level: { type: "Property", value: 1 },
+      label: { type: "Property", value: "警戒レベル1：早期注意情報（平時）" },
+      body: {
+        type: "Property",
+        value: "高齢者等避難は解除されました。災害への心構えを引き続き高めてください",
+      },
+      updatedAt: { type: "Property", value: "2026-09-01T18:00:00+09:00" },
+    });
+    expect(alert.level).toBe(1);
+    expect(alert.label).toContain("警戒レベル1");
 
-      const alert = parseAlertLevel(
-        JSON.parse(
-          readFileSync(
-            resolve(process.cwd(), `public/mock/alert-level/${lang}.json`),
-            "utf8",
-          ),
-        ),
-      );
-      expect(alert.level).toBe(3);
-      expect(alert.updatedAt).toBe("2026-09-01T16:30:00+09:00");
-    }
+    const notices = parseNoticeList([
+      {
+        id: "urn:ngsi-ld:bosai-Notice:2026-multilingual-launch:ja",
+        type: "bosai-Notice",
+        language: { type: "Property", value: "ja" },
+        translationGroup: {
+          type: "Property",
+          value: "2026-multilingual-launch",
+        },
+        title: { type: "Property", value: "多言語対応を開始しました" },
+        body: { type: "Property", value: "本文" },
+        publishedAt: { type: "Property", value: "2026-09-01T15:00:00+09:00" },
+        updatedAt: { type: "Property", value: "2026-09-01T15:00:00+09:00" },
+      },
+    ]);
+    expect(notices.items).toHaveLength(1);
   });
 
   it("parses a bare array payload", () => {

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo } from "react";
+import { useLdEntities } from "@geolonia/geonicdb-sdk/react";
 import {
   AlertLevelDisplay,
   AlertLevelError,
@@ -19,14 +20,12 @@ import {
 import { QuickLinks } from "@/components/top/QuickLinks";
 import { SiteFooter } from "@/components/top/SiteFooter";
 import { SiteHeader } from "@/components/top/SiteHeader";
-import { toHtmlLang, type SiteLanguage } from "@/config/site-language";
+import { toHtmlLang } from "@/config/site-language";
 import { UI_STRINGS } from "@/config/ui-strings";
-import { fetchPublicJson } from "@/lib/fetch-public-json";
 import {
-  mockPaths,
-  viewStatus,
-  type ResourceState,
-} from "@/lib/top-page-load";
+  getGeonicdbPublicClient,
+  languagePropertyQuery,
+} from "@/lib/geonicdb-public-client";
 import { usePreferredLanguage } from "@/lib/use-preferred-language";
 import {
   parseAlertLevel,
@@ -39,96 +38,108 @@ import type {
   BosaiNotice,
 } from "@/types/top-page";
 
-function initialResource<T>(): ResourceState<T> {
-  return { status: "loading", dataLang: null, data: null };
-}
+type ViewStatus = "loading" | "error" | "ready";
 
-function parseResource<T>(
-  raw: unknown,
+/** useLdEntities 第1引数（react エントリの GeonicDB とコアの型が分かれている）。 */
+type LdClient = Parameters<typeof useLdEntities>[0];
+
+/** env 未設定時でも hooks を無条件呼び出しできるよう、必ず失敗するスタブ。 */
+const MISSING_CONFIG_CLIENT = {
+  getEntities: async () => {
+    throw new Error("NEXT_PUBLIC_GEONICDB_URL is not set");
+  },
+} as unknown as LdClient;
+
+function parseFirst<T>(
+  entities: unknown[],
   parser: (value: unknown) => T,
 ): T | null {
+  const first = entities[0];
+  if (!first) return null;
   try {
-    return parser(raw);
+    return parser(first);
   } catch {
     return null;
   }
 }
 
-function settleResource<T>(
-  result: PromiseSettledResult<unknown>,
-  parser: (value: unknown) => T,
-  lang: SiteLanguage,
-): ResourceState<T> {
-  if (result.status !== "fulfilled") {
-    return { status: "error", dataLang: lang, data: null };
+function parseNotices(entities: unknown[]): BosaiNotice[] | null {
+  try {
+    return parseNoticeList(entities).items;
+  } catch {
+    return null;
   }
-  const parsed = parseResource(result.value, parser);
-  if (!parsed) {
-    return { status: "error", dataLang: lang, data: null };
-  }
-  return { status: "ready", dataLang: lang, data: parsed };
+}
+
+function resourceStatus(
+  loading: boolean,
+  error: Error | null,
+  data: unknown,
+): ViewStatus {
+  if (loading) return "loading";
+  if (error || data == null) return "error";
+  return "ready";
 }
 
 export function TopPage() {
   const [lang, setLang] = usePreferredLanguage();
   const strings = UI_STRINGS[lang];
-  const fetchGen = useRef(0);
 
-  const [bannerState, setBannerState] =
-    useState<ResourceState<BosaiEmergencyBanner>>(initialResource);
-  const [alertState, setAlertState] =
-    useState<ResourceState<BosaiAlertLevel>>(initialResource);
-  const [noticesState, setNoticesState] =
-    useState<ResourceState<BosaiNotice[]>>(initialResource);
+  const client = useMemo((): LdClient => {
+    try {
+      return getGeonicdbPublicClient() as unknown as LdClient;
+    } catch {
+      return MISSING_CONFIG_CLIENT;
+    }
+  }, []);
+
+  const q = languagePropertyQuery(lang);
+
+  const bannerQuery = useLdEntities(client, {
+    type: "bosai-EmergencyBanner",
+    q,
+    limit: 1,
+  });
+  const alertQuery = useLdEntities(client, {
+    type: "bosai-AlertLevel",
+    q,
+    limit: 1,
+  });
+  const noticesQuery = useLdEntities(client, {
+    type: "bosai-Notice",
+    q,
+    limit: 50,
+  });
 
   useEffect(() => {
     document.documentElement.lang = toHtmlLang(lang);
   }, [lang]);
 
-  useEffect(() => {
-    const gen = ++fetchGen.current;
-    const paths = mockPaths(lang);
-    const targetLang = lang;
+  const banner: BosaiEmergencyBanner | null = parseFirst(
+    bannerQuery.entities,
+    parseEmergencyBanner,
+  );
+  const alertLevel: BosaiAlertLevel | null = parseFirst(
+    alertQuery.entities,
+    parseAlertLevel,
+  );
+  const notices: BosaiNotice[] | null = parseNotices(noticesQuery.entities);
 
-    async function load() {
-      const results = await Promise.allSettled([
-        fetchPublicJson<unknown>(paths.banner),
-        fetchPublicJson<unknown>(paths.alertLevel),
-        fetchPublicJson<unknown>(paths.notices),
-      ]);
-      // 言語切替や Strict Mode の cleanup で世代が進んでいたら破棄
-      if (gen !== fetchGen.current) return;
-
-      const [bannerResult, alertResult, noticesResult] = results;
-      setBannerState(settleResource(bannerResult, parseEmergencyBanner, targetLang));
-      setAlertState(settleResource(alertResult, parseAlertLevel, targetLang));
-      const notices = settleResource(noticesResult, parseNoticeList, targetLang);
-      setNoticesState({
-        status: notices.status,
-        dataLang: notices.dataLang,
-        data: notices.data ? notices.data.items : null,
-      });
-    }
-
-    void load();
-  }, [lang]);
-
-  const bannerStatus = viewStatus(bannerState, lang);
-  const alertStatus = viewStatus(alertState, lang);
-  const noticesStatus = viewStatus(noticesState, lang);
-
-  const banner =
-    bannerStatus === "ready" && bannerState.dataLang === lang
-      ? bannerState.data
-      : null;
-  const alertLevel =
-    alertStatus === "ready" && alertState.dataLang === lang
-      ? alertState.data
-      : null;
-  const notices =
-    noticesStatus === "ready" && noticesState.dataLang === lang
-      ? noticesState.data
-      : null;
+  const bannerStatus = resourceStatus(
+    bannerQuery.loading,
+    bannerQuery.error,
+    banner,
+  );
+  const alertStatus = resourceStatus(
+    alertQuery.loading,
+    alertQuery.error,
+    alertLevel,
+  );
+  const noticesStatus = resourceStatus(
+    noticesQuery.loading,
+    noticesQuery.error,
+    notices,
+  );
 
   const quickLinks = [
     {

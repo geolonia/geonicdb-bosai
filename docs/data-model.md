@@ -58,13 +58,12 @@
 
 ## アプリ側の変更方針
 
-1. **データ層をGeonicDBエンティティ形状に合わせて再構築**する。現在の `public/mock/*.json`（言語非依存）を、言語別ファイル（例: `public/mock/notices/ja.json` 等）に分割し、上記スキーマ（`language`/`translationGroup`/Markdown `body`）に合わせる。
-2. **言語切替時に該当言語のデータを再フェッチする**（現状はUI文言のみ切り替わり、お知らせ・バナー・警戒レベルの中身は言語に連動していない）。
-3. Markdownレンダリングを `markdown-to-jsx`（要 `npm install`）で実装し、`a` タグのレンダリングをオーバーライドして既存の href スキーム検証を通す。
-4. **実GeonicDB接続は、クライアントから直接叩かない**（`REQUIREMENTS.md` 2.1 の方針を維持）。今回は「GeonicDBエンティティ形状のモックデータ + その形状を前提にしたパース/表示ロジック」までを実装範囲とし、実ブローカーへの問い合わせは `src/lib/geonicdb-read-api.ts` に**参照実装**として置く（`@geolonia/geonicdb-sdk` を使い、`bosai-Notice` 等をクエリする関数。この関数はクライアントの静的ビルドには含めず、将来「短TTLキャッシュ層」のバックエンド実装者が参照するためのコードとして分離する。テストは「正しいNGSI-LDクエリを組み立てているか」を検証する形でよい）。
+1. **データ層をGeonicDBエンティティ形状に合わせる**。`bosai-Notice` / `bosai-EmergencyBanner` / `bosai-AlertLevel` は言語プロパティ付きでブローカー上に保持する。
+2. **言語切替時に該当言語のデータを再フェッチする**（`useLdEntities` の `q: 'language=="<lang>"'`）。
+3. Markdownレンダリングを `markdown-to-jsx` で実装し、`a` タグの href スキーム検証を通す。
+4. **住民向け公開ページはブラウザから GeonicDB へ直接 AJAX する**（`REQUIREMENTS.md` 2.1）。SDK を `anonymous: true` で初期化し、Property 形式エンティティを `validate-top-page-data.ts` で正規化する。
 
 ## スコープ外
 
-- 実GeonicDBブローカーへの接続確認（ローカルに動作中のブローカーが無いため）
-- 職員向け管理画面からの書き込み（別issue）
-- Subscription/Webhookによるキャッシュ無効化の実装（別issue、`REQUIREMENTS.md` 2.1 に設計方針の記載あり）
+- 職員向け管理画面からの書き込み（別issue。当面は CLI / MCP）
+- 短TTLキャッシュ層の再導入（輻輳耐性を優先する場合の選択肢として旧設計が `git log` に残る）

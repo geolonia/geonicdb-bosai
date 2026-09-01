@@ -6,7 +6,6 @@ import {
   type SiteLanguage,
 } from "@/config/site-language";
 import type { UiStrings } from "@/config/ui-strings";
-import { prefetchOtherLanguageMocks } from "@/lib/prefetch-lang-mocks";
 
 type Props = {
   strings: Pick<UiStrings, "siteTitle" | "municipalityName" | "langLabel">;
@@ -40,8 +39,6 @@ export function SiteHeader({ strings, lang, onLangChange }: Props) {
             onChange={(event) =>
               onLangChange(event.target.value as SiteLanguage)
             }
-            onFocus={() => prefetchOtherLanguageMocks(lang)}
-            onMouseEnter={() => prefetchOtherLanguageMocks(lang)}
           >
             {SITE_LANGUAGES.map((code) => (
               <option key={code} value={code}>

@@ -1,9 +1,10 @@
 # geonicdb-bosai
 
-自治体向け防災サイトのテンプレートリポジトリ。[GeonicDB](https://github.com/geolonia/geonicdb) を書き込み・リアルタイム更新のバックエンドに、Next.js による静的生成 + CDN 配信を住民向け読み取り経路に採用する。
+自治体向け防災サイトのテンプレートリポジトリ。[GeonicDB](https://github.com/geolonia/geonicdb) をバックエンドに、Next.js の静的 export + CDN 配信で住民向けページを提供する。住民ブラウザは `@geolonia/geonicdb-sdk` の `useLdEntities` で GeonicDB へ直接 AJAX する（[`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) 2.1）。
 
 - 要件定義: [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md)
 - ガイドライン調査: [`docs/research/guidelines.md`](docs/research/guidelines.md)
+- APIキー・ポリシー: [`docs/geonicdb-setup.md`](docs/geonicdb-setup.md)
 
 ## セットアップ
 
@@ -11,11 +12,11 @@ Node.js **20.9.0 以上**が必要です。
 
 ```bash
 npm install
-test -f .env || cp .env.example .env   # 職員向け GeonicDB 接続が必要な場合のみ（既存 .env は上書きしない）
+test -f .env.local || cp .env.example .env.local
 npm run dev
 ```
 
-`http://localhost:3000` で最小ページが表示される。
+`http://localhost:3000` でトップページが表示される。動的データ（緊急バナー・警戒レベル・お知らせ）は `NEXT_PUBLIC_GEONICDB_*` で指定した GeonicDB から匿名 GET する。
 
 ## スクリプト
 
@@ -27,40 +28,30 @@ npm run dev
 | `npm run format` / `format:check` | Prettier              |
 | `npm run typecheck`               | TypeScript            |
 | `npm test`                        | Vitest                |
-| `npm run setup:geonicdb`          | XACML ポリシー・API キー作成（冪等） |
-| `npm run sync:geonicdb`           | GeonicDB WS → mock JSON 同期（開発用） |
+| `npm run setup:geonicdb`          | XACML ポリシー・職員 API キー作成（冪等） |
 
-## GeonicDB セットアップ（APIキー・ポリシー）
+## GeonicDB（住民向け・匿名読み取り）
 
-職員書き込み用・同期ツール読み取り用の XACML ポリシーと API キーを、`geonic` CLI で冪等に作成します（[`docs/geonicdb-setup.md`](docs/geonicdb-setup.md)）。
+公開ページは SDK を `anonymous: true` で初期化し、API キーをクライアントに埋め込みません。読み取り可否はテナント側の XACML ポリシー `bosai-public-read`（`role: anonymous`、`entityType: bosai-*`、GET のみ）で制御します。
 
-前提: [`geonicdb-cli`](https://github.com/geolonia/geonicdb-cli) をインストール済みで、`geonic auth login`（または `--client-credentials`）済み、対象テナントが選択されていること。
+`.env.local`（または `.env`）に次を設定します（**秘密情報ではない**）:
 
 ```bash
+NEXT_PUBLIC_GEONICDB_URL=https://geonicdb.geolonia.com
+NEXT_PUBLIC_GEONICDB_TENANT=miya
+```
+
+## GeonicDB（職員向け・書き込み）
+
+職員が `geonic` CLI / Claude Desktop MCP で書き込むためのポリシー・API キーは次で作成できます。
+
+```bash
+# 前提: geonic auth login 済み、対象テナント選択済み
 npm run setup:geonicdb
 ```
 
-作成物:
-
-| 名前 | 種別 | `.env` への反映先 |
-| --- | --- | --- |
-| `bosai-write` / `bosai-read` | XACML ポリシー | （なし） |
-| `bosai-staff-write` | API キー | `GEONICDB_API_KEY` |
-| `bosai-sync-read` | API キー | `GEONICDB_SYNC_API_KEY` |
-
-キー値は作成時に標準出力へ一度だけ表示されます。`.env` へ手動でコピーしてください（スクリプトは `.env` に書き込みません）。API キー上限(5)で `bosai-sync-read` が作れない場合は `GEONICDB_API_KEY`（`bosai-staff-write`）だけで運用可能です（sync は未設定時にフォールバック）。詳細は [`docs/geonicdb-setup.md`](docs/geonicdb-setup.md)。
-
-## GeonicDB WebSocket 同期（開発用）
-
-職員側で GeonicDB に書き込んだ `bosai-Notice` / `bosai-EmergencyBanner` / `bosai-AlertLevel` を、ローカルの `public/mock/` にほぼリアルタイム反映するツールです（[`docs/ws-sync.md`](docs/ws-sync.md)）。住民向けブラウザからは接続しません。
-
-1. 上記 `npm run setup:geonicdb` でポリシー・API キーを用意（任意だが推奨）
-2. `.env` に `GEONICDB_URL`（必要なら `GEONICDB_SYNC_API_KEY` または `GEONICDB_API_KEY` / `GEONICDB_TENANT`）を設定
-3. 一方のターミナルで `npm run dev`
-4. 別ターミナルで `npm run sync:geonicdb`
-
-GeonicDB への作成・更新が mock JSON に書き込まれ、開発サーバの画面に反映されます。同期クライアントは `GEONICDB_SYNC_API_KEY` を優先し、未設定時は `GEONICDB_API_KEY` にフォールバックします。
+詳細は [`docs/geonicdb-setup.md`](docs/geonicdb-setup.md)。作成した `bosai-staff-write` は `.env` の `GEONICDB_API_KEY` に設定します（公開ページには使いません）。`bosai-public-read`（匿名読み取り）の作成には `tenant_admin` が必要で、権限が無い場合は警告してスキップします（手動で `geonic admin policies create`）。
 
 ## 環境変数
 
-`.env.example` を参照。`GEONICDB_URL` 等は職員向け経路用であり、住民向け公開ページから GeonicDB へ直接接続する用途ではない（`docs/REQUIREMENTS.md` 2.1）。
+`.env.example` を参照。`NEXT_PUBLIC_*` は住民向け匿名読み取り、`GEONICDB_*`（非 PUBLIC）は職員向け経路用です。
