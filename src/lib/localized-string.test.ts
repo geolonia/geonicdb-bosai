@@ -10,7 +10,7 @@ describe("resolveLocalizedString", () => {
     expect(resolveLocalizedString({ ja: "日本語", en: "English" }, "en")).toBe(
       "English",
     );
-    expect(resolveLocalizedString({ ja: "日本語", en: "English" }, "ja-easy")).toBe(
+    expect(resolveLocalizedString({ ja: "日本語", en: "English" }, "ko")).toBe(
       "日本語",
     );
   });

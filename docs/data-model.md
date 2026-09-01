@@ -9,7 +9,7 @@
 
 - **1エンティティ = 1言語**。多言語コンテンツは、言語ごとに別エンティティとして持つ（NGSI-LDの `LanguageProperty`／`languageMap` は使わない）。理由: 職員が言語ごとに個別入力・更新する運用（`guidelines.md` 3.1.D の「定型文テンプレートで即時多言語化」）と相性がよく、GeonicDBの購読（Subscription）も言語単位で発火できる。
 - 同一コンテンツの翻訳同士は `translationGroup` プロパティで束ねる。
-- 対応言語は `src/config/site-language.ts` の6言語と一致させる: `ja` / `ja-easy` / `en` / `zh-CN` / `vi` / `ko`
+- 対応言語は `src/config/site-language.ts` の5言語と一致させる: `ja` / `en` / `zh-CN` / `vi` / `ko`
 - 本文（`body`）は **Markdown ソース**として保存する。アプリ側（クライアント）でHTML相当（React要素）にパースして表示する。**`dangerouslySetInnerHTML` は使わず、`markdown-to-jsx` 等の直接React要素化するパーサーを使うこと**（XSS経路を構造的に塞ぐ。issue #3 のセキュリティレビューで `link.href` のスキーム検証を要求した経緯があるため、Markdown内のリンクも同じ検証関数を通すこと）。
 - エンティティ type 名は `bosai-` プレフィックス + PascalCase。
 - id は `urn:ngsi-ld:<type>:<translationGroup>:<language>` の形式。
@@ -18,7 +18,7 @@
 
 | プロパティ | 型 | 説明 |
 |---|---|---|
-| `language` | Property\<string\> | `ja` / `ja-easy` / `en` / `zh-CN` / `vi` / `ko` のいずれか |
+| `language` | Property\<string\> | `ja` / `en` / `zh-CN` / `vi` / `ko` のいずれか |
 | `translationGroup` | Property\<string\> | 同一コンテンツの翻訳をまとめるID |
 | `updatedAt` | Property\<DateTime\>（ISO 8601） | 最終更新日時。トップページの「更新: ...」表示に使う |
 
@@ -58,13 +58,12 @@
 
 ## アプリ側の変更方針
 
-1. **データ層をGeonicDBエンティティ形状に合わせて再構築**する。現在の `public/mock/*.json`（言語非依存）を、言語別ファイル（例: `public/mock/notices/ja.json` 等）に分割し、上記スキーマ（`language`/`translationGroup`/Markdown `body`）に合わせる。
-2. **言語切替時に該当言語のデータを再フェッチする**（現状はUI文言のみ切り替わり、お知らせ・バナー・警戒レベルの中身は言語に連動していない）。
-3. Markdownレンダリングを `markdown-to-jsx`（要 `npm install`）で実装し、`a` タグのレンダリングをオーバーライドして既存の href スキーム検証を通す。
-4. **実GeonicDB接続は、クライアントから直接叩かない**（`REQUIREMENTS.md` 2.1 の方針を維持）。今回は「GeonicDBエンティティ形状のモックデータ + その形状を前提にしたパース/表示ロジック」までを実装範囲とし、実ブローカーへの問い合わせは `src/lib/geonicdb-read-api.ts` に**参照実装**として置く（`@geolonia/geonicdb-sdk` を使い、`bosai-Notice` 等をクエリする関数。この関数はクライアントの静的ビルドには含めず、将来「短TTLキャッシュ層」のバックエンド実装者が参照するためのコードとして分離する。テストは「正しいNGSI-LDクエリを組み立てているか」を検証する形でよい）。
+1. **データ層をGeonicDBエンティティ形状に合わせる**。`bosai-Notice` / `bosai-EmergencyBanner` / `bosai-AlertLevel` は言語プロパティ付きでブローカー上に保持する。
+2. **言語切替時に該当言語のデータを再フェッチする**（`useLdEntities` の `q: 'language=="<lang>"'`）。
+3. Markdownレンダリングを `markdown-to-jsx` で実装し、`a` タグの href スキーム検証を通す。
+4. **住民向け公開ページはブラウザから GeonicDB へ直接 AJAX する**（`REQUIREMENTS.md` 2.1）。SDK を `anonymous: true` で初期化し、Property 形式エンティティを `validate-top-page-data.ts` で正規化する。
 
 ## スコープ外
 
-- 実GeonicDBブローカーへの接続確認（ローカルに動作中のブローカーが無いため）
-- 職員向け管理画面からの書き込み（別issue）
-- Subscription/Webhookによるキャッシュ無効化の実装（別issue、`REQUIREMENTS.md` 2.1 に設計方針の記載あり）
+- 職員向け管理画面からの書き込み（別issue。当面は CLI / MCP）
+- 短TTLキャッシュ層の再導入（輻輳耐性を優先する場合の選択肢として旧設計が `git log` に残る）
