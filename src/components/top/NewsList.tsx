@@ -2,7 +2,8 @@
 
 import { formatDateTime } from "@/config/ui-strings";
 import { resolveLocalizedString } from "@/lib/localized-string";
-import type { NewsItem, SiteLanguage } from "@/types/top-page";
+import type { SiteLanguage } from "@/config/site-language";
+import type { NewsItem } from "@/types/top-page";
 
 type Props = {
   heading: string;

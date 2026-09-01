@@ -4,20 +4,19 @@ import {
   type BannerVariant,
   type AlertLevel,
 } from "@/config/alert-colors";
+import { SITE_LANGUAGES, type SiteLanguage } from "@/config/site-language";
 import type { LocalizedString } from "@/lib/localized-string";
 import type {
   AlertLevelData,
   EmergencyBannerData,
   NewsItem,
   NewsListData,
-  SiteLanguage,
 } from "@/types/top-page";
 
 const BANNER_VARIANTS = Object.keys(BANNER_VARIANT_COLORS) as BannerVariant[];
 const ALERT_LEVELS = Object.keys(ALERT_LEVEL_COLORS).map(
   Number,
 ) as AlertLevel[];
-const SITE_LANGUAGES: SiteLanguage[] = ["ja", "ja-easy", "en"];
 
 function isBannerVariant(value: unknown): value is BannerVariant {
   return (

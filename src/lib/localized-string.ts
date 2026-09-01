@@ -1,4 +1,4 @@
-import type { SiteLanguage } from "@/types/top-page";
+import type { SiteLanguage } from "@/config/site-language";
 
 /** API/JSON から取得する多言語対応テキスト。 */
 export type LocalizedString =

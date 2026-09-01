@@ -1,6 +1,9 @@
 import type { BannerVariant } from "@/config/alert-colors";
 import type { AlertLevel } from "@/config/alert-colors";
+import type { SiteLanguage } from "@/config/site-language";
 import type { LocalizedString } from "@/lib/localized-string";
+
+export type { SiteLanguage };
 
 export type EmergencyBannerData = {
   variant: BannerVariant;
@@ -27,5 +30,3 @@ export type NewsItem = {
 export type NewsListData = {
   items: NewsItem[];
 };
-
-export type SiteLanguage = "ja" | "ja-easy" | "en";
