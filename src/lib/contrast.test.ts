@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { ALERT_LEVEL_COLORS, BANNER_VARIANT_COLORS } from "@/config/alert-colors";
+import {
+  ALERT_LEVEL_COLORS,
+  BANNER_VARIANT_COLORS,
+} from "@/config/alert-colors";
 import { contrastRatio } from "@/lib/contrast";
 
 describe("contrast helpers", () => {

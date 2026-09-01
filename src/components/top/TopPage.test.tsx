@@ -2,11 +2,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LANG_STORAGE_KEY } from "@/config/site-language";
-import {
-  makeAlertLevel,
-  makeBanner,
-  makeNotice,
-} from "@/test/fixtures";
+import { makeAlertLevel, makeBanner, makeNotice } from "@/test/fixtures";
 
 const useLdEntitiesMock = vi.hoisted(() => vi.fn());
 

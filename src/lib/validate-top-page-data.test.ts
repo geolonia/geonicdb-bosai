@@ -243,7 +243,8 @@ describe("parseNoticeList", () => {
       label: { type: "Property", value: "警戒レベル1：早期注意情報（平時）" },
       body: {
         type: "Property",
-        value: "高齢者等避難は解除されました。災害への心構えを引き続き高めてください",
+        value:
+          "高齢者等避難は解除されました。災害への心構えを引き続き高めてください",
       },
       updatedAt: { type: "Property", value: "2026-09-01T18:00:00+09:00" },
     });

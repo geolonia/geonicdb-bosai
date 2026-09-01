@@ -6,11 +6,7 @@ import { SafeMarkdown } from "@/components/SafeMarkdown";
 import { EmergencyBanner } from "@/components/top/EmergencyBanner";
 import { SiteHeader } from "@/components/top/SiteHeader";
 import { BANNER_VARIANT_COLORS } from "@/config/alert-colors";
-import {
-  ALL_BANNER_VARIANTS,
-  makeBanner,
-  testStrings,
-} from "@/test/fixtures";
+import { ALL_BANNER_VARIANTS, makeBanner, testStrings } from "@/test/fixtures";
 
 describe("SafeMarkdown", () => {
   it("renders safe markdown links as anchors", () => {
@@ -66,7 +62,11 @@ describe("SiteHeader language switch", () => {
     const user = userEvent.setup();
     const onLangChange = vi.fn();
     render(
-      <SiteHeader strings={testStrings} lang="ja" onLangChange={onLangChange} />,
+      <SiteHeader
+        strings={testStrings}
+        lang="ja"
+        onLangChange={onLangChange}
+      />,
     );
     await user.selectOptions(screen.getByLabelText(testStrings.langLabel), [
       "en",

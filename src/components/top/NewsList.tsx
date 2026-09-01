@@ -26,7 +26,9 @@ export function NewsList({ heading, updatedLabel, items, lang }: Props) {
                 </time>
               </header>
               <h3 className="news-list__title">{item.title}</h3>
-              <SafeMarkdown className="news-list__summary">{item.body}</SafeMarkdown>
+              <SafeMarkdown className="news-list__summary">
+                {item.body}
+              </SafeMarkdown>
             </article>
           </li>
         ))}

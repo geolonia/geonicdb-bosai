@@ -32,7 +32,9 @@ export function AlertLevelDisplay({ data, lang, strings }: Props) {
         </span>
         <div className="alert-level__text">
           <p className="alert-level__label">{data.label}</p>
-          <SafeMarkdown className="alert-level__action">{data.body}</SafeMarkdown>
+          <SafeMarkdown className="alert-level__action">
+            {data.body}
+          </SafeMarkdown>
           {meta.officialNote ? (
             <p className="alert-level__note">{meta.officialNote}</p>
           ) : null}

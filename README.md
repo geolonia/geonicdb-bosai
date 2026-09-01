@@ -20,14 +20,14 @@ npm run dev
 
 ## スクリプト
 
-| コマンド                          | 内容                  |
-| --------------------------------- | --------------------- |
-| `npm run dev`                     | 開発サーバ            |
-| `npm run build`                   | 静的 export（`out/`） |
-| `npm run lint`                    | ESLint                |
-| `npm run format` / `format:check` | Prettier              |
-| `npm run typecheck`               | TypeScript            |
-| `npm test`                        | Vitest                |
+| コマンド                          | 内容                                      |
+| --------------------------------- | ----------------------------------------- |
+| `npm run dev`                     | 開発サーバ                                |
+| `npm run build`                   | 静的 export（`out/`）                     |
+| `npm run lint`                    | ESLint                                    |
+| `npm run format` / `format:check` | Prettier                                  |
+| `npm run typecheck`               | TypeScript                                |
+| `npm test`                        | Vitest                                    |
 | `npm run setup:geonicdb`          | XACML ポリシー・職員 API キー作成（冪等） |
 
 ## GeonicDB（住民向け・匿名読み取り）

@@ -44,9 +44,7 @@ export function makeAlertLevel(
   };
 }
 
-export function makeNotice(
-  overrides: Partial<BosaiNotice> = {},
-): BosaiNotice {
+export function makeNotice(overrides: Partial<BosaiNotice> = {}): BosaiNotice {
   return {
     id: "urn:ngsi-ld:bosai-Notice:test:ja",
     type: "bosai-Notice",

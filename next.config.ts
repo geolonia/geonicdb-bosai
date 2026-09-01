@@ -6,6 +6,14 @@ const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 const embedStub = path.join(projectRoot, "src/stubs/geolonia-embed.ts");
 
 /**
+ * GitHub Pages のプロジェクトサイトは `https://<org>.github.io/<repo>/` 配下に
+ * 配信されるため、そのままでは `/_next/...` の絶対パスが 404 になる。
+ * デプロイワークフローが `NEXT_PUBLIC_BASE_PATH=/<repo>` を渡す。
+ * 独自ドメイン・ルート配信の場合は未設定のままでよい。
+ */
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH?.trim() || "";
+
+/**
  * 住民向け公開サイトは完全静的 export（REQUIREMENTS.md 2.2）。
  * 画像最適化 API は Node ランタイムが必要なため、静的ホスティングでは無効化する
  *（画像は事前変換 + loading="lazy" 運用。docs/deployment.md / frontend-best-practices.md）。
@@ -19,6 +27,10 @@ const embedStub = path.join(projectRoot, "src/stubs/geolonia-embed.ts");
  */
 const nextConfig: NextConfig = {
   output: "export",
+  ...(basePath ? { basePath, assetPrefix: basePath } : {}),
+  // 静的 export は各ルートを `<route>/index.html` として出力する（GitHub Pages 等、
+  // リライトを設定できないホスティングで直接アクセスできるようにするため）
+  trailingSlash: true,
   images: {
     // 静的 export では Image Optimization API が使えない。
     // 追加画像は WebP/AVIF 事前変換 + offscreen は loading="lazy" を付与すること。

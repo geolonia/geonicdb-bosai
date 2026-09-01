@@ -1,0 +1,70 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 進行中のデプロイは中断せず、キューに積んで順に反映する
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Setup Pages
+        id: pages
+        uses: actions/configure-pages@v5
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build (static export)
+        env:
+          # プロジェクトサイトは /<repo>/ 配下に配信されるため basePath が要る
+          NEXT_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}
+          NEXT_PUBLIC_GEONICDB_URL: ${{ vars.NEXT_PUBLIC_GEONICDB_URL }}
+          NEXT_PUBLIC_GEONICDB_TENANT: ${{ vars.NEXT_PUBLIC_GEONICDB_TENANT }}
+          # WebSocket 購読用の読み取り専用キー（GET + WS のみ。書き込み不可）。
+          # NEXT_PUBLIC_* はビルド成果物に埋め込まれ公開されるため、
+          # このキーは「秘匿される」ものではない。Secrets に置くのはリポジトリの
+          # ソースに直接書かないためであり、権限を絞ること自体が防御線となる。
+          # 詳細は docs/geonicdb-setup.md
+          NEXT_PUBLIC_GEONICDB_WS_API_KEY: ${{ secrets.NEXT_PUBLIC_GEONICDB_WS_API_KEY }}
+        run: npm run build
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

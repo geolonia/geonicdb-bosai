@@ -21,7 +21,10 @@ module.exports = {
     assert: {
       assertions: {
         "categories:performance": ["error", { minScore: 0.9 }],
-        "resource-summary:total:size": ["error", { maxNumericValue: 3_145_728 }],
+        "resource-summary:total:size": [
+          "error",
+          { maxNumericValue: 3_145_728 },
+        ],
       },
     },
     upload: {

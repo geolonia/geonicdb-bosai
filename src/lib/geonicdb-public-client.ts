@@ -39,7 +39,8 @@ export function resolveGeonicdbPublicConfig(
   env: PublicEnvLike = {
     NEXT_PUBLIC_GEONICDB_URL: process.env.NEXT_PUBLIC_GEONICDB_URL,
     NEXT_PUBLIC_GEONICDB_TENANT: process.env.NEXT_PUBLIC_GEONICDB_TENANT,
-    NEXT_PUBLIC_GEONICDB_WS_API_KEY: process.env.NEXT_PUBLIC_GEONICDB_WS_API_KEY,
+    NEXT_PUBLIC_GEONICDB_WS_API_KEY:
+      process.env.NEXT_PUBLIC_GEONICDB_WS_API_KEY,
   },
 ): GeonicdbPublicConfig {
   const raw = (env.NEXT_PUBLIC_GEONICDB_URL ?? "").trim();
