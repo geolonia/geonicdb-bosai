@@ -12,21 +12,6 @@ export const SITE_LANGUAGE_LABELS: Record<SiteLanguage, string> = {
   ko: "한국어",
 };
 
-/**
- * 言語切替UIのアイコン（国旗絵文字）。
- *
- * 言語と国は本来1:1ではない（英語は多数の国で話される）ため、国旗は
- * **視認性のための装飾**として扱い、必ず `SITE_LANGUAGE_LABELS` の
- * 言語名を併記する。スクリーンリーダーには `aria-hidden` で読ませない。
- */
-export const SITE_LANGUAGE_FLAGS: Record<SiteLanguage, string> = {
-  ja: "🇯🇵",
-  en: "🇬🇧",
-  "zh-CN": "🇨🇳",
-  vi: "🇻🇳",
-  ko: "🇰🇷",
-};
-
 const HTML_LANG: Record<SiteLanguage, string> = {
   ja: "ja",
   en: "en",
@@ -44,6 +29,53 @@ export function isSiteLanguage(value: unknown): value is SiteLanguage {
     typeof value === "string" &&
     (SITE_LANGUAGES as readonly string[]).includes(value)
   );
+}
+
+/** 既定言語（ブラウザ言語が一つも一致しない場合のフォールバック）。 */
+export const DEFAULT_SITE_LANGUAGE: SiteLanguage = "ja";
+
+/**
+ * BCP47 言語タグ 1 件を対応言語へ対応付ける。一致しなければ null。
+ *
+ * - 完全一致を優先（大文字小文字は無視。`zh-cn` → `zh-CN`）
+ * - 次にプライマリサブタグで一致（`ja-JP` → `ja`、`en-US` → `en`）
+ * - **中国語は簡体字のみ対応**。繁体字（`zh-Hant` / `zh-TW` / `zh-HK` / `zh-MO`）は
+ *   簡体字とは別の書記体系のため、あえて一致させない（誤って読みにくい表記を
+ *   出すより、他の候補言語や既定言語に委ねる）。
+ */
+export function matchSiteLanguage(tag: string): SiteLanguage | null {
+  const normalized = tag.trim().toLowerCase();
+  if (!normalized) return null;
+
+  for (const code of SITE_LANGUAGES) {
+    if (code.toLowerCase() === normalized) return code;
+  }
+
+  const primary = normalized.split("-")[0];
+  if (primary === "zh") {
+    if (/(^|-)(hant|tw|hk|mo)(-|$)/.test(normalized)) return null;
+    return "zh-CN";
+  }
+
+  for (const code of SITE_LANGUAGES) {
+    if (code.split("-")[0] === primary) return code;
+  }
+  return null;
+}
+
+/**
+ * ブラウザの言語設定（`navigator.languages` 相当）から、対応言語を優先順に探す。
+ * 一致が無ければ null（呼び出し側で `DEFAULT_SITE_LANGUAGE` にフォールバックする）。
+ */
+export function detectSiteLanguage(
+  tags: readonly string[] | undefined,
+): SiteLanguage | null {
+  if (!tags) return null;
+  for (const tag of tags) {
+    const matched = matchSiteLanguage(tag);
+    if (matched) return matched;
+  }
+  return null;
 }
 
 const DATE_LOCALE: Record<SiteLanguage, string> = {
