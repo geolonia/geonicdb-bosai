@@ -6,7 +6,9 @@
   --color-page: #fafafa;
   --focus-ring: #005fcc;
   --max-width: 960px;
-  --banner-min-height: 7.5rem;
+  --banner-min-height: 11rem;
+  --alert-level-min-height: 10rem;
+  --news-list-min-height: 14rem;
 }
 
 *,
@@ -23,6 +25,8 @@ body {
   margin: 0;
   color: var(--color-text);
   background: var(--color-page);
+  /* カスタム Web フォントは使わない（災害時の確実な表示・転送量抑制）。
+     将来追加する場合は next/font でセルフホスト + font-display: swap 必須。 */
   font-family:
     "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
   line-height: 1.6;
@@ -160,6 +164,11 @@ select:focus-visible {
   gap: 2rem;
 }
 
+.alert-level {
+  /* ロード前後の高さ差による CLS 抑制（Lighthouse Performance 予算） */
+  min-height: var(--alert-level-min-height);
+}
+
 .alert-level__badge {
   display: flex;
   gap: 1rem;
@@ -233,6 +242,10 @@ select:focus-visible {
   margin-top: 0.5rem;
   font-size: 0.875rem;
   color: var(--color-muted);
+}
+
+.news-list {
+  min-height: var(--news-list-min-height);
 }
 
 .news-list__items {

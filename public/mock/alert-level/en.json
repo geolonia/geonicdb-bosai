@@ -3,8 +3,8 @@
   "type": "bosai-AlertLevel",
   "language": "en",
   "translationGroup": "current-alert-level",
-  "level": 1,
-  "label": "Alert level 1: Early advisory (normal)",
-  "body": "Prepare for disasters",
-  "updatedAt": "2026-09-01T09:00:00+09:00"
+  "level": 3,
+  "label": "Alert Level 3: Evacuation Advisory for Elderly and Others",
+  "body": "Elderly residents should evacuate; others should prepare to evacuate",
+  "updatedAt": "2026-09-01T16:30:00+09:00"
 }

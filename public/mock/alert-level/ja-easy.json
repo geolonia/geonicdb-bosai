@@ -3,8 +3,8 @@
   "type": "bosai-AlertLevel",
   "language": "ja-easy",
   "translationGroup": "current-alert-level",
-  "level": 1,
-  "label": "けいかいレベル1：さいがいに きをつけて",
-  "body": "さいがいに そなえてください",
-  "updatedAt": "2026-09-01T09:00:00+09:00"
+  "level": 3,
+  "label": "けいかいレベル3：としよりは ひなん",
+  "body": "としよりの ひとは ひなんしてください。ほかの ひとは ひなんの じゅんびを してください",
+  "updatedAt": "2026-09-01T16:30:00+09:00"
 }

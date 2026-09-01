@@ -3,10 +3,10 @@
   "type": "bosai-EmergencyBanner",
   "language": "ja-easy",
   "translationGroup": "current-banner",
-  "variant": "notice",
-  "heading": "いま とくべつな けいほうは ありません",
-  "body": "いま ひなんの しじは ありません。あたらしい じょうほうは このページで おしらせします。",
-  "linkHref": null,
-  "linkText": null,
-  "updatedAt": "2026-09-01T09:00:00+09:00"
+  "variant": "elderly-evacuation",
+  "heading": "としよりの ひとは いますぐ ひなんしてください",
+  "body": "おおあめで ○○がわの ちかくが みずびたしに なるかもしれません。としよりの ひとや、ひなんに じかんが かかる ひとは、いますぐ ひなんを はじめてください。くわしい ばしょは [ひなんの じょうほう](/evacuation) を みてください。",
+  "linkHref": "/evacuation",
+  "linkText": "ひなんの じょうほうを みる",
+  "updatedAt": "2026-09-01T16:30:00+09:00"
 }

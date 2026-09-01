@@ -3,8 +3,8 @@
   "type": "bosai-AlertLevel",
   "language": "ja",
   "translationGroup": "current-alert-level",
-  "level": 1,
-  "label": "警戒レベル1：早期注意情報（平時）",
-  "body": "災害への心構えを高める",
-  "updatedAt": "2026-09-01T09:00:00+09:00"
+  "level": 3,
+  "label": "警戒レベル3：高齢者等避難",
+  "body": "高齢者等は避難、その他の方は避難の準備をしてください",
+  "updatedAt": "2026-09-01T16:30:00+09:00"
 }

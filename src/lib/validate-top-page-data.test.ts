@@ -233,6 +233,35 @@ describe("parseNoticeList", () => {
     }
   });
 
+  it("parses level-3 elderly-evacuation scenario mocks for all languages", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    for (const lang of ["ja", "ja-easy", "en", "zh-CN", "vi", "ko"] as const) {
+      const banner = parseEmergencyBanner(
+        JSON.parse(
+          readFileSync(
+            resolve(process.cwd(), `public/mock/emergency-banner/${lang}.json`),
+            "utf8",
+          ),
+        ),
+      );
+      expect(banner.variant).toBe("elderly-evacuation");
+      expect(banner.linkHref).toBe("/evacuation");
+      expect(banner.updatedAt).toBe("2026-09-01T16:30:00+09:00");
+
+      const alert = parseAlertLevel(
+        JSON.parse(
+          readFileSync(
+            resolve(process.cwd(), `public/mock/alert-level/${lang}.json`),
+            "utf8",
+          ),
+        ),
+      );
+      expect(alert.level).toBe(3);
+      expect(alert.updatedAt).toBe("2026-09-01T16:30:00+09:00");
+    }
+  });
+
   it("parses a bare array payload", () => {
     expect(parseNoticeList([notice]).items).toHaveLength(1);
   });

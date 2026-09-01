@@ -3,10 +3,10 @@
   "type": "bosai-EmergencyBanner",
   "language": "ko",
   "translationGroup": "current-banner",
-  "variant": "notice",
-  "heading": "현재 특별한 경계 정보는 없습니다",
-  "body": "현재 발령 중인 대피 정보는 없습니다. 기상·대피 정보는 이 페이지에서 수시로 갱신됩니다.",
-  "linkHref": null,
-  "linkText": null,
-  "updatedAt": "2026-09-01T09:00:00+09:00"
+  "variant": "elderly-evacuation",
+  "heading": "고령자 등 대피 권고가 발령되었습니다",
+  "body": "폭우로 인해 ○○강 유역의 침수 위험이 높아지고 있습니다. 고령자 및 대피에 시간이 걸리는 분은 **지금 바로 대피**를 시작해 주세요. 대상 지역과 대피소는 대피 정보 페이지에서 확인하세요.",
+  "linkHref": "/evacuation",
+  "linkText": "대피 정보 보기",
+  "updatedAt": "2026-09-01T16:30:00+09:00"
 }

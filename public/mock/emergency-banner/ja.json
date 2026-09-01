@@ -3,10 +3,10 @@
   "type": "bosai-EmergencyBanner",
   "language": "ja",
   "translationGroup": "current-banner",
-  "variant": "notice",
-  "heading": "現在、特別な警戒情報等はありません",
-  "body": "特に発令中の避難情報はありません。気象情報や避難情報はこのページで随時更新されます。",
-  "linkHref": null,
-  "linkText": null,
-  "updatedAt": "2026-09-01T09:00:00+09:00"
+  "variant": "elderly-evacuation",
+  "heading": "高齢者等避難を発令しました",
+  "body": "○○川流域において、大雨による浸水のおそれが高まっています。高齢者や避難に時間を要する方は、**今すぐ避難**を開始してください。対象地区・避難所は避難情報ページをご確認ください。",
+  "linkHref": "/evacuation",
+  "linkText": "避難情報を見る",
+  "updatedAt": "2026-09-01T16:30:00+09:00"
 }

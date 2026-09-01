@@ -3,8 +3,8 @@
   "type": "bosai-AlertLevel",
   "language": "vi",
   "translationGroup": "current-alert-level",
-  "level": 1,
-  "label": "Mức cảnh báo 1: Thông tin chú ý sớm (bình thường)",
-  "body": "Chuẩn bị tinh thần trước thiên tai",
-  "updatedAt": "2026-09-01T09:00:00+09:00"
+  "level": 3,
+  "label": "Mức cảnh báo 3: Khuyến cáo sơ tán cho người cao tuổi",
+  "body": "Người cao tuổi nên sơ tán; những người khác nên chuẩn bị sơ tán",
+  "updatedAt": "2026-09-01T16:30:00+09:00"
 }
