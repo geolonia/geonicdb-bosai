@@ -16,8 +16,10 @@
 | 種別 | 名前 | scope | 用途 |
 |---|---|---|---|
 | XACMLポリシー | `bosai-public-read` | tenant（管理者作成） | `bosai-*` への匿名（住民ブラウザ）GET読み取りを許可。`role: anonymous` |
+| XACMLポリシー | `bosai-read` | personal | `bosai-*` への **GET + WS のみ**を許可（書き込み不可）。住民ブラウザのWebSocket購読向け |
 | XACMLポリシー | `bosai-write` | personal | `bosai-*` への書き込み（POST/PATCH/PUT/DELETE/GET/WS）を許可。職員のGeonicDB直接操作（`geonic` CLI / Claude Desktop MCP）向け |
-| APIキー | `bosai-staff-write` | - | `bosai-write` ポリシーを付与。職員が使う |
+| APIキー | `bosai-public-ws-read` | - | `bosai-read` ポリシーを付与。**クライアントバンドルに埋め込む**（`NEXT_PUBLIC_GEONICDB_WS_API_KEY`）。DPoP必須・オリジン限定 |
+| APIキー | `bosai-staff-write` | - | `bosai-write` ポリシーを付与。職員が使う。**クライアントには絶対に埋め込まない** |
 
 XACMLポリシーの `policyId`・APIキーの `name` は文字種の制約が無く（長さ制限のみ）、`bosai-` プレフィックスをそのまま使える。エンティティタイプのスコープは `resources` に `{"attributeId": "entityType", "matchValue": "bosai-*", "matchFunction": "glob"}` で3タイプ一括指定する。
 
@@ -48,6 +50,37 @@ geonic admin policies create '{
       "target": {
         "actions": [
           { "attributeId": "method", "matchValue": "GET" }
+        ]
+      }
+    },
+    { "ruleId": "deny-rest", "effect": "Deny" }
+  ]
+}'
+```
+
+### `bosai-read`（住民ブラウザのWebSocket購読用、読み取り専用）
+
+SDKの `connect()` は匿名モードでは使えない（トークンが必要）ため、WebSocket購読には認証済みセッションが必須。**書き込みを一切許可しない**読み取り専用ポリシーを用意し、これを付与したAPIキーだけをクライアントに埋め込む。
+
+```bash
+geonic me policies create '{
+  "policyId": "bosai-read",
+  "description": "geonicdb-bosai: read-only + WS subscribe access to bosai-* (public client-side live updates)",
+  "target": {
+    "resources": [
+      { "attributeId": "path", "matchValue": "/ngsi-ld/**", "matchFunction": "glob" },
+      { "attributeId": "entityType", "matchValue": "bosai-*", "matchFunction": "glob" }
+    ]
+  },
+  "ruleCombiningAlgorithm": "first-applicable",
+  "rules": [
+    {
+      "ruleId": "permit-bosai-read",
+      "effect": "Permit",
+      "target": {
+        "actions": [
+          { "attributeId": "method", "matchValue": "GET" },
+          { "attributeId": "method", "matchValue": "WS" }
         ]
       }
     },
@@ -98,16 +131,37 @@ geonic me policies create '{
 
 ### APIキー
 
+#### 住民ブラウザ用（WebSocket購読、読み取り専用）
+
+**このキーはクライアントバンドルに埋め込まれ第三者から見える。** そのため、書き込み権限のない `bosai-read` ポリシーを付与し、さらに DPoP 必須・オリジン限定で発行する。
+
+```bash
+# 作成（--dpop-required と --origins をここで指定する）
+geonic admin api-keys create --name "bosai-public-ws-read" --policy bosai-read \
+  --origins 'http://localhost:3000' --dpop-required
+```
+
+発行したキー値を `.env.local` の `NEXT_PUBLIC_GEONICDB_WS_API_KEY` に設定する。**本番環境では自治体の実ドメインを `--origins` に指定した別キーを発行し直すこと。**
+
+> **APIキーの上限（実測）**: `geonic me api-keys create`（セルフサービス）はユーザーあたり5個の上限があり、超えると `Maximum number of API keys (5) reached` で失敗する。`geonic admin api-keys create`（tenant_admin権限）はこの上限の対象外だった。
+
+#### 職員書き込み用
+
 ```bash
 geonic me api-keys create --name "bosai-staff-write" --policy bosai-write --origins '*'
 ```
 
-`--origins` は実質必須（未指定だと `Invalid input: expected array, received undefined`）。キー値は作成時に一度だけ表示される。`.env` の `GEONICDB_API_KEY` 等に反映する場合は、必ず利用者自身が行うこと（自動化ツールがAPIキーをファイルに書き込むべきではない）。
+`--origins` は実質必須（未指定だと `Invalid input: expected array, received undefined`）。キー値は作成時に一度だけ表示される。**このキーはクライアントに埋め込まないこと**（`NEXT_PUBLIC_*` に設定してはならない）。
 
 ## 実際に確認済みの動作
 
 - 匿名curlで `bosai-public-read` により `bosai-AlertLevel` 等が読み取れること
-- `bosai-staff-write` キーで `db.connect()` → `db.subscribe({entityTypes: [...]})` → `db.updateEntity(...)` → WebSocketで `entityUpdated` イベントを実際に受信すること（Node環境での確認。ブラウザではOriginヘッダーが自動付与されるため同様に動作する）
+- 匿名（未認証）でのPOSTが **403 Forbidden**（`no applicable policy`）で拒否されること
+- `bosai-public-ws-read` キー（DPoP必須・オリジン限定）で:
+  - `getEntities()` は成功する
+  - `createEntity()` / `updateEntity()` / `deleteEntity()` はすべて **403 `Access denied by policy`** で拒否される
+  - `db.connect()` → `db.subscribe({entityTypes: ['bosai-Notice','bosai-EmergencyBanner','bosai-AlertLevel']})` が成功し、別セッションからの更新で `entityUpdated` イベントを受信する
+- ブラウザ（`npm run dev` + `.env.local` 設定済み）で、**ページをリロードせずに** 外部からの警戒レベル更新が画面へ反映されること
 
 ## スコープ外
 
