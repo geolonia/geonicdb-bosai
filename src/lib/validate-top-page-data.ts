@@ -1,22 +1,96 @@
 import {
-  BANNER_VARIANT_COLORS,
   ALERT_LEVEL_COLORS,
-  type BannerVariant,
+  BANNER_VARIANTS,
   type AlertLevel,
+  type BannerVariant,
 } from "@/config/alert-colors";
-import { SITE_LANGUAGES, type SiteLanguage } from "@/config/site-language";
-import type { LocalizedString } from "@/lib/localized-string";
+import { isSiteLanguage, type SiteLanguage } from "@/config/site-language";
 import type {
-  AlertLevelData,
-  EmergencyBannerData,
-  NewsItem,
-  NewsListData,
+  BosaiAlertLevel,
+  BosaiEmergencyBanner,
+  BosaiNotice,
+  BosaiNoticeList,
 } from "@/types/top-page";
 
-const BANNER_VARIANTS = Object.keys(BANNER_VARIANT_COLORS) as BannerVariant[];
 const ALERT_LEVELS = Object.keys(ALERT_LEVEL_COLORS).map(
   Number,
 ) as AlertLevel[];
+
+export function isValidDateTime(value: string): boolean {
+  return Number.isFinite(Date.parse(value));
+}
+
+/**
+ * NGSI-LD Property / keyValues のどちらでも値を取り出す。
+ * `{ "type": "Property", "value": X }` または素の値。
+ */
+export function readNgsiLdValue(raw: unknown): unknown {
+  if (
+    raw &&
+    typeof raw === "object" &&
+    !Array.isArray(raw) &&
+    "value" in raw &&
+    (raw as { type?: unknown }).type === "Property"
+  ) {
+    return (raw as { value: unknown }).value;
+  }
+  return raw;
+}
+
+function readStringField(
+  record: Record<string, unknown>,
+  key: string,
+  context: string,
+): string {
+  const value = readNgsiLdValue(record[key]);
+  if (typeof value !== "string" || !value.trim()) {
+    throw new Error(`${context}: ${key} is required`);
+  }
+  return value;
+}
+
+function readOptionalStringField(
+  record: Record<string, unknown>,
+  key: string,
+  context: string,
+): string | null {
+  if (!(key in record) || record[key] == null) {
+    return null;
+  }
+  const value = readNgsiLdValue(record[key]);
+  if (value == null) return null;
+  if (typeof value !== "string") {
+    throw new Error(`${context}: ${key} must be a string or null`);
+  }
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+function parseUpdatedAt(value: unknown, context: string): string {
+  const raw = readNgsiLdValue(value);
+  if (typeof raw !== "string") {
+    throw new Error(`${context} updatedAt is required`);
+  }
+  if (!isValidDateTime(raw)) {
+    throw new Error(`${context} updatedAt must be a valid ISO date-time`);
+  }
+  return raw;
+}
+
+function parseCommonProps(
+  record: Record<string, unknown>,
+  context: string,
+): { language: SiteLanguage; translationGroup: string; updatedAt: string } {
+  const languageRaw = readNgsiLdValue(record.language);
+  if (!isSiteLanguage(languageRaw)) {
+    throw new Error(`${context}: invalid language ${String(languageRaw)}`);
+  }
+  return {
+    language: languageRaw,
+    translationGroup: readStringField(record, "translationGroup", context),
+    updatedAt: parseUpdatedAt(record.updatedAt, context),
+  };
+}
 
 function isBannerVariant(value: unknown): value is BannerVariant {
   return (
@@ -31,49 +105,7 @@ function isAlertLevel(value: unknown): value is AlertLevel {
   );
 }
 
-export function isValidDateTime(value: string): boolean {
-  return Number.isFinite(Date.parse(value));
-}
-
-function parseUpdatedAt(value: unknown, context: string): string {
-  if (typeof value !== "string") {
-    throw new Error(`${context} updatedAt is required`);
-  }
-  if (!isValidDateTime(value)) {
-    throw new Error(`${context} updatedAt must be a valid ISO date-time`);
-  }
-  return value;
-}
-
-function parseLocalizedString(value: unknown, field: string): LocalizedString {
-  if (typeof value === "string") {
-    if (!value.trim()) {
-      throw new Error(`${field} is required`);
-    }
-    return value;
-  }
-  if (!value || typeof value !== "object") {
-    throw new Error(`${field} must be a string or localized object`);
-  }
-  const record = value as Record<string, unknown>;
-  const ja = record.ja;
-  if (typeof ja !== "string" || !ja.trim()) {
-    throw new Error(`${field} requires a non-empty ja translation`);
-  }
-  const localized: Partial<Record<SiteLanguage, string>> = { ja };
-  for (const lang of SITE_LANGUAGES) {
-    if (lang === "ja") continue;
-    const translation = record[lang];
-    if (translation == null) continue;
-    if (typeof translation !== "string" || !translation.trim()) {
-      throw new Error(`${field}.${lang} must be a non-empty string`);
-    }
-    localized[lang] = translation;
-  }
-  return localized;
-}
-
-/** 緊急バナーリンク先として許可する href（http/https または先頭 / の相対パス）。 */
+/** 緊急バナー・Markdown 内リンクで許可する href。 */
 export function validateEmergencyBannerLinkHref(href: string): void {
   const trimmed = href.trim();
   if (!trimmed) {
@@ -100,104 +132,130 @@ export function validateEmergencyBannerLinkHref(href: string): void {
   }
 }
 
-export function parseEmergencyBanner(data: unknown): EmergencyBannerData {
+export function isSafeHref(href: string): boolean {
+  try {
+    validateEmergencyBannerLinkHref(href);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function parseEmergencyBanner(data: unknown): BosaiEmergencyBanner {
   if (!data || typeof data !== "object") {
     throw new Error("Emergency banner payload must be an object");
   }
   const record = data as Record<string, unknown>;
-  if (!isBannerVariant(record.variant)) {
-    throw new Error(`Invalid banner variant: ${String(record.variant)}`);
+  const common = parseCommonProps(record, "Emergency banner");
+  const id = readStringField(record, "id", "Emergency banner");
+  const type = readNgsiLdValue(record.type);
+  if (type !== "bosai-EmergencyBanner") {
+    throw new Error(`Emergency banner type must be bosai-EmergencyBanner`);
   }
-  const heading = parseLocalizedString(
-    record.heading,
-    "Emergency banner heading",
+  const variantRaw = readNgsiLdValue(record.variant);
+  if (!isBannerVariant(variantRaw)) {
+    throw new Error(`Invalid banner variant: ${String(variantRaw)}`);
+  }
+  const heading = readStringField(record, "heading", "Emergency banner");
+  const body = readStringField(record, "body", "Emergency banner");
+  const linkHref = readOptionalStringField(
+    record,
+    "linkHref",
+    "Emergency banner",
   );
-  const description = parseLocalizedString(
-    record.description,
-    "Emergency banner description",
+  const linkText = readOptionalStringField(
+    record,
+    "linkText",
+    "Emergency banner",
   );
-  const updatedAt = parseUpdatedAt(record.updatedAt, "Emergency banner");
-  let link: EmergencyBannerData["link"] = null;
-  if (record.link != null) {
-    if (typeof record.link !== "object") {
-      throw new Error("Emergency banner link must be an object or null");
-    }
-    const linkRecord = record.link as Record<string, unknown>;
-    if (typeof linkRecord.href !== "string") {
-      throw new Error("Emergency banner link requires href");
-    }
-    const label = parseLocalizedString(
-      linkRecord.label,
-      "Emergency banner link label",
+  if (linkHref) {
+    validateEmergencyBannerLinkHref(linkHref);
+  }
+  if ((linkHref && !linkText) || (!linkHref && linkText)) {
+    throw new Error(
+      "Emergency banner linkHref and linkText must both be set or both null",
     );
-    validateEmergencyBannerLinkHref(linkRecord.href);
-    link = { href: linkRecord.href, label };
   }
   return {
-    variant: record.variant,
+    id,
+    type: "bosai-EmergencyBanner",
+    ...common,
+    variant: variantRaw,
     heading,
-    description,
-    link,
-    updatedAt,
+    body,
+    linkHref,
+    linkText,
   };
 }
 
-export function parseAlertLevel(data: unknown): AlertLevelData {
+export function parseAlertLevel(data: unknown): BosaiAlertLevel {
   if (!data || typeof data !== "object") {
     throw new Error("Alert level payload must be an object");
   }
   const record = data as Record<string, unknown>;
-  if (!isAlertLevel(record.level)) {
-    throw new Error(`Invalid alert level: ${String(record.level)}`);
+  const common = parseCommonProps(record, "Alert level");
+  const id = readStringField(record, "id", "Alert level");
+  const type = readNgsiLdValue(record.type);
+  if (type !== "bosai-AlertLevel") {
+    throw new Error(`Alert level type must be bosai-AlertLevel`);
   }
-  const label = parseLocalizedString(record.label, "Alert level label");
-  const updatedAt = parseUpdatedAt(record.updatedAt, "Alert level");
+  const levelRaw = readNgsiLdValue(record.level);
+  if (!isAlertLevel(levelRaw)) {
+    throw new Error(`Invalid alert level: ${String(levelRaw)}`);
+  }
   return {
-    level: record.level,
-    label,
-    updatedAt,
+    id,
+    type: "bosai-AlertLevel",
+    ...common,
+    level: levelRaw,
+    label: readStringField(record, "label", "Alert level"),
+    body: readStringField(record, "body", "Alert level"),
   };
 }
 
-function parseNewsItem(item: unknown, index: number): NewsItem {
+function parseNoticeItem(item: unknown, index: number): BosaiNotice {
   if (!item || typeof item !== "object") {
-    throw new Error(`News item ${index} must be an object`);
+    throw new Error(`Notice ${index} must be an object`);
   }
   const record = item as Record<string, unknown>;
-  if (typeof record.id !== "string" || !record.id.trim()) {
-    throw new Error(`News item ${index}: id is required`);
+  const context = `Notice ${index}`;
+  const common = parseCommonProps(record, context);
+  const id = readStringField(record, "id", context);
+  const type = readNgsiLdValue(record.type);
+  if (type !== "bosai-Notice") {
+    throw new Error(`${context}: type must be bosai-Notice`);
   }
-  const title = parseLocalizedString(record.title, `News item ${index} title`);
-  const summary = parseLocalizedString(
-    record.summary,
-    `News item ${index} summary`,
-  );
-  const category = parseLocalizedString(
-    record.category,
-    `News item ${index} category`,
-  );
-  const updatedAt = parseUpdatedAt(
-    record.updatedAt,
-    `News item ${index}`,
-  );
+  const publishedAtRaw = readNgsiLdValue(record.publishedAt);
+  if (typeof publishedAtRaw !== "string" || !isValidDateTime(publishedAtRaw)) {
+    throw new Error(`${context}: publishedAt must be a valid ISO date-time`);
+  }
   return {
-    id: record.id,
-    title,
-    summary,
-    category,
-    updatedAt,
+    id,
+    type: "bosai-Notice",
+    ...common,
+    title: readStringField(record, "title", context),
+    body: readStringField(record, "body", context),
+    publishedAt: publishedAtRaw,
   };
 }
 
-export function parseNewsList(data: unknown): NewsListData {
+export function parseNoticeList(data: unknown): BosaiNoticeList {
+  if (Array.isArray(data)) {
+    return {
+      items: data.map((item, index) => parseNoticeItem(item, index)),
+    };
+  }
   if (!data || typeof data !== "object") {
-    throw new Error("News list payload must be an object");
+    throw new Error("Notice list payload must be an object or array");
   }
   const record = data as Record<string, unknown>;
   if (!Array.isArray(record.items)) {
-    throw new Error("News list items must be an array");
+    throw new Error("Notice list items must be an array");
   }
   return {
-    items: record.items.map((item, index) => parseNewsItem(item, index)),
+    items: record.items.map((item, index) => parseNoticeItem(item, index)),
   };
 }
+
+/** @deprecated use parseNoticeList */
+export const parseNewsList = parseNoticeList;

@@ -1,0 +1,24 @@
+{
+  "items": [
+    {
+      "id": "urn:ngsi-ld:bosai-Notice:2026-bousai-training:ja-easy",
+      "type": "bosai-Notice",
+      "language": "ja-easy",
+      "translationGroup": "2026-bousai-training",
+      "title": "ぼうさいくんれんの おしらせ",
+      "body": "9がつ だい1 どようびに ぼうさいくんれんを します。\n\nくわしくは[ひなんの じょうほう](/evacuation)を みてください。",
+      "publishedAt": "2026-08-28T10:00:00+09:00",
+      "updatedAt": "2026-08-28T10:00:00+09:00"
+    },
+    {
+      "id": "urn:ngsi-ld:bosai-Notice:2026-hazard-map-update:ja-easy",
+      "type": "bosai-Notice",
+      "language": "ja-easy",
+      "translationGroup": "2026-hazard-map-update",
+      "title": "きけんな ばしょの ちずを なおしました",
+      "body": "あたらしい ハザードマップを だしました。",
+      "publishedAt": "2026-08-20T15:30:00+09:00",
+      "updatedAt": "2026-08-20T15:30:00+09:00"
+    }
+  ]
+}

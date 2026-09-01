@@ -1,0 +1,12 @@
+{
+  "id": "urn:ngsi-ld:bosai-EmergencyBanner:current-banner:vi",
+  "type": "bosai-EmergencyBanner",
+  "language": "vi",
+  "translationGroup": "current-banner",
+  "variant": "notice",
+  "heading": "Hiện không có cảnh báo đặc biệt",
+  "body": "Hiện không có chỉ thị sơ tán đang có hiệu lực. Thông tin thời tiết và sơ tán sẽ được cập nhật trên trang này.",
+  "linkHref": null,
+  "linkText": null,
+  "updatedAt": "2026-09-01T09:00:00+09:00"
+}

@@ -1,0 +1,26 @@
+{
+  "@context": {
+    "@vocab": "https://example.municipality.example/ngsi-ld/bosai#",
+    "bosai-Notice": "https://example.municipality.example/ngsi-ld/bosai#Notice",
+    "bosai-EmergencyBanner": "https://example.municipality.example/ngsi-ld/bosai#EmergencyBanner",
+    "bosai-AlertLevel": "https://example.municipality.example/ngsi-ld/bosai#AlertLevel",
+    "language": "https://example.municipality.example/ngsi-ld/bosai#language",
+    "translationGroup": "https://example.municipality.example/ngsi-ld/bosai#translationGroup",
+    "updatedAt": {
+      "@id": "https://example.municipality.example/ngsi-ld/bosai#updatedAt",
+      "@type": "DateTime"
+    },
+    "title": "https://example.municipality.example/ngsi-ld/bosai#title",
+    "body": "https://example.municipality.example/ngsi-ld/bosai#body",
+    "publishedAt": {
+      "@id": "https://example.municipality.example/ngsi-ld/bosai#publishedAt",
+      "@type": "DateTime"
+    },
+    "variant": "https://example.municipality.example/ngsi-ld/bosai#variant",
+    "heading": "https://example.municipality.example/ngsi-ld/bosai#heading",
+    "linkHref": "https://example.municipality.example/ngsi-ld/bosai#linkHref",
+    "linkText": "https://example.municipality.example/ngsi-ld/bosai#linkText",
+    "level": "https://example.municipality.example/ngsi-ld/bosai#level",
+    "label": "https://example.municipality.example/ngsi-ld/bosai#label"
+  }
+}

@@ -1,22 +1,18 @@
 "use client";
 
 import { BANNER_VARIANT_COLORS } from "@/config/alert-colors";
-import type { UI_STRINGS } from "@/config/ui-strings";
-import { resolveLocalizedString } from "@/lib/localized-string";
-import type { SiteLanguage } from "@/config/site-language";
-import type { EmergencyBannerData } from "@/types/top-page";
+import type { UiStrings } from "@/config/ui-strings";
+import { SafeMarkdown } from "@/components/SafeMarkdown";
+import type { BosaiEmergencyBanner } from "@/types/top-page";
 
 type Props = {
-  data: EmergencyBannerData;
-  lang: SiteLanguage;
-  strings: (typeof UI_STRINGS)[SiteLanguage];
+  data: BosaiEmergencyBanner;
+  strings: UiStrings;
 };
 
-export function EmergencyBanner({ data, lang, strings }: Props) {
+export function EmergencyBanner({ data, strings }: Props) {
   const colors = BANNER_VARIANT_COLORS[data.variant];
-  const isNeutral = data.variant === "お知らせ";
-  const heading = resolveLocalizedString(data.heading, lang);
-  const description = resolveLocalizedString(data.description, lang);
+  const isNeutral = data.variant === "notice";
   const variantLabel = strings.bannerVariants[data.variant];
 
   return (
@@ -33,12 +29,14 @@ export function EmergencyBanner({ data, lang, strings }: Props) {
     >
       <div className="emergency-banner__inner">
         <p className="emergency-banner__variant">{variantLabel}</p>
-        <h2 className="emergency-banner__heading">{heading}</h2>
-        <p className="emergency-banner__description">{description}</p>
-        {data.link ? (
+        <h2 className="emergency-banner__heading">{data.heading}</h2>
+        <SafeMarkdown className="emergency-banner__description">
+          {data.body}
+        </SafeMarkdown>
+        {data.linkHref && data.linkText ? (
           <p className="emergency-banner__link-wrap">
-            <a className="emergency-banner__link" href={data.link.href}>
-              {resolveLocalizedString(data.link.label, lang)}
+            <a className="emergency-banner__link" href={data.linkHref}>
+              {data.linkText}
             </a>
           </p>
         ) : null}

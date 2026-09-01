@@ -1,0 +1,10 @@
+{
+  "id": "urn:ngsi-ld:bosai-AlertLevel:current-alert-level:ja",
+  "type": "bosai-AlertLevel",
+  "language": "ja",
+  "translationGroup": "current-alert-level",
+  "level": 1,
+  "label": "警戒レベル1：早期注意情報（平時）",
+  "body": "災害への心構えを高める",
+  "updatedAt": "2026-09-01T09:00:00+09:00"
+}

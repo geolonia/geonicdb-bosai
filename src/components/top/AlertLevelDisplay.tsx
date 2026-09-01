@@ -1,21 +1,20 @@
 "use client";
 
 import { ALERT_LEVEL_COLORS } from "@/config/alert-colors";
-import { formatDateTime, UI_STRINGS } from "@/config/ui-strings";
-import { resolveLocalizedString } from "@/lib/localized-string";
+import { formatDateTime, type UiStrings } from "@/config/ui-strings";
+import { SafeMarkdown } from "@/components/SafeMarkdown";
 import type { SiteLanguage } from "@/config/site-language";
-import type { AlertLevelData } from "@/types/top-page";
+import type { BosaiAlertLevel } from "@/types/top-page";
 
 type Props = {
-  data: AlertLevelData;
+  data: BosaiAlertLevel;
   lang: SiteLanguage;
-  strings: (typeof UI_STRINGS)[SiteLanguage];
+  strings: UiStrings;
 };
 
 export function AlertLevelDisplay({ data, lang, strings }: Props) {
   const colors = ALERT_LEVEL_COLORS[data.level];
   const meta = strings.alertLevelMeta[data.level];
-  const label = resolveLocalizedString(data.label, lang);
 
   return (
     <section className="alert-level" aria-labelledby="alert-level-heading">
@@ -32,10 +31,8 @@ export function AlertLevelDisplay({ data, lang, strings }: Props) {
           {data.level}
         </span>
         <div className="alert-level__text">
-          <p className="alert-level__label">
-            {strings.alertLevelPrefix} {data.level}：{label}
-          </p>
-          <p className="alert-level__action">{meta.action}</p>
+          <p className="alert-level__label">{data.label}</p>
+          <SafeMarkdown className="alert-level__action">{data.body}</SafeMarkdown>
           {meta.officialNote ? (
             <p className="alert-level__note">{meta.officialNote}</p>
           ) : null}
@@ -48,11 +45,7 @@ export function AlertLevelDisplay({ data, lang, strings }: Props) {
   );
 }
 
-export function AlertLevelPlaceholder({
-  strings,
-}: {
-  strings: (typeof UI_STRINGS)[SiteLanguage];
-}) {
+export function AlertLevelPlaceholder({ strings }: { strings: UiStrings }) {
   return (
     <section className="alert-level" aria-labelledby="alert-level-heading">
       <h2 id="alert-level-heading">{strings.alertLevelHeading}</h2>

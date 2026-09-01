@@ -1,0 +1,10 @@
+{
+  "id": "urn:ngsi-ld:bosai-AlertLevel:current-alert-level:ko",
+  "type": "bosai-AlertLevel",
+  "language": "ko",
+  "translationGroup": "current-alert-level",
+  "level": 1,
+  "label": "경계 수준 1: 조기 주의 정보(평시)",
+  "body": "재해에 대한 대비 의식을 높이세요",
+  "updatedAt": "2026-09-01T09:00:00+09:00"
+}

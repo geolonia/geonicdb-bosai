@@ -1,0 +1,12 @@
+{
+  "id": "urn:ngsi-ld:bosai-EmergencyBanner:current-banner:zh-CN",
+  "type": "bosai-EmergencyBanner",
+  "language": "zh-CN",
+  "translationGroup": "current-banner",
+  "variant": "notice",
+  "heading": "目前没有特别的警戒信息",
+  "body": "目前没有正在发布的避难信息。气象与避难信息将在本页随时更新。",
+  "linkHref": null,
+  "linkText": null,
+  "updatedAt": "2026-09-01T09:00:00+09:00"
+}

@@ -25,11 +25,11 @@ export type UiStrings = {
     preparedness: string;
   };
   bannerVariants: {
-    緊急安全確保: string;
-    避難指示: string;
-    高齢者等避難: string;
-    注意喚起: string;
-    お知らせ: string;
+    "emergency-safety": string;
+    "evacuation-order": string;
+    "elderly-evacuation": string;
+    advisory: string;
+    notice: string;
   };
   alertLevelMeta: Record<
     1 | 2 | 3 | 4 | 5,
@@ -62,11 +62,11 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
       preparedness: "防災の備え",
     },
     bannerVariants: {
-      緊急安全確保: "緊急安全確保",
-      避難指示: "避難指示",
-      高齢者等避難: "高齢者等避難",
-      注意喚起: "注意喚起",
-      お知らせ: "お知らせ",
+      "emergency-safety": "緊急安全確保",
+      "evacuation-order": "避難指示",
+      "elderly-evacuation": "高齢者等避難",
+      advisory: "注意喚起",
+      notice: "お知らせ",
     },
     alertLevelMeta: {
       1: { action: "災害への心構えを高める" },
@@ -108,11 +108,11 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
     },
     // 公式用語の音写ではなく、行動が分かる言い換え（docs/i18n.md）
     bannerVariants: {
-      緊急安全確保: "今すぐ あんぜんな ばしょへ",
-      避難指示: "すぐに ひなんしてください",
-      高齢者等避難: "おとしよりは ひなんしてください",
-      注意喚起: "きをつけてください",
-      お知らせ: "おしらせ",
+      "emergency-safety": "今すぐ あんぜんな ばしょへ",
+      "evacuation-order": "すぐに ひなんしてください",
+      "elderly-evacuation": "おとしよりは ひなんしてください",
+      advisory: "きをつけてください",
+      notice: "おしらせ",
     },
     alertLevelMeta: {
       1: { action: "さいがいに そなえてください" },
@@ -154,11 +154,11 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
       preparedness: "Preparedness",
     },
     bannerVariants: {
-      緊急安全確保: "Emergency safety alert",
-      避難指示: "Evacuation order",
-      高齢者等避難: "Elderly evacuation",
-      注意喚起: "Advisory",
-      お知らせ: "Notice",
+      "emergency-safety": "Emergency safety alert",
+      "evacuation-order": "Evacuation order",
+      "elderly-evacuation": "Elderly evacuation",
+      advisory: "Advisory",
+      notice: "Notice",
     },
     alertLevelMeta: {
       1: { action: "Prepare for disasters" },
@@ -198,11 +198,11 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
       preparedness: "防灾准备",
     },
     bannerVariants: {
-      緊急安全確保: "紧急安全确保",
-      避難指示: "避难指示",
-      高齢者等避難: "老年人等避难",
-      注意喚起: "提醒注意",
-      お知らせ: "通知",
+      "emergency-safety": "紧急安全确保",
+      "evacuation-order": "避难指示",
+      "elderly-evacuation": "老年人等避难",
+      advisory: "提醒注意",
+      notice: "通知",
     },
     alertLevelMeta: {
       1: { action: "提高防灾意识" },
@@ -242,11 +242,11 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
       preparedness: "Chuẩn bị phòng tai",
     },
     bannerVariants: {
-      緊急安全確保: "Đảm bảo an toàn khẩn cấp",
-      避難指示: "Chỉ thị sơ tán",
-      高齢者等避難: "Người cao tuổi sơ tán",
-      注意喚起: "Cảnh báo",
-      お知らせ: "Thông báo",
+      "emergency-safety": "Đảm bảo an toàn khẩn cấp",
+      "evacuation-order": "Chỉ thị sơ tán",
+      "elderly-evacuation": "Người cao tuổi sơ tán",
+      advisory: "Cảnh báo",
+      notice: "Thông báo",
     },
     alertLevelMeta: {
       1: { action: "Chuẩn bị tinh thần trước thiên tai" },
@@ -288,11 +288,11 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
       preparedness: "방재 준비",
     },
     bannerVariants: {
-      緊急安全確保: "긴급 안전 확보",
-      避難指示: "대피 지시",
-      高齢者等避難: "고령자 등 대피",
-      注意喚起: "주의 환기",
-      お知らせ: "알림",
+      "emergency-safety": "긴급 안전 확보",
+      "evacuation-order": "대피 지시",
+      "elderly-evacuation": "고령자 등 대피",
+      advisory: "주의 환기",
+      notice: "알림",
     },
     alertLevelMeta: {
       1: { action: "재해에 대한 대비 의식을 높이세요" },
