@@ -3,6 +3,7 @@ import {
   parseAlertLevel,
   parseEmergencyBanner,
   parseNewsList,
+  validateEmergencyBannerLinkHref,
 } from "@/lib/validate-top-page-data";
 
 describe("parseEmergencyBanner", () => {
@@ -16,6 +17,65 @@ describe("parseEmergencyBanner", () => {
     });
     expect(data.variant).toBe("お知らせ");
     expect(data.link).toBeNull();
+  });
+
+  it("accepts https link", () => {
+    const data = parseEmergencyBanner({
+      variant: "避難指示",
+      heading: "避難指示が発令されました",
+      description: "直ちに避難してください。",
+      link: { href: "https://example.com/evacuation", label: "詳細" },
+      updatedAt: "2026-09-01T09:00:00+09:00",
+    });
+    expect(data.link?.href).toBe("https://example.com/evacuation");
+  });
+
+  it("accepts relative path link", () => {
+    const data = parseEmergencyBanner({
+      variant: "注意喚起",
+      heading: "注意喚起",
+      description: "最新情報を確認してください。",
+      link: { href: "/evacuation", label: "避難情報" },
+      updatedAt: "2026-09-01T09:00:00+09:00",
+    });
+    expect(data.link?.href).toBe("/evacuation");
+  });
+
+  it("rejects javascript: scheme in link href", () => {
+    expect(() =>
+      parseEmergencyBanner({
+        variant: "避難指示",
+        heading: "test",
+        description: "test",
+        link: { href: "javascript:alert(1)", label: "詳細" },
+        updatedAt: "2026-09-01T09:00:00+09:00",
+      }),
+    ).toThrow(/must use http, https, or a relative path/);
+  });
+
+  it("rejects ftp: scheme in link href", () => {
+    expect(() =>
+      parseEmergencyBanner({
+        variant: "避難指示",
+        heading: "test",
+        description: "test",
+        link: { href: "ftp://example.com/file", label: "詳細" },
+        updatedAt: "2026-09-01T09:00:00+09:00",
+      }),
+    ).toThrow(/must use http, https, or a relative path/);
+  });
+
+  // near-miss: protocol-relative URL looks like a path but is not
+  it("rejects protocol-relative link href", () => {
+    expect(() =>
+      parseEmergencyBanner({
+        variant: "避難指示",
+        heading: "test",
+        description: "test",
+        link: { href: "//evil.example.com/phish", label: "詳細" },
+        updatedAt: "2026-09-01T09:00:00+09:00",
+      }),
+    ).toThrow(/protocol-relative/);
   });
 
   it("rejects unknown severity variant", () => {
@@ -41,6 +101,14 @@ describe("parseEmergencyBanner", () => {
         updatedAt: "2026-09-01T09:00:00+09:00",
       }),
     ).toThrow(/Invalid banner variant/);
+  });
+});
+
+describe("validateEmergencyBannerLinkHref", () => {
+  it("accepts http URLs", () => {
+    expect(() =>
+      validateEmergencyBannerLinkHref("http://localhost:3000/info"),
+    ).not.toThrow();
   });
 });
 

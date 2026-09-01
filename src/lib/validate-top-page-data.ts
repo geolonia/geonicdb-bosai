@@ -29,6 +29,33 @@ function isAlertLevel(value: unknown): value is AlertLevel {
   );
 }
 
+/** 緊急バナーリンク先として許可する href（http/https または先頭 / の相対パス）。 */
+export function validateEmergencyBannerLinkHref(href: string): void {
+  const trimmed = href.trim();
+  if (!trimmed) {
+    throw new Error("Emergency banner link href must not be empty");
+  }
+  if (trimmed.startsWith("/")) {
+    if (trimmed.startsWith("//")) {
+      throw new Error(
+        `Emergency banner link href must not be protocol-relative: ${href}`,
+      );
+    }
+    return;
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    throw new Error(`Emergency banner link href is not a valid URL: ${href}`);
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error(
+      `Emergency banner link href must use http, https, or a relative path: ${href}`,
+    );
+  }
+}
+
 export function parseEmergencyBanner(data: unknown): EmergencyBannerData {
   if (!data || typeof data !== "object") {
     throw new Error("Emergency banner payload must be an object");
@@ -58,6 +85,7 @@ export function parseEmergencyBanner(data: unknown): EmergencyBannerData {
     ) {
       throw new Error("Emergency banner link requires href and label");
     }
+    validateEmergencyBannerLinkHref(linkRecord.href);
     link = { href: linkRecord.href, label: linkRecord.label };
   }
   return {
