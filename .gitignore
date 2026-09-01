@@ -41,3 +41,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# git worktrees（CLAUDE.md の運用規約でこの配下に作業ツリーを作る）
+/.worktrees/
