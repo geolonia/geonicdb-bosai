@@ -50,18 +50,20 @@ describe("UI_STRINGS i18n coverage", () => {
       expect(UI_STRINGS[lang].alertLevelMeta[5].action.length).toBeGreaterThan(
         0,
       );
-      expect(UI_STRINGS[lang].bannerVariants.緊急安全確保.length).toBeGreaterThan(
-        0,
-      );
+      expect(
+        UI_STRINGS[lang].bannerVariants["emergency-safety"].length,
+      ).toBeGreaterThan(0);
       expect(SITE_LANGUAGE_LABELS[lang].length).toBeGreaterThan(0);
     }
   });
 
   it("does not reuse Japanese banner labels for ja-easy action copy", () => {
-    expect(UI_STRINGS["ja-easy"].bannerVariants.緊急安全確保).not.toBe(
-      UI_STRINGS.ja.bannerVariants.緊急安全確保,
+    expect(UI_STRINGS["ja-easy"].bannerVariants["emergency-safety"]).not.toBe(
+      UI_STRINGS.ja.bannerVariants["emergency-safety"],
     );
-    expect(UI_STRINGS["ja-easy"].bannerVariants.緊急安全確保).toMatch(/あんぜん/);
+    expect(UI_STRINGS["ja-easy"].bannerVariants["emergency-safety"]).toMatch(
+      /あんぜん/,
+    );
   });
 
   it("provides distinct zh-CN / vi / ko site titles", () => {

@@ -1,14 +1,14 @@
 "use client";
 
 import { formatDateTime } from "@/config/ui-strings";
-import { resolveLocalizedString } from "@/lib/localized-string";
+import { SafeMarkdown } from "@/components/SafeMarkdown";
 import type { SiteLanguage } from "@/config/site-language";
-import type { NewsItem } from "@/types/top-page";
+import type { BosaiNotice } from "@/types/top-page";
 
 type Props = {
   heading: string;
   updatedLabel: string;
-  items: NewsItem[];
+  items: BosaiNotice[];
   lang: SiteLanguage;
 };
 
@@ -21,19 +21,12 @@ export function NewsList({ heading, updatedLabel, items, lang }: Props) {
           <li key={item.id} className="news-list__item">
             <article>
               <header className="news-list__header">
-                <span className="news-list__category">
-                  {resolveLocalizedString(item.category, lang)}
-                </span>
                 <time dateTime={item.updatedAt} className="news-list__time">
                   {updatedLabel}: {formatDateTime(item.updatedAt, lang)}
                 </time>
               </header>
-              <h3 className="news-list__title">
-                {resolveLocalizedString(item.title, lang)}
-              </h3>
-              <p className="news-list__summary">
-                {resolveLocalizedString(item.summary, lang)}
-              </p>
+              <h3 className="news-list__title">{item.title}</h3>
+              <SafeMarkdown className="news-list__summary">{item.body}</SafeMarkdown>
             </article>
           </li>
         ))}

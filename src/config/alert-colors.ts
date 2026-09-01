@@ -9,13 +9,20 @@ export const ALERT_LEVEL_COLORS = {
 
 export type AlertLevel = keyof typeof ALERT_LEVEL_COLORS;
 
-/** 緊急バナー重大度バリアント → 内閣府配色マッピング */
+/**
+ * 緊急バナー重大度バリアント（docs/data-model.md）。
+ * 日本語ラベルは UI_STRINGS.bannerVariants で解決する。
+ */
 export const BANNER_VARIANT_COLORS = {
-  緊急安全確保: ALERT_LEVEL_COLORS[5],
-  避難指示: ALERT_LEVEL_COLORS[4],
-  高齢者等避難: ALERT_LEVEL_COLORS[3],
-  注意喚起: ALERT_LEVEL_COLORS[2],
-  お知らせ: { bg: "#f5f5f5", text: "#1a1a1a", border: "#767676" },
+  "emergency-safety": ALERT_LEVEL_COLORS[5],
+  "evacuation-order": ALERT_LEVEL_COLORS[4],
+  "elderly-evacuation": ALERT_LEVEL_COLORS[3],
+  advisory: ALERT_LEVEL_COLORS[2],
+  notice: { bg: "#f5f5f5", text: "#1a1a1a", border: "#767676" },
 } as const;
 
 export type BannerVariant = keyof typeof BANNER_VARIANT_COLORS;
+
+export const BANNER_VARIANTS = Object.keys(
+  BANNER_VARIANT_COLORS,
+) as BannerVariant[];

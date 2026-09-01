@@ -1,211 +1,210 @@
 import { describe, expect, it } from "vitest";
 import {
+  isSafeHref,
   parseAlertLevel,
   parseEmergencyBanner,
-  parseNewsList,
+  parseNoticeList,
+  readNgsiLdValue,
   validateEmergencyBannerLinkHref,
 } from "@/lib/validate-top-page-data";
 
+const baseBanner = {
+  id: "urn:ngsi-ld:bosai-EmergencyBanner:current-banner:ja",
+  type: "bosai-EmergencyBanner",
+  language: "ja",
+  translationGroup: "current-banner",
+  variant: "notice",
+  heading: "現在、特別な警戒情報等はありません",
+  body: "特に発令中の避難情報はありません。",
+  linkHref: null,
+  linkText: null,
+  updatedAt: "2026-09-01T09:00:00+09:00",
+};
+
+describe("readNgsiLdValue", () => {
+  it("unwraps Property values and passes through keyValues", () => {
+    expect(readNgsiLdValue({ type: "Property", value: "ja" })).toBe("ja");
+    expect(readNgsiLdValue("ja")).toBe("ja");
+  });
+});
+
 describe("parseEmergencyBanner", () => {
-  it("parses neutral default banner", () => {
-    const data = parseEmergencyBanner({
-      variant: "お知らせ",
-      heading: "現在、特別な警戒情報等はありません",
-      description: "特に発令中の避難情報はありません。",
-      link: null,
-      updatedAt: "2026-09-01T09:00:00+09:00",
-    });
-    expect(data.variant).toBe("お知らせ");
-    expect(data.link).toBeNull();
+  it("parses keyValues notice banner", () => {
+    const data = parseEmergencyBanner(baseBanner);
+    expect(data.variant).toBe("notice");
+    expect(data.language).toBe("ja");
+    expect(data.translationGroup).toBe("current-banner");
+    expect(data.linkHref).toBeNull();
   });
 
-  it("accepts https link", () => {
+  it("accepts https linkHref", () => {
     const data = parseEmergencyBanner({
-      variant: "避難指示",
+      ...baseBanner,
+      variant: "evacuation-order",
       heading: "避難指示が発令されました",
-      description: "直ちに避難してください。",
-      link: { href: "https://example.com/evacuation", label: "詳細" },
-      updatedAt: "2026-09-01T09:00:00+09:00",
+      body: "直ちに避難してください。",
+      linkHref: "https://example.com/evacuation",
+      linkText: "詳細",
     });
-    expect(data.link?.href).toBe("https://example.com/evacuation");
+    expect(data.linkHref).toBe("https://example.com/evacuation");
   });
 
-  it("accepts relative path link", () => {
+  it("accepts relative path linkHref", () => {
     const data = parseEmergencyBanner({
-      variant: "注意喚起",
-      heading: "注意喚起",
-      description: "最新情報を確認してください。",
-      link: { href: "/evacuation", label: "避難情報" },
-      updatedAt: "2026-09-01T09:00:00+09:00",
+      ...baseBanner,
+      variant: "advisory",
+      linkHref: "/evacuation",
+      linkText: "避難情報",
     });
-    expect(data.link?.href).toBe("/evacuation");
+    expect(data.linkHref).toBe("/evacuation");
   });
 
-  it("rejects javascript: scheme in link href", () => {
+  it("parses normalized Property attributes", () => {
+    const data = parseEmergencyBanner({
+      id: baseBanner.id,
+      type: "bosai-EmergencyBanner",
+      language: { type: "Property", value: "en" },
+      translationGroup: { type: "Property", value: "current-banner" },
+      variant: { type: "Property", value: "notice" },
+      heading: { type: "Property", value: "No special warnings" },
+      body: { type: "Property", value: "All clear." },
+      linkHref: { type: "Property", value: null },
+      linkText: { type: "Property", value: null },
+      updatedAt: { type: "Property", value: "2026-09-01T09:00:00+09:00" },
+    });
+    expect(data.language).toBe("en");
+    expect(data.heading).toBe("No special warnings");
+  });
+
+  it("rejects javascript: scheme in linkHref", () => {
     expect(() =>
       parseEmergencyBanner({
-        variant: "避難指示",
-        heading: "test",
-        description: "test",
-        link: { href: "javascript:alert(1)", label: "詳細" },
-        updatedAt: "2026-09-01T09:00:00+09:00",
+        ...baseBanner,
+        linkHref: "javascript:alert(1)",
+        linkText: "詳細",
       }),
     ).toThrow(/must use http, https, or a relative path/);
   });
 
-  it("rejects ftp: scheme in link href", () => {
+  it("rejects ftp: scheme in linkHref", () => {
     expect(() =>
       parseEmergencyBanner({
-        variant: "避難指示",
-        heading: "test",
-        description: "test",
-        link: { href: "ftp://example.com/file", label: "詳細" },
-        updatedAt: "2026-09-01T09:00:00+09:00",
+        ...baseBanner,
+        linkHref: "ftp://example.com/file",
+        linkText: "詳細",
       }),
     ).toThrow(/must use http, https, or a relative path/);
   });
 
-  // near-miss: protocol-relative URL looks like a path but is not
-  it("rejects protocol-relative link href", () => {
+  // near-miss: protocol-relative URL
+  it("rejects protocol-relative linkHref", () => {
     expect(() =>
       parseEmergencyBanner({
-        variant: "避難指示",
-        heading: "test",
-        description: "test",
-        link: { href: "//evil.example.com/phish", label: "詳細" },
-        updatedAt: "2026-09-01T09:00:00+09:00",
+        ...baseBanner,
+        linkHref: "//evil.example.com/phish",
+        linkText: "詳細",
       }),
     ).toThrow(/protocol-relative/);
   });
 
   it("rejects unknown severity variant", () => {
     expect(() =>
-      parseEmergencyBanner({
-        variant: "情報",
-        heading: "test",
-        description: "test",
-        link: null,
-        updatedAt: "2026-09-01T09:00:00+09:00",
-      }),
+      parseEmergencyBanner({ ...baseBanner, variant: "情報" }),
     ).toThrow(/Invalid banner variant/);
   });
 
-  // near-miss: numeric string as variant name
-  it("rejects numeric string as variant", () => {
+  // near-miss: legacy Japanese variant labels are no longer accepted
+  it("rejects legacy Japanese variant labels", () => {
     expect(() =>
-      parseEmergencyBanner({
-        variant: "3",
-        heading: "test",
-        description: "test",
-        link: null,
-        updatedAt: "2026-09-01T09:00:00+09:00",
-      }),
+      parseEmergencyBanner({ ...baseBanner, variant: "お知らせ" }),
     ).toThrow(/Invalid banner variant/);
   });
 
   it("rejects invalid updatedAt", () => {
     expect(() =>
-      parseEmergencyBanner({
-        variant: "お知らせ",
-        heading: "test",
-        description: "test",
-        link: null,
-        updatedAt: "not-a-date",
-      }),
+      parseEmergencyBanner({ ...baseBanner, updatedAt: "not-a-date" }),
     ).toThrow(/valid ISO date-time/);
   });
 
-  it("parses localized heading object", () => {
-    const data = parseEmergencyBanner({
-      variant: "お知らせ",
-      heading: { ja: "日本語", en: "English" },
-      description: "test",
-      link: null,
-      updatedAt: "2026-09-01T09:00:00+09:00",
-    });
-    expect(data.heading).toEqual({ ja: "日本語", en: "English" });
+  it("rejects mismatched language", () => {
+    expect(() =>
+      parseEmergencyBanner({ ...baseBanner, language: "fr" }),
+    ).toThrow(/invalid language/);
   });
 });
 
-describe("validateEmergencyBannerLinkHref", () => {
+describe("validateEmergencyBannerLinkHref / isSafeHref", () => {
   it("accepts http URLs", () => {
     expect(() =>
       validateEmergencyBannerLinkHref("http://localhost:3000/info"),
     ).not.toThrow();
+    expect(isSafeHref("http://localhost:3000/info")).toBe(true);
+    expect(isSafeHref("javascript:alert(1)")).toBe(false);
   });
 });
 
 describe("parseAlertLevel", () => {
+  const base = {
+    id: "urn:ngsi-ld:bosai-AlertLevel:current-alert-level:ja",
+    type: "bosai-AlertLevel",
+    language: "ja",
+    translationGroup: "current-alert-level",
+    level: 1,
+    label: "警戒レベル1：早期注意情報（平時）",
+    body: "災害への心構えを高める",
+    updatedAt: "2026-09-01T09:00:00+09:00",
+  };
+
   it("parses level 1 payload", () => {
-    const data = parseAlertLevel({
-      level: 1,
-      label: "早期注意情報（平時）",
-      updatedAt: "2026-09-01T09:00:00+09:00",
-    });
-    expect(data.level).toBe(1);
+    expect(parseAlertLevel(base).level).toBe(1);
   });
 
   it("rejects level 0", () => {
-    expect(() =>
-      parseAlertLevel({
-        level: 0,
-        label: "invalid",
-        updatedAt: "2026-09-01T09:00:00+09:00",
-      }),
-    ).toThrow(/Invalid alert level/);
+    expect(() => parseAlertLevel({ ...base, level: 0 })).toThrow(
+      /Invalid alert level/,
+    );
   });
 
   // near-miss: level 6 is out of range
   it("rejects level 6", () => {
-    expect(() =>
-      parseAlertLevel({
-        level: 6,
-        label: "too high",
-        updatedAt: "2026-09-01T09:00:00+09:00",
-      }),
-    ).toThrow(/Invalid alert level/);
+    expect(() => parseAlertLevel({ ...base, level: 6 })).toThrow(
+      /Invalid alert level/,
+    );
   });
 
   it("rejects invalid updatedAt", () => {
-    expect(() =>
-      parseAlertLevel({
-        level: 1,
-        label: "test",
-        updatedAt: "invalid",
-      }),
-    ).toThrow(/valid ISO date-time/);
+    expect(() => parseAlertLevel({ ...base, updatedAt: "invalid" })).toThrow(
+      /valid ISO date-time/,
+    );
   });
 });
 
-describe("parseNewsList", () => {
-  it("parses news items with timestamps", () => {
-    const data = parseNewsList({
-      items: [
-        {
-          id: "news-001",
-          title: "防災訓練のお知らせ",
-          summary: "9月第1土曜日に実施",
-          category: "お知らせ",
-          updatedAt: "2026-08-28T10:00:00+09:00",
-        },
-      ],
-    });
+describe("parseNoticeList", () => {
+  const notice = {
+    id: "urn:ngsi-ld:bosai-Notice:2026-bousai-training:ja",
+    type: "bosai-Notice",
+    language: "ja",
+    translationGroup: "2026-bousai-training",
+    title: "防災訓練のお知らせ",
+    body: "9月第1土曜日に実施\n\n[詳細](/evacuation)",
+    publishedAt: "2026-08-28T10:00:00+09:00",
+    updatedAt: "2026-08-28T10:00:00+09:00",
+  };
+
+  it("parses notice items with markdown body", () => {
+    const data = parseNoticeList({ items: [notice] });
     expect(data.items).toHaveLength(1);
-    expect(data.items[0]?.updatedAt).toContain("2026");
+    expect(data.items[0]?.body).toContain("[詳細]");
   });
 
-  it("rejects invalid updatedAt on news item", () => {
+  it("parses a bare array payload", () => {
+    expect(parseNoticeList([notice]).items).toHaveLength(1);
+  });
+
+  it("rejects invalid updatedAt on notice item", () => {
     expect(() =>
-      parseNewsList({
-        items: [
-          {
-            id: "news-001",
-            title: "test",
-            summary: "test",
-            category: "test",
-            updatedAt: "not-a-date",
-          },
-        ],
+      parseNoticeList({
+        items: [{ ...notice, updatedAt: "not-a-date" }],
       }),
     ).toThrow(/valid ISO date-time/);
   });

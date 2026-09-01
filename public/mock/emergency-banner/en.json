@@ -1,0 +1,12 @@
+{
+  "id": "urn:ngsi-ld:bosai-EmergencyBanner:current-banner:en",
+  "type": "bosai-EmergencyBanner",
+  "language": "en",
+  "translationGroup": "current-banner",
+  "variant": "notice",
+  "heading": "No special warnings at this time",
+  "body": "There are no active evacuation orders. Weather and evacuation updates will appear on this page.",
+  "linkHref": null,
+  "linkText": null,
+  "updatedAt": "2026-09-01T09:00:00+09:00"
+}

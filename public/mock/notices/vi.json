@@ -1,0 +1,24 @@
+{
+  "items": [
+    {
+      "id": "urn:ngsi-ld:bosai-Notice:2026-bousai-training:vi",
+      "type": "bosai-Notice",
+      "language": "vi",
+      "translationGroup": "2026-bousai-training",
+      "title": "Thông báo diễn tập phòng chống thiên tai",
+      "body": "Diễn tập phòng chống thiên tai sẽ được tổ chức vào thứ Bảy đầu tiên của tháng 9.\n\nXem [thông tin sơ tán](/evacuation) để biết chi tiết.",
+      "publishedAt": "2026-08-28T10:00:00+09:00",
+      "updatedAt": "2026-08-28T10:00:00+09:00"
+    },
+    {
+      "id": "urn:ngsi-ld:bosai-Notice:2026-hazard-map-update:vi",
+      "type": "bosai-Notice",
+      "language": "vi",
+      "translationGroup": "2026-hazard-map-update",
+      "title": "Đã cập nhật bản đồ rủi ro",
+      "body": "Bản đồ rủi ro năm 2026 đã được công bố.",
+      "publishedAt": "2026-08-20T15:30:00+09:00",
+      "updatedAt": "2026-08-20T15:30:00+09:00"
+    }
+  ]
+}
