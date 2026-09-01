@@ -15,7 +15,8 @@
     "typecheck": "next typegen && tsc --noEmit -p tsconfig.typecheck.json",
     "test": "vitest run",
     "test:a11y": "vitest run src/components/top/a11y.test.tsx",
-    "lighthouse": "npm run build && lhci autorun"
+    "lighthouse": "npm run build && lhci autorun",
+    "sync:geonicdb": "tsx scripts/sync-geonicdb.ts"
   },
   "dependencies": {
     "@geolonia/geonicdb-sdk": "^0.18.1",
@@ -40,6 +41,7 @@
     "jsdom": "^30.0.1",
     "prettier": "^3.6.2",
     "serve": "^14.2.6",
+    "tsx": "^4.23.13",
     "typescript": "^5",
     "vitest": "^3.2.4",
     "vitest-axe": "^0.1.0"

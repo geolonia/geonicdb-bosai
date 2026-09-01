@@ -213,7 +213,7 @@ export function parseAlertLevel(data: unknown): BosaiAlertLevel {
   };
 }
 
-function parseNoticeItem(item: unknown, index: number): BosaiNotice {
+export function parseNotice(item: unknown, index = 0): BosaiNotice {
   if (!item || typeof item !== "object") {
     throw new Error(`Notice ${index} must be an object`);
   }
@@ -242,7 +242,7 @@ function parseNoticeItem(item: unknown, index: number): BosaiNotice {
 export function parseNoticeList(data: unknown): BosaiNoticeList {
   if (Array.isArray(data)) {
     return {
-      items: data.map((item, index) => parseNoticeItem(item, index)),
+      items: data.map((item, index) => parseNotice(item, index)),
     };
   }
   if (!data || typeof data !== "object") {
@@ -253,7 +253,7 @@ export function parseNoticeList(data: unknown): BosaiNoticeList {
     throw new Error("Notice list items must be an array");
   }
   return {
-    items: record.items.map((item, index) => parseNoticeItem(item, index)),
+    items: record.items.map((item, index) => parseNotice(item, index)),
   };
 }
 

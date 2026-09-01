@@ -27,6 +27,17 @@ npm run dev
 | `npm run format` / `format:check` | Prettier              |
 | `npm run typecheck`               | TypeScript            |
 | `npm test`                        | Vitest                |
+| `npm run sync:geonicdb`           | GeonicDB WS → mock JSON 同期（開発用） |
+
+## GeonicDB WebSocket 同期（開発用）
+
+職員側で GeonicDB に書き込んだ `bosai-Notice` / `bosai-EmergencyBanner` / `bosai-AlertLevel` を、ローカルの `public/mock/` にほぼリアルタイム反映するツールです（[`docs/ws-sync.md`](docs/ws-sync.md)）。住民向けブラウザからは接続しません。
+
+1. `.env` に `GEONICDB_URL`（必要なら `GEONICDB_API_KEY` / `GEONICDB_TENANT`）を設定
+2. 一方のターミナルで `npm run dev`
+3. 別ターミナルで `npm run sync:geonicdb`
+
+GeonicDB への作成・更新が mock JSON に書き込まれ、開発サーバの画面に反映されます。
 
 ## 環境変数
 
