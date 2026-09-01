@@ -1,6 +1,16 @@
 {
   "items": [
     {
+      "id": "urn:ngsi-ld:bosai-Notice:2026-multilingual-launch:vi",
+      "type": "bosai-Notice",
+      "language": "vi",
+      "translationGroup": "2026-multilingual-launch",
+      "title": "Đã hỗ trợ đa ngôn ngữ",
+      "body": "Trang web này hiện đã hỗ trợ **sáu ngôn ngữ** (tiếng Nhật, tiếng Nhật dễ hiểu, tiếng Anh, tiếng Trung, tiếng Việt và tiếng Hàn). Bạn có thể chuyển đổi ngôn ngữ từ menu \"Ngôn ngữ hiển thị\" ở góc trên bên phải. Xem [Chính sách trợ năng](/accessibility) để biết thêm chi tiết.",
+      "publishedAt": "2026-09-01T15:00:00+09:00",
+      "updatedAt": "2026-09-01T15:00:00+09:00"
+    },
+    {
       "id": "urn:ngsi-ld:bosai-Notice:2026-bousai-training:vi",
       "type": "bosai-Notice",
       "language": "vi",

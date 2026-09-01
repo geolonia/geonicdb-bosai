@@ -197,6 +197,42 @@ describe("parseNoticeList", () => {
     expect(data.items[0]?.body).toContain("[詳細]");
   });
 
+  it("parses multilingual-launch mock shape", () => {
+    const data = parseNoticeList({
+      items: [
+        {
+          id: "urn:ngsi-ld:bosai-Notice:2026-multilingual-launch:ja",
+          type: "bosai-Notice",
+          language: "ja",
+          translationGroup: "2026-multilingual-launch",
+          title: "多言語対応を開始しました",
+          body: "本サイトは新たに **6つの言語** に対応しました。[方針](/accessibility)",
+          publishedAt: "2026-09-01T15:00:00+09:00",
+          updatedAt: "2026-09-01T15:00:00+09:00",
+        },
+      ],
+    });
+    expect(data.items[0]?.translationGroup).toBe("2026-multilingual-launch");
+  });
+
+  it("parses all six language notice mock files", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    for (const lang of ["ja", "ja-easy", "en", "zh-CN", "vi", "ko"] as const) {
+      const raw = JSON.parse(
+        readFileSync(
+          resolve(process.cwd(), `public/mock/notices/${lang}.json`),
+          "utf8",
+        ),
+      );
+      const data = parseNoticeList(raw);
+      expect(data.items.length).toBeGreaterThanOrEqual(3);
+      expect(
+        data.items.some((n) => n.translationGroup === "2026-multilingual-launch"),
+      ).toBe(true);
+    }
+  });
+
   it("parses a bare array payload", () => {
     expect(parseNoticeList([notice]).items).toHaveLength(1);
   });

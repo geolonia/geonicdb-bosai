@@ -1,6 +1,16 @@
 {
   "items": [
     {
+      "id": "urn:ngsi-ld:bosai-Notice:2026-multilingual-launch:ja-easy",
+      "type": "bosai-Notice",
+      "language": "ja-easy",
+      "translationGroup": "2026-multilingual-launch",
+      "title": "いろいろな ことばで よめるように なりました",
+      "body": "この ホームページは 6つの ことばで よめるように なりました。にほんご・やさしい にほんご・えいご・ちゅうごくご・べとなむご・かんこくごです。みぎうえの「ことばを えらぶ」で かえられます。くわしくは [みやすい ウェブページの ほうしん](/accessibility) を みてください。",
+      "publishedAt": "2026-09-01T15:00:00+09:00",
+      "updatedAt": "2026-09-01T15:00:00+09:00"
+    },
+    {
       "id": "urn:ngsi-ld:bosai-Notice:2026-bousai-training:ja-easy",
       "type": "bosai-Notice",
       "language": "ja-easy",

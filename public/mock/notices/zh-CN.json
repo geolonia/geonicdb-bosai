@@ -1,6 +1,16 @@
 {
   "items": [
     {
+      "id": "urn:ngsi-ld:bosai-Notice:2026-multilingual-launch:zh-CN",
+      "type": "bosai-Notice",
+      "language": "zh-CN",
+      "translationGroup": "2026-multilingual-launch",
+      "title": "已开通多语言支持",
+      "body": "本网站现已支持**六种语言**（日语、简明日语、英语、中文、越南语、韩语）。您可以通过页面右上角的\"显示语言\"进行切换。详情请参阅[无障碍方针](/accessibility)。",
+      "publishedAt": "2026-09-01T15:00:00+09:00",
+      "updatedAt": "2026-09-01T15:00:00+09:00"
+    },
+    {
       "id": "urn:ngsi-ld:bosai-Notice:2026-bousai-training:zh-CN",
       "type": "bosai-Notice",
       "language": "zh-CN",
