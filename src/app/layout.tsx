@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "geonicdb-bosai",
+  title: "防災情報 | geonicdb-bosai",
   description: "自治体向け防災サイトテンプレート",
 };
 
