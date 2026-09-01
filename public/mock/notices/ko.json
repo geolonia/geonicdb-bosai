@@ -1,6 +1,16 @@
 {
   "items": [
     {
+      "id": "urn:ngsi-ld:bosai-Notice:2026-multilingual-launch:ko",
+      "type": "bosai-Notice",
+      "language": "ko",
+      "translationGroup": "2026-multilingual-launch",
+      "title": "다국어 지원을 시작했습니다",
+      "body": "이 사이트는 이제 **6개 언어**(일본어, 쉬운 일본어, 영어, 중국어, 베트남어, 한국어)를 지원합니다. 오른쪽 상단의 \"표시 언어\"에서 전환할 수 있습니다. 자세한 내용은 [접근성 정책](/accessibility)을 참고하세요.",
+      "publishedAt": "2026-09-01T15:00:00+09:00",
+      "updatedAt": "2026-09-01T15:00:00+09:00"
+    },
+    {
       "id": "urn:ngsi-ld:bosai-Notice:2026-bousai-training:ko",
       "type": "bosai-Notice",
       "language": "ko",

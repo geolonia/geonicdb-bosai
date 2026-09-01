@@ -1,6 +1,16 @@
 {
   "items": [
     {
+      "id": "urn:ngsi-ld:bosai-Notice:2026-multilingual-launch:ja",
+      "type": "bosai-Notice",
+      "language": "ja",
+      "translationGroup": "2026-multilingual-launch",
+      "title": "多言語対応を開始しました",
+      "body": "本サイトは新たに **6つの言語**（日本語・やさしい日本語・英語・中国語・ベトナム語・韓国語）に対応しました。画面右上の「表示言語」から切り替えられます。詳しくは[アクセシビリティ方針](/accessibility)をご覧ください。",
+      "publishedAt": "2026-09-01T15:00:00+09:00",
+      "updatedAt": "2026-09-01T15:00:00+09:00"
+    },
+    {
       "id": "urn:ngsi-ld:bosai-Notice:2026-bousai-training:ja",
       "type": "bosai-Notice",
       "language": "ja",

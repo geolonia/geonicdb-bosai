@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AlertLevelDisplay,
   AlertLevelError,
@@ -20,8 +20,13 @@ import { QuickLinks } from "@/components/top/QuickLinks";
 import { SiteFooter } from "@/components/top/SiteFooter";
 import { SiteHeader } from "@/components/top/SiteHeader";
 import { toHtmlLang, type SiteLanguage } from "@/config/site-language";
-import { UI_STRINGS, type UiStrings } from "@/config/ui-strings";
+import { UI_STRINGS } from "@/config/ui-strings";
 import { fetchPublicJson } from "@/lib/fetch-public-json";
+import {
+  mockPaths,
+  viewStatus,
+  type ResourceState,
+} from "@/lib/top-page-load";
 import { usePreferredLanguage } from "@/lib/use-preferred-language";
 import {
   parseAlertLevel,
@@ -34,15 +39,9 @@ import type {
   BosaiNotice,
 } from "@/types/top-page";
 
-function mockPaths(lang: SiteLanguage) {
-  return {
-    banner: `/mock/emergency-banner/${lang}.json`,
-    alertLevel: `/mock/alert-level/${lang}.json`,
-    notices: `/mock/notices/${lang}.json`,
-  } as const;
+function initialResource<T>(): ResourceState<T> {
+  return { status: "loading", dataLang: null, data: null };
 }
-
-type LoadStatus = "loading" | "ready" | "error";
 
 function parseResource<T>(
   raw: unknown,
@@ -55,23 +54,41 @@ function parseResource<T>(
   }
 }
 
-type BodyProps = {
-  lang: SiteLanguage;
-  strings: UiStrings;
-};
+function settleResource<T>(
+  result: PromiseSettledResult<unknown>,
+  parser: (value: unknown) => T,
+  lang: SiteLanguage,
+): ResourceState<T> {
+  if (result.status !== "fulfilled") {
+    return { status: "error", dataLang: lang, data: null };
+  }
+  const parsed = parseResource(result.value, parser);
+  if (!parsed) {
+    return { status: "error", dataLang: lang, data: null };
+  }
+  return { status: "ready", dataLang: lang, data: parsed };
+}
 
-/** lang を key にしてマウントし直すため、初期状態が loading になる。 */
-function TopPageBody({ lang, strings }: BodyProps) {
-  const [banner, setBanner] = useState<BosaiEmergencyBanner | null>(null);
-  const [bannerStatus, setBannerStatus] = useState<LoadStatus>("loading");
-  const [alertLevel, setAlertLevel] = useState<BosaiAlertLevel | null>(null);
-  const [alertStatus, setAlertStatus] = useState<LoadStatus>("loading");
-  const [notices, setNotices] = useState<BosaiNotice[] | null>(null);
-  const [noticesStatus, setNoticesStatus] = useState<LoadStatus>("loading");
+export function TopPage() {
+  const [lang, setLang] = usePreferredLanguage();
+  const strings = UI_STRINGS[lang];
+  const fetchGen = useRef(0);
+
+  const [bannerState, setBannerState] =
+    useState<ResourceState<BosaiEmergencyBanner>>(initialResource);
+  const [alertState, setAlertState] =
+    useState<ResourceState<BosaiAlertLevel>>(initialResource);
+  const [noticesState, setNoticesState] =
+    useState<ResourceState<BosaiNotice[]>>(initialResource);
 
   useEffect(() => {
-    let cancelled = false;
+    document.documentElement.lang = toHtmlLang(lang);
+  }, [lang]);
+
+  useEffect(() => {
+    const gen = ++fetchGen.current;
     const paths = mockPaths(lang);
+    const targetLang = lang;
 
     async function load() {
       const results = await Promise.allSettled([
@@ -79,58 +96,39 @@ function TopPageBody({ lang, strings }: BodyProps) {
         fetchPublicJson<unknown>(paths.alertLevel),
         fetchPublicJson<unknown>(paths.notices),
       ]);
-      if (cancelled) return;
+      // 言語切替や Strict Mode の cleanup で世代が進んでいたら破棄
+      if (gen !== fetchGen.current) return;
 
       const [bannerResult, alertResult, noticesResult] = results;
-
-      if (bannerResult.status === "fulfilled") {
-        const parsed = parseResource(bannerResult.value, parseEmergencyBanner);
-        if (parsed) {
-          setBanner(parsed);
-          setBannerStatus("ready");
-        } else {
-          setBanner(null);
-          setBannerStatus("error");
-        }
-      } else {
-        setBanner(null);
-        setBannerStatus("error");
-      }
-
-      if (alertResult.status === "fulfilled") {
-        const parsed = parseResource(alertResult.value, parseAlertLevel);
-        if (parsed) {
-          setAlertLevel(parsed);
-          setAlertStatus("ready");
-        } else {
-          setAlertLevel(null);
-          setAlertStatus("error");
-        }
-      } else {
-        setAlertLevel(null);
-        setAlertStatus("error");
-      }
-
-      if (noticesResult.status === "fulfilled") {
-        const parsed = parseResource(noticesResult.value, parseNoticeList);
-        if (parsed) {
-          setNotices(parsed.items);
-          setNoticesStatus("ready");
-        } else {
-          setNotices(null);
-          setNoticesStatus("error");
-        }
-      } else {
-        setNotices(null);
-        setNoticesStatus("error");
-      }
+      setBannerState(settleResource(bannerResult, parseEmergencyBanner, targetLang));
+      setAlertState(settleResource(alertResult, parseAlertLevel, targetLang));
+      const notices = settleResource(noticesResult, parseNoticeList, targetLang);
+      setNoticesState({
+        status: notices.status,
+        dataLang: notices.dataLang,
+        data: notices.data ? notices.data.items : null,
+      });
     }
 
     void load();
-    return () => {
-      cancelled = true;
-    };
   }, [lang]);
+
+  const bannerStatus = viewStatus(bannerState, lang);
+  const alertStatus = viewStatus(alertState, lang);
+  const noticesStatus = viewStatus(noticesState, lang);
+
+  const banner =
+    bannerStatus === "ready" && bannerState.dataLang === lang
+      ? bannerState.data
+      : null;
+  const alertLevel =
+    alertStatus === "ready" && alertState.dataLang === lang
+      ? alertState.data
+      : null;
+  const notices =
+    noticesStatus === "ready" && noticesState.dataLang === lang
+      ? noticesState.data
+      : null;
 
   const quickLinks = [
     {
@@ -161,6 +159,7 @@ function TopPageBody({ lang, strings }: BodyProps) {
 
   return (
     <>
+      <SiteHeader strings={strings} lang={lang} onLangChange={setLang} />
       {bannerStatus === "ready" && banner ? (
         <EmergencyBanner data={banner} strings={strings} />
       ) : bannerStatus === "error" ? (
@@ -207,22 +206,6 @@ function TopPageBody({ lang, strings }: BodyProps) {
         contactLabel={strings.footerContact}
         contactValue={strings.footerContactValue}
       />
-    </>
-  );
-}
-
-export function TopPage() {
-  const [lang, setLang] = usePreferredLanguage();
-  const strings = UI_STRINGS[lang];
-
-  useEffect(() => {
-    document.documentElement.lang = toHtmlLang(lang);
-  }, [lang]);
-
-  return (
-    <>
-      <SiteHeader strings={strings} lang={lang} onLangChange={setLang} />
-      <TopPageBody key={lang} lang={lang} strings={strings} />
     </>
   );
 }

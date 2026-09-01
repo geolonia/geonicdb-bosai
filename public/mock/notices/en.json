@@ -1,6 +1,16 @@
 {
   "items": [
     {
+      "id": "urn:ngsi-ld:bosai-Notice:2026-multilingual-launch:en",
+      "type": "bosai-Notice",
+      "language": "en",
+      "translationGroup": "2026-multilingual-launch",
+      "title": "Multilingual Support Now Available",
+      "body": "This site now supports **six languages** (Japanese, Easy Japanese, English, Chinese, Vietnamese, and Korean). You can switch languages from the \"Language\" menu in the top right. See the [Accessibility Policy](/accessibility) for details.",
+      "publishedAt": "2026-09-01T15:00:00+09:00",
+      "updatedAt": "2026-09-01T15:00:00+09:00"
+    },
+    {
       "id": "urn:ngsi-ld:bosai-Notice:2026-bousai-training:en",
       "type": "bosai-Notice",
       "language": "en",
