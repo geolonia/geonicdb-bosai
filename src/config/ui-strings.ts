@@ -12,6 +12,8 @@ export type UiStrings = {
   newsHeading: string;
   newsUpdated: string;
   footerAccessibility: string;
+  footerTestResults: string;
+  footerLinksLabel: string;
   footerContact: string;
   footerContactValue: string;
   comingSoon: string;
@@ -49,6 +51,8 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
     newsHeading: "新着・お知らせ",
     newsUpdated: "更新",
     footerAccessibility: "ウェブアクセシビリティ方針",
+    footerTestResults: "試験結果",
+    footerLinksLabel: "フッターリンク",
     footerContact: "お問い合わせ",
     footerContactValue: "防災担当: 000-0000-0000",
     comingSoon: "準備中",
@@ -93,6 +97,8 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
     newsHeading: "News & Updates",
     newsUpdated: "Updated",
     footerAccessibility: "Web Accessibility Policy",
+    footerTestResults: "Test Results",
+    footerLinksLabel: "Footer links",
     footerContact: "Contact",
     footerContactValue: "Disaster Management: 000-0000-0000",
     comingSoon: "Coming soon",
@@ -137,6 +143,8 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
     newsHeading: "最新消息",
     newsUpdated: "更新",
     footerAccessibility: "网页无障碍方针",
+    footerTestResults: "测试结果",
+    footerLinksLabel: "页脚链接",
     footerContact: "联系方式",
     footerContactValue: "防灾负责: 000-0000-0000",
     comingSoon: "准备中",
@@ -181,6 +189,8 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
     newsHeading: "Tin tức mới",
     newsUpdated: "Cập nhật",
     footerAccessibility: "Chính sách tiếp cận web",
+    footerTestResults: "Kết quả kiểm tra",
+    footerLinksLabel: "Liên kết chân trang",
     footerContact: "Liên hệ",
     footerContactValue: "Bộ phận phòng chống thiên tai: 000-0000-0000",
     comingSoon: "Đang chuẩn bị",
@@ -227,6 +237,8 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
     newsHeading: "새 소식",
     newsUpdated: "업데이트",
     footerAccessibility: "웹 접근성 방침",
+    footerTestResults: "시험 결과",
+    footerLinksLabel: "바닥글 링크",
     footerContact: "문의",
     footerContactValue: "방재 담당: 000-0000-0000",
     comingSoon: "준비 중",
