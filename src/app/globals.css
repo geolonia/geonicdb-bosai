@@ -166,6 +166,15 @@ select:focus-visible {
   gap: 2rem;
 }
 
+/* ビルド時スナップショット表示時の「HH:MM 時点」明示（N-10 / F-45） */
+.bosai-as-of {
+  margin: 0.25rem auto 0;
+  max-width: var(--max-width);
+  padding: 0 1rem;
+  font-size: 0.875rem;
+  color: var(--color-muted, #555);
+}
+
 .alert-level {
   /* ロード前後の高さ差による CLS 抑制（Lighthouse Performance 予算） */
   min-height: var(--alert-level-min-height);

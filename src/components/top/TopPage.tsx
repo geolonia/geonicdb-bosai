@@ -21,11 +21,16 @@ import { QuickLinks } from "@/components/top/QuickLinks";
 import { SiteFooter } from "@/components/top/SiteFooter";
 import { SiteHeader } from "@/components/top/SiteHeader";
 import { toHtmlLang } from "@/config/site-language";
-import { UI_STRINGS } from "@/config/ui-strings";
+import {
+  formatAsOfLabel,
+  formatLoadError,
+  UI_STRINGS,
+} from "@/config/ui-strings";
 import {
   getGeonicdbPublicClient,
   languagePropertyQuery,
 } from "@/lib/geonicdb-public-client";
+import { resolveBosaiResourceView } from "@/lib/resolve-bosai-resource-view";
 import { usePreferredLanguage } from "@/lib/use-preferred-language";
 import { useBosaiLiveUpdates } from "@/lib/use-bosai-live-updates";
 import {
@@ -33,13 +38,12 @@ import {
   parseEmergencyBanner,
   parseNoticeList,
 } from "@/lib/validate-top-page-data";
+import type { BosaiStaticSnapshot } from "@/types/bosai-static-snapshot";
 import type {
   BosaiAlertLevel,
   BosaiEmergencyBanner,
   BosaiNotice,
 } from "@/types/top-page";
-
-type ViewStatus = "loading" | "error" | "ready";
 
 /** useLdEntities 第1引数（react エントリの GeonicDB とコアの型が分かれている）。 */
 type LdClient = Parameters<typeof useLdEntities>[0];
@@ -72,19 +76,23 @@ function parseNotices(entities: unknown[]): BosaiNotice[] | null {
   }
 }
 
-function resourceStatus(
-  loading: boolean,
-  error: Error | null,
-  data: unknown,
-): ViewStatus {
-  if (loading) return "loading";
-  if (error || data == null) return "error";
-  return "ready";
+function AsOfNote({ label }: { label: string }) {
+  return (
+    <p className="bosai-as-of" role="status">
+      {label}
+    </p>
+  );
 }
 
-export function TopPage() {
+type TopPageProps = {
+  /** ビルド時に焼き込んだスナップショット。未指定時はライブのみ（テスト互換）。 */
+  initialSnapshot?: BosaiStaticSnapshot;
+};
+
+export function TopPage({ initialSnapshot }: TopPageProps = {}) {
   const [lang, setLang] = usePreferredLanguage();
   const strings = UI_STRINGS[lang];
+  const langSnapshot = initialSnapshot?.languages[lang];
 
   const client = useMemo((): LdClient => {
     try {
@@ -142,21 +150,24 @@ export function TopPage() {
   );
   const notices: BosaiNotice[] | null = parseNotices(noticesQuery.entities);
 
-  const bannerStatus = resourceStatus(
-    bannerQuery.loading,
-    bannerQuery.error,
-    banner,
-  );
-  const alertStatus = resourceStatus(
-    alertQuery.loading,
-    alertQuery.error,
-    alertLevel,
-  );
-  const noticesStatus = resourceStatus(
-    noticesQuery.loading,
-    noticesQuery.error,
-    notices,
-  );
+  const bannerView = resolveBosaiResourceView({
+    liveLoading: bannerQuery.loading,
+    liveError: bannerQuery.error,
+    liveData: banner,
+    snapshot: langSnapshot?.banner,
+  });
+  const alertView = resolveBosaiResourceView({
+    liveLoading: alertQuery.loading,
+    liveError: alertQuery.error,
+    liveData: alertLevel,
+    snapshot: langSnapshot?.alertLevel,
+  });
+  const noticesView = resolveBosaiResourceView({
+    liveLoading: noticesQuery.loading,
+    liveError: noticesQuery.error,
+    liveData: notices,
+    snapshot: langSnapshot?.notices,
+  });
 
   const quickLinks = [
     {
@@ -188,10 +199,19 @@ export function TopPage() {
   return (
     <>
       <SiteHeader strings={strings} lang={lang} onLangChange={setLang} />
-      {bannerStatus === "ready" && banner ? (
-        <EmergencyBanner data={banner} strings={strings} />
-      ) : bannerStatus === "error" ? (
-        <EmergencyBannerError message={strings.loadError} />
+      {bannerView.kind === "ready" ? (
+        <>
+          <EmergencyBanner data={bannerView.data} strings={strings} />
+          {bannerView.stale && bannerView.asOf ? (
+            <AsOfNote
+              label={formatAsOfLabel(strings.asOfLabel, bannerView.asOf, lang)}
+            />
+          ) : null}
+        </>
+      ) : bannerView.kind === "error" ? (
+        <EmergencyBannerError
+          message={formatLoadError(strings, bannerView.lastFetchedAt, lang)}
+        />
       ) : (
         <EmergencyBannerPlaceholder
           loadingLabel={strings.bannerLoadingLabel}
@@ -199,28 +219,50 @@ export function TopPage() {
         />
       )}
       <main className="top-main" id="main-content">
-        {alertStatus === "ready" && alertLevel ? (
-          <AlertLevelDisplay data={alertLevel} lang={lang} strings={strings} />
-        ) : alertStatus === "error" ? (
+        {alertView.kind === "ready" ? (
+          <>
+            <AlertLevelDisplay
+              data={alertView.data}
+              lang={lang}
+              strings={strings}
+            />
+            {alertView.stale && alertView.asOf ? (
+              <AsOfNote
+                label={formatAsOfLabel(strings.asOfLabel, alertView.asOf, lang)}
+              />
+            ) : null}
+          </>
+        ) : alertView.kind === "error" ? (
           <AlertLevelError
             heading={strings.alertLevelHeading}
-            message={strings.loadError}
+            message={formatLoadError(strings, alertView.lastFetchedAt, lang)}
           />
         ) : (
           <AlertLevelPlaceholder strings={strings} />
         )}
         <QuickLinks heading={strings.quickLinksHeading} links={quickLinks} />
-        {noticesStatus === "ready" && notices ? (
-          <NewsList
-            heading={strings.newsHeading}
-            updatedLabel={strings.newsUpdated}
-            items={notices}
-            lang={lang}
-          />
-        ) : noticesStatus === "error" ? (
+        {noticesView.kind === "ready" ? (
+          <>
+            <NewsList
+              heading={strings.newsHeading}
+              updatedLabel={strings.newsUpdated}
+              items={noticesView.data}
+              lang={lang}
+            />
+            {noticesView.stale && noticesView.asOf ? (
+              <AsOfNote
+                label={formatAsOfLabel(
+                  strings.asOfLabel,
+                  noticesView.asOf,
+                  lang,
+                )}
+              />
+            ) : null}
+          </>
+        ) : noticesView.kind === "error" ? (
           <NewsListError
             heading={strings.newsHeading}
-            message={strings.loadError}
+            message={formatLoadError(strings, noticesView.lastFetchedAt, lang)}
           />
         ) : (
           <NewsListPlaceholder

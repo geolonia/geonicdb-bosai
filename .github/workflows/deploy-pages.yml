@@ -3,6 +3,9 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
+  # 閲覧者がいない間の更新も静的 HTML へ取り込む（issue #9 / N-10）
+  schedule:
+    - cron: "0 */6 * * *"
   workflow_dispatch:
 
 permissions:

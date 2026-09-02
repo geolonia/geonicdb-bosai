@@ -45,3 +45,7 @@ jobs:
 
       - name: Build (static export)
         run: npm run build
+
+      # ページ重量予算（lighthouserc.js）。閾値の厳格化は issue #6 と共有。
+      - name: Lighthouse budget
+        run: npx lhci autorun
