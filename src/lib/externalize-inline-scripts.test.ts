@@ -44,6 +44,24 @@ describe("isExternalizableJsScript", () => {
     expect(html).not.toContain("boot()");
   });
 
+  it("still externalizes when an attribute value contains the literal src=", () => {
+    const attrs = ' data-foo="something src=evil.js"';
+    expect(isExternalizableJsScript(attrs)).toBe(true);
+    const { html, replaced } = externalizeInlineScriptsInHtml(
+      '<script data-foo="something src=evil.js">payload()</script>',
+      {
+        writeFile(relPath) {
+          return `/${relPath}`;
+        },
+      },
+    );
+    expect(replaced).toBe(1);
+    expect(html).toMatch(
+      /<script src="\/_next\/csp-inline\/[a-f0-9]{16}\.js"><\/script>/,
+    );
+    expect(html).not.toContain("payload()");
+  });
+
   it("skips non-JS data blocks (near-miss: application/ld+json)", () => {
     expect(isExternalizableJsScript(' type="application/ld+json"')).toBe(false);
     expect(isExternalizableJsScript(' type="application/json"')).toBe(false);

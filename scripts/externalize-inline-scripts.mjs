@@ -22,17 +22,22 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const SCRIPT_TAG_RE = /<script(\s[^>]*)?>([\s\S]*?)<\/script>/gi;
 
 /**
- * @param {string | undefined} attrs
- * @returns {boolean}
- */
-/**
- * 属性文字列に名前ちょうど `src` の属性があるか（`data-src` 等は除外）。
- * @param {string} attrs
+ * 開始タグの属性文字列をトークン化し、属性名がちょうど `src` のものがあるか判定する。
+ * 属性値の中身（例: data-foo="something src=evil.js"）は見ない。
+ *
+ * @param {string} attrs `<script` 直後の属性部分（先頭空白を含みうる。`>` は含まない）
  * @returns {boolean}
  */
 export function hasSrcAttribute(attrs) {
-  // 語境界: 先頭または空白のあと、かつ属性名が正確に src（ハイフン接頭辞なし）
-  return /(?:^|\s)src\s*=/i.test(attrs);
+  const ATTR_TOKEN_RE =
+    /([a-zA-Z_:][a-zA-Z0-9_.:-]*)\s*(?:=\s*(?:"[^"]*"|'[^']*'|[^\s>]+))?/g;
+  let match;
+  while ((match = ATTR_TOKEN_RE.exec(attrs)) !== null) {
+    if (match[1].toLowerCase() === "src") {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**
