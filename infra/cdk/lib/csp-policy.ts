@@ -120,7 +120,13 @@ export function buildContentSecurityPolicy(
   parts.push("upgrade-insecure-requests");
 
   if (options.reportUri?.trim()) {
-    parts.push(`report-uri ${options.reportUri.trim()}`);
+    const reportUri = options.reportUri.trim();
+    if (/[;,\s]/.test(reportUri)) {
+      throw new Error(
+        `CSP report-uri must not contain ; , or whitespace: ${reportUri}`,
+      );
+    }
+    parts.push(`report-uri ${reportUri}`);
   }
 
   return parts.join("; ");

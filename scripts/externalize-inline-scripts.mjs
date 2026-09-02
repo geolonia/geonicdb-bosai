@@ -22,22 +22,33 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const SCRIPT_TAG_RE = /<script(\s[^>]*)?>([\s\S]*?)<\/script>/gi;
 
 /**
- * 開始タグの属性文字列をトークン化し、属性名がちょうど `src` のものがあるか判定する。
- * 属性値の中身（例: data-foo="something src=evil.js"）は見ない。
+ * 開始タグの属性文字列をトークン化し、属性名 → 値の Map を返す。
+ * 属性値の中身に別属性っぽい文字列があっても属性名としては扱わない。
+ * boolean 属性（値なし）は空文字。
  *
- * @param {string} attrs `<script` 直後の属性部分（先頭空白を含みうる。`>` は含まない）
+ * @param {string} attrs
+ * @returns {Map<string, string>}
+ */
+export function parseScriptAttributes(attrs) {
+  const ATTR_TOKEN_RE =
+    /([a-zA-Z_:][a-zA-Z0-9_.:-]*)\s*(?:=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g;
+  /** @type {Map<string, string>} */
+  const out = new Map();
+  let match;
+  while ((match = ATTR_TOKEN_RE.exec(attrs ?? "")) !== null) {
+    const name = match[1].toLowerCase();
+    const value = match[2] ?? match[3] ?? match[4] ?? "";
+    out.set(name, value);
+  }
+  return out;
+}
+
+/**
+ * @param {string} attrs
  * @returns {boolean}
  */
 export function hasSrcAttribute(attrs) {
-  const ATTR_TOKEN_RE =
-    /([a-zA-Z_:][a-zA-Z0-9_.:-]*)\s*(?:=\s*(?:"[^"]*"|'[^']*'|[^\s>]+))?/g;
-  let match;
-  while ((match = ATTR_TOKEN_RE.exec(attrs)) !== null) {
-    if (match[1].toLowerCase() === "src") {
-      return true;
-    }
-  }
-  return false;
+  return parseScriptAttributes(attrs).has("src");
 }
 
 /**
@@ -45,15 +56,14 @@ export function hasSrcAttribute(attrs) {
  * @returns {boolean}
  */
 export function isExternalizableJsScript(attrs) {
-  const a = attrs ?? "";
-  if (hasSrcAttribute(a)) {
+  const parsed = parseScriptAttributes(attrs ?? "");
+  if (parsed.has("src")) {
     return false;
   }
-  const typeMatch = a.match(/\btype\s*=\s*(["'])([^"']*)\1/i);
-  if (!typeMatch) {
+  if (!parsed.has("type")) {
     return true;
   }
-  const type = typeMatch[2].trim().toLowerCase();
+  const type = parsed.get("type")?.trim().toLowerCase() ?? "";
   return (
     type === "" ||
     type === "text/javascript" ||
@@ -115,7 +125,10 @@ export function externalizeInlineScriptsInHtml(html, opts) {
     const hash = contentHash(m.body);
     const relPath = `_next/csp-inline/${hash}.js`;
     const srcPath = opts.writeFile(relPath, m.body);
-    const replacement = `<script src="${srcPath}"></script>`;
+    const parsed = parseScriptAttributes(m.attrs);
+    const type = parsed.get("type")?.trim().toLowerCase() ?? "";
+    const typeAttr = type === "module" ? ' type="module"' : "";
+    const replacement = `<script${typeAttr} src="${srcPath}"></script>`;
     result =
       result.slice(0, m.index) +
       replacement +

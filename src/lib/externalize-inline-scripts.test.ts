@@ -62,9 +62,40 @@ describe("isExternalizableJsScript", () => {
     expect(html).not.toContain("payload()");
   });
 
+  it("does not treat data-type as the script type attribute", () => {
+    expect(isExternalizableJsScript(' data-type="application/json"')).toBe(
+      true,
+    );
+    const { replaced } = externalizeInlineScriptsInHtml(
+      '<script data-type="application/json">boot()</script>',
+      {
+        writeFile(relPath) {
+          return `/${relPath}`;
+        },
+      },
+    );
+    expect(replaced).toBe(1);
+  });
+
+  it("preserves type=module on externalized tags", () => {
+    const { html, replaced } = externalizeInlineScriptsInHtml(
+      '<script type="module">import "./x.js"</script>',
+      {
+        writeFile(relPath) {
+          return `/${relPath}`;
+        },
+      },
+    );
+    expect(replaced).toBe(1);
+    expect(html).toMatch(
+      /<script type="module" src="\/_next\/csp-inline\/[a-f0-9]{16}\.js"><\/script>/,
+    );
+  });
+
   it("skips non-JS data blocks (near-miss: application/ld+json)", () => {
     expect(isExternalizableJsScript(' type="application/ld+json"')).toBe(false);
     expect(isExternalizableJsScript(' type="application/json"')).toBe(false);
+    expect(isExternalizableJsScript(" type=application/json")).toBe(false);
   });
 });
 

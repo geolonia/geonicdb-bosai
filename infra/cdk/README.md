@@ -17,3 +17,10 @@ Report-Only で初回検証する場合:
 ```bash
 npx cdk deploy -c cspReportOnly=true -c cspReportUri=https://example.com/csp-report
 ```
+
+GeonicDB が別オリジンのとき（`connect-src` に追加）:
+
+```bash
+npx cdk deploy -c geonicdbUrl=https://geonicdb.example.jp
+# または NEXT_PUBLIC_GEONICDB_URL を export してから cdk deploy
+```

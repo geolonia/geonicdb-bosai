@@ -135,19 +135,28 @@ export class BosaiSiteStack extends cdk.Stack {
     );
     this.bucket.grantRead(originAccessIdentity);
 
-    const certificate =
-      props.certificateArn != null && props.certificateArn.length > 0
-        ? acm.Certificate.fromCertificateArn(
-            this,
-            "ViewerCertificate",
-            props.certificateArn,
-          )
-        : undefined;
-    if (certificate && (!props.domainNames || props.domainNames.length === 0)) {
+    const hasCert =
+      props.certificateArn != null && props.certificateArn.length > 0;
+    const hasDomains =
+      props.domainNames != null && props.domainNames.length > 0;
+    if (hasCert && !hasDomains) {
       throw new Error(
         "BosaiSiteStack: domainNames is required when certificateArn is set",
       );
     }
+    if (hasDomains && !hasCert) {
+      throw new Error(
+        "BosaiSiteStack: certificateArn is required when domainNames is set",
+      );
+    }
+
+    const certificate = hasCert
+      ? acm.Certificate.fromCertificateArn(
+          this,
+          "ViewerCertificate",
+          props.certificateArn!,
+        )
+      : undefined;
 
     this.distribution = new cloudfront.Distribution(this, "Distribution", {
       defaultRootObject: "index.html",

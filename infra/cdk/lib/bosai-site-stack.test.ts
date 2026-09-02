@@ -117,6 +117,26 @@ describe("BosaiSiteStack Response Headers Policy", () => {
     ).toThrow(/domainNames is required/);
   });
 
+  it("rejects domainNames without certificateArn", () => {
+    expect(() => synth({ domainNames: ["bosai.example.example"] })).toThrow(
+      /certificateArn is required/,
+    );
+  });
+
+  it("includes connectSrc extras in the CSP header value", () => {
+    const template = synth({
+      cspExtras: { connectSrc: ["https://geonicdb.example.example"] },
+    });
+    const policies = template.findResources(
+      "AWS::CloudFront::ResponseHeadersPolicy",
+    );
+    const config =
+      Object.values(policies)[0].Properties.ResponseHeadersPolicyConfig;
+    expect(
+      config.SecurityHeadersConfig.ContentSecurityPolicy.ContentSecurityPolicy,
+    ).toContain("connect-src 'self' https://geonicdb.example.example");
+  });
+
   it("wires Response Headers Policy onto the default cache behavior", () => {
     const template = synth();
     template.hasResourceProperties("AWS::CloudFront::Distribution", {

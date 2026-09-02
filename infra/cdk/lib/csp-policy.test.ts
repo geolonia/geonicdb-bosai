@@ -47,4 +47,12 @@ describe("buildContentSecurityPolicy", () => {
       csp.endsWith("; report-uri https://report.example.example/csp"),
     ).toBe(true);
   });
+
+  it("rejects report-uri with directive injection characters", () => {
+    expect(() =>
+      buildContentSecurityPolicy({
+        reportUri: "https://r.example/csp; script-src 'unsafe-inline'",
+      }),
+    ).toThrow(/report-uri/);
+  });
 });

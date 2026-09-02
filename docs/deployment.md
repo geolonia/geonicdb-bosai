@@ -44,7 +44,7 @@ npm run build
 npm run lighthouse
 ```
 
-仕様 5.8.4（災害時トップ）: HTML ≤ 50KB・CSS ≤ 30KB は **error**（CI ブロック）。JS ≤ 100KB・合計 ≤ 500KB は当面 **warn**（現状 Next.js クライアントランタイムが JS 予算を超過）。Performance ≥ 0.95 は error。閾値は `lighthouserc.js`。
+仕様 5.8.4（災害時トップ）: HTML ≤ 50KB・CSS ≤ 30KB は **error**（CI ブロック）。JS ≤ 100KB・合計 ≤ 500KB は当面 **warn**（現状 Next.js クライアントランタイムが JS 予算を超過）。4 カテゴリは目標 100（`minScore: 1`）。performance / accessibility / seo は **error**、best-practices は実測 0.96 のため当面 **warn**。閾値は `lighthouserc.js`。
 
 ## Content-Security-Policy（5.8.2）
 
@@ -59,11 +59,13 @@ npm run lighthouse
 
 既定 CSP（強制）:
 
-```
+```text
 default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
 ```
 
 **仕様 5.8.2 の括弧書き「nonce または hash と `'strict-dynamic'`」は字義どおりには満たさない**が、検証可能な MUST 要件（HTTP ヘッダでの送出、`default-src 'none'` 起点、`'unsafe-inline'` / `'unsafe-eval'` / ワイルドカード禁止、`object-src` / `base-uri` / `frame-ancestors` / `form-action` / `upgrade-insecure-requests`）はすべて満たす、という解釈とする（課長裁可済み・issue #6）。
+
+**本番で GeonicDB が別オリジンの場合**は `connect-src` にそのオリジンを足す（CDK: `-c geonicdbUrl=https://…` または `NEXT_PUBLIC_GEONICDB_URL`。`cspExtras.connectSrc`）。未設定のままだと `connect-src 'self'` のみでクロスオリジン API がブロックされる。
 
 組み立ては `infra/cdk/lib/csp-policy.ts`。`connectSrc` / `imgSrc` / `workerSrc` / `childSrc` 等に **追加ホストを props で渡せる**。**`scriptSrc` への追加ホスト prop は用意しない**（Geolonia Maps は npm バンドルで自ホスト配信の設計のため不要、という理解。**#3 着手時に再確認すること**）。
 
