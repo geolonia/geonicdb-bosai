@@ -30,7 +30,7 @@
 
 ## N-26 位置情報・プライバシー
 
-- 住民向け方針の雛形: [`/privacy/`](../src/app/privacy/page.tsx)（フッターからリンク）。
+- 住民向け方針の雛形（ソース）: [`src/app/privacy/page.tsx`](../src/app/privacy/page.tsx)（公開パスは `/privacy/`。フッターからリンク）。
 - 端末側処理の実装入口: [`src/lib/device-geolocation.ts`](../src/lib/device-geolocation.ts)。
   - `requestDevicePosition` / `distanceMetersBetween` のみ公開する。
   - 取得座標を `fetch`・GeonicDB 書き込み・ログ収集へ渡さない。

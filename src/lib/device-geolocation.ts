@@ -47,7 +47,9 @@ export type RequestDevicePositionOptions = {
   geolocation?: Pick<Geolocation, "getCurrentPosition">;
 };
 
-function mapPositionError(err: GeolocationPositionError): DeviceGeolocationError {
+function mapPositionError(
+  err: GeolocationPositionError,
+): DeviceGeolocationError {
   switch (err.code) {
     case err.PERMISSION_DENIED:
       return new DeviceGeolocationError(

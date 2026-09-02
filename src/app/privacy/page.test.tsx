@@ -9,15 +9,21 @@ describe("PrivacyPage (N-26)", () => {
     expect(
       screen.getByRole("heading", { level: 1, name: "プライバシーポリシー" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "位置情報の取扱い" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "位置情報の取扱い" }),
+    ).toBeInTheDocument();
     const main = screen.getByRole("main");
     expect(main.textContent).toMatch(/端末内でのみ処理/);
-    expect(main.textContent).toMatch(/サーバや外部サービスへ送信・保存しません/);
+    expect(main.textContent).toMatch(
+      /サーバや外部サービスへ送信・保存しません/,
+    );
   });
 
   it("states that personal information is not collected on public pages", () => {
     render(<PrivacyPage />);
-    expect(screen.getByRole("heading", { name: "個人情報の取扱い" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "個人情報の取扱い" }),
+    ).toBeInTheDocument();
     const main = screen.getByRole("main");
     expect(main.textContent).toMatch(/個人情報を収集・保存しません/);
   });
