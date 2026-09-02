@@ -51,5 +51,8 @@ jobs:
       - name: CDK sample unit tests
         run: npm test --prefix infra/cdk
 
+      - name: CDK sample typecheck
+        run: npm run build --prefix infra/cdk
+
       - name: Build (static export)
         run: npm run build

@@ -66,8 +66,10 @@ function mergeSources(base: string[], extra: string[] | undefined): string[] {
     if (trimmed === "*" || trimmed.includes("*")) {
       throw new Error(`CSP source must not contain wildcards: ${trimmed}`);
     }
-    if (/[;\r\n]/.test(trimmed)) {
-      throw new Error(`CSP source must not contain ; or newlines: ${trimmed}`);
+    if (/[;\s]/.test(trimmed)) {
+      throw new Error(
+        `CSP source must not contain ; or whitespace: ${trimmed}`,
+      );
     }
     if (
       trimmed.includes("'unsafe-inline'") ||

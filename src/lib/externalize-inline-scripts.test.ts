@@ -97,6 +97,13 @@ describe("isExternalizableJsScript", () => {
     expect(isExternalizableJsScript(' type="application/json"')).toBe(false);
     expect(isExternalizableJsScript(" type=application/json")).toBe(false);
   });
+
+  it("keeps the first type when duplicate type attributes are present", () => {
+    // HTML: 後続の同名属性は破棄 → application/json のまま外部化しない
+    expect(
+      isExternalizableJsScript(' type="application/json" type="module"'),
+    ).toBe(false);
+  });
 });
 
 describe("externalizeInlineScriptsInHtml", () => {

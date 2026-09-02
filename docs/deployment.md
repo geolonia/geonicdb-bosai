@@ -25,6 +25,8 @@
 
 CloudFront ではパスパターン別に Cache Policy を分ける（HTML と `/_next/static/*`）。Response Headers Policy のセキュリティヘッダとは別に設定する。
 
+**本リポジトリの CDK サンプル（`infra/cdk`）は Response Headers Policy / TLS / オリジン配線までを対象とし、パス別 Cache Policy（`additionalBehaviors`）は未実装。** HTML 短 TTL と `/_next/static/*` の長期キャッシュは、デプロイ担当が CloudFront コンソールまたは CDK を拡張して設定すること（issue #6 のヘッダ・TLS スコープ外）。
+
 ## 画像
 
 `next.config.ts` で `images.unoptimized: true`（静的 export 制約）。画像を追加する場合:

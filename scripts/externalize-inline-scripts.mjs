@@ -38,7 +38,10 @@ export function parseScriptAttributes(attrs) {
   while ((match = ATTR_TOKEN_RE.exec(attrs ?? "")) !== null) {
     const name = match[1].toLowerCase();
     const value = match[2] ?? match[3] ?? match[4] ?? "";
-    out.set(name, value);
+    // HTML と同様、同名属性は先勝ち（後続は無視）
+    if (!out.has(name)) {
+      out.set(name, value);
+    }
   }
   return out;
 }
