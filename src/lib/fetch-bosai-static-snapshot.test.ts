@@ -24,6 +24,7 @@ import {
 describe("fetchBosaiStaticSnapshot", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    delete process.env.BOSAI_USE_SNAPSHOT_FIXTURE;
   });
 
   it("bakes per-language entities from GeonicDB (build-time path)", async () => {
