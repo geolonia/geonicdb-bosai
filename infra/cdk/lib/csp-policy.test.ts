@@ -37,6 +37,11 @@ describe("buildContentSecurityPolicy", () => {
         connectSrc: ["https://evil.example; script-src"],
       }),
     ).toThrow(/;/);
+    expect(() =>
+      buildContentSecurityPolicy({
+        connectSrc: ["https://api.example https://evil.example"],
+      }),
+    ).toThrow(/whitespace/);
   });
 
   it("appends report-uri when provided", () => {
