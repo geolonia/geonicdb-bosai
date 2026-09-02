@@ -5,6 +5,7 @@
 - 要件定義: [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md)
 - ガイドライン調査: [`docs/research/guidelines.md`](docs/research/guidelines.md)
 - APIキー・ポリシー: [`docs/geonicdb-setup.md`](docs/geonicdb-setup.md)
+- アクセシビリティ: [`docs/a11y/README.md`](docs/a11y/README.md)
 
 ## セットアップ
 
@@ -28,7 +29,37 @@ npm run dev
 | `npm run format` / `format:check` | Prettier                                  |
 | `npm run typecheck`               | TypeScript                                |
 | `npm test`                        | Vitest                                    |
+| `npm run test:a11y`               | トップ主要コンポーネントの axe 検査       |
 | `npm run setup:geonicdb`          | XACML ポリシー・職員 API キー作成（冪等） |
+
+## アクセシビリティ
+
+目標は **JIS X 8341-3:2016 適合レベル AA** および **WCAG 2.2 AA**（追加達成基準の先行対応）です。根拠は障害者差別解消法（合理的配慮の提供義務）と要件 N-01〜N-08（`docs/spec/requirements-spec-v1.1.md` 5.1）。
+
+### サイト上の公開ページ（雛形）
+
+| パス                           | 内容                                     |
+| ------------------------------ | ---------------------------------------- |
+| `/accessibility/`              | ウェブアクセシビリティ方針               |
+| `/accessibility/test-results/` | 試験結果（JIS 附属書 JB.3.1 の表示事項） |
+
+文言の編集は `src/config/accessibility-content.ts` で行います。`【要記入】` を自治体の実値に置き換えてください。**試験前に「適合」と名乗らない**でください（WAIC 対応度表記ガイドライン）。
+
+### チェックリスト・支援技術シナリオ
+
+| ドキュメント                                                                     | 用途                                                                                    |
+| -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| [`docs/a11y/wcag22-aa-checklist.md`](docs/a11y/wcag22-aa-checklist.md)           | WCAG 2.2 追加基準（N-02）と N-01〜N-08 の記入用。完全な達成基準一覧は WAIC 配布物へ委譲 |
+| [`docs/a11y/assistive-tech-scenarios.md`](docs/a11y/assistive-tech-scenarios.md) | NVDA / VoiceOver / TalkBack の主要シナリオ                                              |
+
+導入時の流れ:
+
+1. 方針ページの対象範囲・担当部署・達成期限を更新する
+2. WAIC「[試験実施ガイドライン](https://waic.jp/docs/jis2016/test-guidelines/)」に従いページを選び、手動試験と支援技術シナリオを実施する
+3. チェックリストと `/accessibility/test-results/` を更新して公開する
+4. 地図・PDF・動画を追加したら N-04 / N-06 / N-07 の代替提供を同じチェックリストで確認する
+
+`npm run test:a11y` はコンポーネント単位の自動検査です。**JIS 試験の代替にはなりません**。
 
 ## GeonicDB（住民向け・匿名読み取り）
 

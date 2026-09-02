@@ -273,6 +273,8 @@ export function TopPage({ initialSnapshot }: TopPageProps = {}) {
       </main>
       <SiteFooter
         accessibilityLabel={strings.footerAccessibility}
+        testResultsLabel={strings.footerTestResults}
+        linksLabel={strings.footerLinksLabel}
         contactLabel={strings.footerContact}
         contactValue={strings.footerContactValue}
       />
