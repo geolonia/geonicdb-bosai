@@ -32,6 +32,36 @@ export type BosaiEntitiesClient = {
   }) => Promise<unknown[]>;
 };
 
+/** SDK に AbortSignal が無いため、ビルド時 fetch を Promise.race で打ち切る。 */
+export const BOSAI_SNAPSHOT_FETCH_TIMEOUT_MS = 15_000;
+
+export async function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number = BOSAI_SNAPSHOT_FETCH_TIMEOUT_MS,
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => {
+          reject(new Error(`Bosai snapshot fetch timed out after ${ms}ms`));
+        }, ms);
+      }),
+    ]);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
+}
+
+async function getEntitiesBounded(
+  client: BosaiEntitiesClient,
+  params: { type: string; q?: string; limit?: number },
+  timeoutMs: number,
+): Promise<unknown[]> {
+  return withTimeout(client.getEntities(params), timeoutMs);
+}
+
 /** 失敗時は成功取得時刻を持たない（試行時刻を「最終取得」にしない / F-45）。 */
 function failResult(): BosaiResourceResult<never> {
   return { ok: false, data: null, fetchedAt: null };
@@ -58,13 +88,18 @@ async function fetchBanner(
   client: BosaiEntitiesClient,
   lang: SiteLanguage,
   now: () => Date,
+  timeoutMs: number,
 ): Promise<BosaiResourceResult<BosaiEmergencyBanner>> {
   try {
-    const entities = await client.getEntities({
-      type: "bosai-EmergencyBanner",
-      q: languagePropertyQuery(lang),
-      limit: 1,
-    });
+    const entities = await getEntitiesBounded(
+      client,
+      {
+        type: "bosai-EmergencyBanner",
+        q: languagePropertyQuery(lang),
+        limit: 1,
+      },
+      timeoutMs,
+    );
     const data = parseFirst(entities, parseEmergencyBanner);
     if (!data) return failResult();
     return okResult(data, now().toISOString());
@@ -77,13 +112,18 @@ async function fetchAlertLevel(
   client: BosaiEntitiesClient,
   lang: SiteLanguage,
   now: () => Date,
+  timeoutMs: number,
 ): Promise<BosaiResourceResult<BosaiAlertLevel>> {
   try {
-    const entities = await client.getEntities({
-      type: "bosai-AlertLevel",
-      q: languagePropertyQuery(lang),
-      limit: 1,
-    });
+    const entities = await getEntitiesBounded(
+      client,
+      {
+        type: "bosai-AlertLevel",
+        q: languagePropertyQuery(lang),
+        limit: 1,
+      },
+      timeoutMs,
+    );
     const data = parseFirst(entities, parseAlertLevel);
     if (!data) return failResult();
     return okResult(data, now().toISOString());
@@ -96,13 +136,18 @@ async function fetchNotices(
   client: BosaiEntitiesClient,
   lang: SiteLanguage,
   now: () => Date,
+  timeoutMs: number,
 ): Promise<BosaiResourceResult<BosaiNotice[]>> {
   try {
-    const entities = await client.getEntities({
-      type: "bosai-Notice",
-      q: languagePropertyQuery(lang),
-      limit: 50,
-    });
+    const entities = await getEntitiesBounded(
+      client,
+      {
+        type: "bosai-Notice",
+        q: languagePropertyQuery(lang),
+        limit: 50,
+      },
+      timeoutMs,
+    );
     const data = parseNoticeList(entities).items;
     return okResult(data, now().toISOString());
   } catch {
@@ -114,11 +159,12 @@ async function fetchLangSnapshot(
   client: BosaiEntitiesClient,
   lang: SiteLanguage,
   now: () => Date,
+  timeoutMs: number,
 ): Promise<BosaiLangSnapshot> {
   const [banner, alertLevel, notices] = await Promise.all([
-    fetchBanner(client, lang, now),
-    fetchAlertLevel(client, lang, now),
-    fetchNotices(client, lang, now),
+    fetchBanner(client, lang, now, timeoutMs),
+    fetchAlertLevel(client, lang, now, timeoutMs),
+    fetchNotices(client, lang, now, timeoutMs),
   ]);
   return { banner, alertLevel, notices };
 }
@@ -182,9 +228,12 @@ export function assertBosaiStaticSnapshotDeployable(
 export async function fetchBosaiStaticSnapshot(options?: {
   client?: BosaiEntitiesClient;
   now?: () => Date;
+  /** テスト短縮用。未指定時は `BOSAI_SNAPSHOT_FETCH_TIMEOUT_MS`。 */
+  fetchTimeoutMs?: number;
 }): Promise<BosaiStaticSnapshot> {
   const now = options?.now ?? (() => new Date());
   const builtAt = now().toISOString();
+  const timeoutMs = options?.fetchTimeoutMs ?? BOSAI_SNAPSHOT_FETCH_TIMEOUT_MS;
   const client = resolveClient(options?.client);
 
   if (!client) {
@@ -200,7 +249,7 @@ export async function fetchBosaiStaticSnapshot(options?: {
   const entries = await Promise.all(
     SITE_LANGUAGES.map(
       async (lang) =>
-        [lang, await fetchLangSnapshot(client, lang, now)] as const,
+        [lang, await fetchLangSnapshot(client, lang, now, timeoutMs)] as const,
     ),
   );
 

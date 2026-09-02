@@ -183,4 +183,23 @@ describe("fetchBosaiStaticSnapshot", () => {
     expect(countSuccessfulBosaiResources(snapshot)).toBe(1);
     expect(() => assertBosaiStaticSnapshotDeployable(snapshot)).not.toThrow();
   });
+
+  it("treats hung getEntities as per-resource failure via timeout", async () => {
+    const getEntities = vi.fn(
+      () =>
+        new Promise<unknown[]>(() => {
+          /* never resolves */
+        }),
+    );
+    const snapshot = await fetchBosaiStaticSnapshot({
+      client: { getEntities },
+      now: () => new Date("2026-09-02T00:00:00Z"),
+      fetchTimeoutMs: 20,
+    });
+    expect(snapshot.languages.ja.banner.ok).toBe(false);
+    expect(snapshot.languages.ja.alertLevel.ok).toBe(false);
+    expect(snapshot.languages.ja.notices.ok).toBe(false);
+    expect(countSuccessfulBosaiResources(snapshot)).toBe(0);
+    expect(() => assertBosaiStaticSnapshotDeployable(snapshot)).toThrow(/N-10/);
+  });
 });
