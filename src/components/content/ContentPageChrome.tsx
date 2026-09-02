@@ -28,6 +28,7 @@ export function ContentPageChrome({ children }: Props) {
             <Link href="/accessibility/test-results/">
               {strings.footerTestResults}
             </Link>
+            <Link href="/privacy/">{strings.footerPrivacy}</Link>
             <Link href="/">トップページ</Link>
           </nav>
         </div>
@@ -36,6 +37,7 @@ export function ContentPageChrome({ children }: Props) {
       <SiteFooter
         accessibilityLabel={strings.footerAccessibility}
         testResultsLabel={strings.footerTestResults}
+        privacyLabel={strings.footerPrivacy}
         linksLabel={strings.footerLinksLabel}
         contactLabel={strings.footerContact}
         contactValue={strings.footerContactValue}

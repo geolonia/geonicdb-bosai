@@ -13,6 +13,7 @@ export type UiStrings = {
   newsUpdated: string;
   footerAccessibility: string;
   footerTestResults: string;
+  footerPrivacy: string;
   footerLinksLabel: string;
   footerContact: string;
   footerContactValue: string;
@@ -52,6 +53,7 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
     newsUpdated: "更新",
     footerAccessibility: "ウェブアクセシビリティ方針",
     footerTestResults: "試験結果",
+    footerPrivacy: "プライバシーポリシー",
     footerLinksLabel: "フッターリンク",
     footerContact: "お問い合わせ",
     footerContactValue: "防災担当: 000-0000-0000",
@@ -98,6 +100,7 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
     newsUpdated: "Updated",
     footerAccessibility: "Web Accessibility Policy",
     footerTestResults: "Test Results",
+    footerPrivacy: "Privacy Policy",
     footerLinksLabel: "Footer links",
     footerContact: "Contact",
     footerContactValue: "Disaster Management: 000-0000-0000",
@@ -144,6 +147,7 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
     newsUpdated: "更新",
     footerAccessibility: "网页无障碍方针",
     footerTestResults: "测试结果",
+    footerPrivacy: "隐私政策",
     footerLinksLabel: "页脚链接",
     footerContact: "联系方式",
     footerContactValue: "防灾负责: 000-0000-0000",
@@ -190,6 +194,7 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
     newsUpdated: "Cập nhật",
     footerAccessibility: "Chính sách tiếp cận web",
     footerTestResults: "Kết quả kiểm tra",
+    footerPrivacy: "Chính sách quyền riêng tư",
     footerLinksLabel: "Liên kết chân trang",
     footerContact: "Liên hệ",
     footerContactValue: "Bộ phận phòng chống thiên tai: 000-0000-0000",
@@ -238,6 +243,7 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
     newsUpdated: "업데이트",
     footerAccessibility: "웹 접근성 방침",
     footerTestResults: "시험 결과",
+    footerPrivacy: "개인정보 처리방침",
     footerLinksLabel: "바닥글 링크",
     footerContact: "문의",
     footerContactValue: "방재 담당: 000-0000-0000",

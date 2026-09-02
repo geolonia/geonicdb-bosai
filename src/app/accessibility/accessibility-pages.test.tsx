@@ -91,11 +91,12 @@ describe("accessibility test results page (N-01 / JB.3.1)", () => {
 });
 
 describe("SiteFooter consistent help (3.2.6)", () => {
-  it("links to policy and test results in a stable order", () => {
+  it("links to policy, test results, and privacy in a stable order", () => {
     render(
       <SiteFooter
         accessibilityLabel={testStrings.footerAccessibility}
         testResultsLabel={testStrings.footerTestResults}
+        privacyLabel={testStrings.footerPrivacy}
         linksLabel={testStrings.footerLinksLabel}
         contactLabel={testStrings.footerContact}
         contactValue={testStrings.footerContactValue}
@@ -105,11 +106,12 @@ describe("SiteFooter consistent help (3.2.6)", () => {
       name: testStrings.footerLinksLabel,
     });
     const links = within(nav).getAllByRole("link");
-    expect(links).toHaveLength(2);
+    expect(links).toHaveLength(3);
     expect(links[0].getAttribute("href")).toMatch(/^\/accessibility\/?$/);
     expect(links[1].getAttribute("href")).toMatch(
       /^\/accessibility\/test-results\/?$/,
     );
+    expect(links[2].getAttribute("href")).toMatch(/^\/privacy\/?$/);
     expect(
       screen.getByText(new RegExp(testStrings.footerContact)),
     ).toBeInTheDocument();
