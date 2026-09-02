@@ -27,11 +27,17 @@
 
 ### 1.3 CDN / 静的配信の試験
 
-静的 export 済みの `out/` をステージング CDN に載せ、k6 / vegeta / hey 等でトップパスを叩く。
+静的 export 済みの `out/` をステージング CDN に載せ、導入時に決めた目標（例の表なら **2,000 RPS** または同等の同時接続）を **rate × 試験時間** に対応付けて負荷を掛ける。
 
 ```bash
-# 例: hey（インストール済みの場合）
-hey -n 20000 -c 200 -m GET "https://staging.example.jp/"
+# 例: vegeta — 2,000 RPS を 60 秒（総約 120,000 リクエスト）
+echo "GET https://staging.example.jp/" \
+  | vegeta attack -rate=2000/s -duration=60s \
+  | vegeta report
+
+# 例: k6 — 同じ目標を VU / 到達 RPS で表現する場合
+# k6 run --vus 500 --duration 60s scripts/load-top.js
+# （scripts/load-top.js 内で目標 RPS に合わせて sleep / stages を調整）
 ```
 
 確認観点:

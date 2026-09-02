@@ -21,7 +21,7 @@
 
 **方針（issue #9 / N-10）**: 災害時トップ等の主要情報は **ビルド時に GeonicDB から取得して静的 HTML へ焼き込む**。住民のブラウザは初期表示に GeonicDB を必要としない。差分の反映だけを `@geolonia/geonicdb-sdk` の React hooks（`useLdEntities`）と WebSocket 購読（`useBosaiLiveUpdates`）が担う。これにより N-10（CMS・DB 停止時も最終公開状態を維持）と N-30（プログレッシブエンハンスメント）を両立する。
 
-```
+```text
 [職員]                     [GeonicDB]                         [ビルド / CDN]          [住民のブラウザ]
   |  NGSI-LD Entity更新       |                                     |                        |
   |  (geonic CLI /            |  fetchBosaiStaticSnapshot() ------->|  静的 HTML に埋込        |
