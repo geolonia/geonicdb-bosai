@@ -1,13 +1,17 @@
 /**
- * Lighthouse CI 設定（仕様 5.8.4 / issue #6）。
+ * Lighthouse CI 設定（仕様 5.8.4 / 5.8.5 / issue #6）。
  *
  * 災害時トップ相当のページ重量予算:
  * - HTML ≤ 50KB … error（CI ブロック）
  * - CSS ≤ 30KB … error（CI ブロック）
  * - JS ≤ 100KB（圧縮後）… warn（現状 Next.js ランタイム超過。削減は別作業）
  * - 合計 ≤ 500KB … warn
- * - Performance スコア ≥ 0.95 … error
  *
+ * 4 カテゴリ（目標 100。仕様は「少なくとも 95 以上を維持」）:
+ * - performance / accessibility / seo … 実測 1.0 → error（minScore 1）
+ * - best-practices … 実測 0.96 → 目標 100 未達のため warn（minScore 1）
+ *
+ * 実測ログ: 2026-09-02 `npm run lighthouse` → `.lighthouseci/lhr-*.json`
  * CI 組み込みは ci.yml（#9）。本ファイルは閾値のみ。
  *
  * 実行: `npm run lighthouse`（内部で build → lhci autorun）
@@ -25,7 +29,10 @@ module.exports = {
     },
     assert: {
       assertions: {
-        "categories:performance": ["error", { minScore: 0.95 }],
+        "categories:performance": ["error", { minScore: 1 }],
+        "categories:accessibility": ["error", { minScore: 1 }],
+        "categories:best-practices": ["warn", { minScore: 1 }],
+        "categories:seo": ["error", { minScore: 1 }],
         "resource-summary:document:size": [
           "error",
           { maxNumericValue: 50 * 1024 },

@@ -27,6 +27,23 @@ describe("isExternalizableJsScript", () => {
     expect(isExternalizableJsScript(' src="/a.js"')).toBe(false);
   });
 
+  it("still externalizes when only data-src is present (not a real src attr)", () => {
+    expect(isExternalizableJsScript(' data-src="/x.js"')).toBe(true);
+    const { html, replaced } = externalizeInlineScriptsInHtml(
+      '<script data-src="x">boot()</script>',
+      {
+        writeFile(relPath) {
+          return `/${relPath}`;
+        },
+      },
+    );
+    expect(replaced).toBe(1);
+    expect(html).toMatch(
+      /<script src="\/_next\/csp-inline\/[a-f0-9]{16}\.js"><\/script>/,
+    );
+    expect(html).not.toContain("boot()");
+  });
+
   it("skips non-JS data blocks (near-miss: application/ld+json)", () => {
     expect(isExternalizableJsScript(' type="application/ld+json"')).toBe(false);
     expect(isExternalizableJsScript(' type="application/json"')).toBe(false);

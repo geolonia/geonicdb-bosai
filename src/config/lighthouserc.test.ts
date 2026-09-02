@@ -19,11 +19,16 @@ const lighthouserc = require(
 describe("lighthouserc budgets (spec 5.8.4 / issue #6)", () => {
   const { assertions } = lighthouserc.ci.assert;
 
-  it("blocks on HTML/CSS over budget and performance floor", () => {
+  it("blocks on HTML/CSS over budget and categories that meet 100", () => {
     expect(assertions["categories:performance"]).toEqual([
       "error",
-      { minScore: 0.95 },
+      { minScore: 1 },
     ]);
+    expect(assertions["categories:accessibility"]).toEqual([
+      "error",
+      { minScore: 1 },
+    ]);
+    expect(assertions["categories:seo"]).toEqual(["error", { minScore: 1 }]);
     expect(assertions["resource-summary:document:size"]).toEqual([
       "error",
       { maxNumericValue: 50 * 1024 },
@@ -34,7 +39,11 @@ describe("lighthouserc budgets (spec 5.8.4 / issue #6)", () => {
     ]);
   });
 
-  it("warns (does not error) on JS and total over budget", () => {
+  it("warns on best-practices (measured below 100) and JS/total over budget", () => {
+    expect(assertions["categories:best-practices"]).toEqual([
+      "warn",
+      { minScore: 1 },
+    ]);
     expect(assertions["resource-summary:script:size"]).toEqual([
       "warn",
       { maxNumericValue: 100 * 1024 },

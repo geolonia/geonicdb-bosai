@@ -32,6 +32,11 @@ describe("buildContentSecurityPolicy", () => {
     expect(() =>
       buildContentSecurityPolicy({ styleSrc: ["'unsafe-inline'"] }),
     ).toThrow(/unsafe/);
+    expect(() =>
+      buildContentSecurityPolicy({
+        connectSrc: ["https://evil.example; script-src"],
+      }),
+    ).toThrow(/;/);
   });
 
   it("appends report-uri when provided", () => {

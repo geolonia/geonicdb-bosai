@@ -25,9 +25,23 @@ const SCRIPT_TAG_RE = /<script(\s[^>]*)?>([\s\S]*?)<\/script>/gi;
  * @param {string | undefined} attrs
  * @returns {boolean}
  */
+/**
+ * 属性文字列に名前ちょうど `src` の属性があるか（`data-src` 等は除外）。
+ * @param {string} attrs
+ * @returns {boolean}
+ */
+export function hasSrcAttribute(attrs) {
+  // 語境界: 先頭または空白のあと、かつ属性名が正確に src（ハイフン接頭辞なし）
+  return /(?:^|\s)src\s*=/i.test(attrs);
+}
+
+/**
+ * @param {string | undefined} attrs
+ * @returns {boolean}
+ */
 export function isExternalizableJsScript(attrs) {
   const a = attrs ?? "";
-  if (/\bsrc\s*=/i.test(a)) {
+  if (hasSrcAttribute(a)) {
     return false;
   }
   const typeMatch = a.match(/\btype\s*=\s*(["'])([^"']*)\1/i);
