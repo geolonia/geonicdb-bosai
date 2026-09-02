@@ -73,7 +73,6 @@ describe("resolveBosaiResourceView", () => {
 
   it("near-miss: empty live notices array is success, must not fall back to snapshot", () => {
     const snapshotNotices = [makeBanner("notice")];
-    // notices use BosaiNotice[]; use empty array as the live success sentinel.
     const view = resolveBosaiResourceView({
       liveLoading: false,
       liveError: null,
@@ -92,16 +91,13 @@ describe("resolveBosaiResourceView", () => {
     });
   });
 
-  it("near-miss: live null (missing entity) falls back to snapshot, not error", () => {
+  it("live empty success (entity cleared) must not revive snapshot", () => {
     const view = resolveBosaiResourceView({
       liveLoading: false,
       liveError: null,
       liveData: null,
       snapshot: { ok: true, data: banner, fetchedAt },
     });
-    expect(view.kind).toBe("ready");
-    if (view.kind === "ready") {
-      expect(view.stale).toBe(true);
-    }
+    expect(view).toEqual({ kind: "empty" });
   });
 });

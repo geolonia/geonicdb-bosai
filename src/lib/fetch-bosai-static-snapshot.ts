@@ -57,7 +57,7 @@ function parseFirst<T>(
 async function fetchBanner(
   client: BosaiEntitiesClient,
   lang: SiteLanguage,
-  fetchedAt: string,
+  now: () => Date,
 ): Promise<BosaiResourceResult<BosaiEmergencyBanner>> {
   try {
     const entities = await client.getEntities({
@@ -67,7 +67,7 @@ async function fetchBanner(
     });
     const data = parseFirst(entities, parseEmergencyBanner);
     if (!data) return failResult();
-    return okResult(data, fetchedAt);
+    return okResult(data, now().toISOString());
   } catch {
     return failResult();
   }
@@ -76,7 +76,7 @@ async function fetchBanner(
 async function fetchAlertLevel(
   client: BosaiEntitiesClient,
   lang: SiteLanguage,
-  fetchedAt: string,
+  now: () => Date,
 ): Promise<BosaiResourceResult<BosaiAlertLevel>> {
   try {
     const entities = await client.getEntities({
@@ -86,7 +86,7 @@ async function fetchAlertLevel(
     });
     const data = parseFirst(entities, parseAlertLevel);
     if (!data) return failResult();
-    return okResult(data, fetchedAt);
+    return okResult(data, now().toISOString());
   } catch {
     return failResult();
   }
@@ -95,7 +95,7 @@ async function fetchAlertLevel(
 async function fetchNotices(
   client: BosaiEntitiesClient,
   lang: SiteLanguage,
-  fetchedAt: string,
+  now: () => Date,
 ): Promise<BosaiResourceResult<BosaiNotice[]>> {
   try {
     const entities = await client.getEntities({
@@ -104,7 +104,7 @@ async function fetchNotices(
       limit: 50,
     });
     const data = parseNoticeList(entities).items;
-    return okResult(data, fetchedAt);
+    return okResult(data, now().toISOString());
   } catch {
     return failResult();
   }
@@ -113,12 +113,12 @@ async function fetchNotices(
 async function fetchLangSnapshot(
   client: BosaiEntitiesClient,
   lang: SiteLanguage,
-  fetchedAt: string,
+  now: () => Date,
 ): Promise<BosaiLangSnapshot> {
   const [banner, alertLevel, notices] = await Promise.all([
-    fetchBanner(client, lang, fetchedAt),
-    fetchAlertLevel(client, lang, fetchedAt),
-    fetchNotices(client, lang, fetchedAt),
+    fetchBanner(client, lang, now),
+    fetchAlertLevel(client, lang, now),
+    fetchNotices(client, lang, now),
   ]);
   return { banner, alertLevel, notices };
 }
@@ -183,7 +183,8 @@ export async function fetchBosaiStaticSnapshot(options?: {
   client?: BosaiEntitiesClient;
   now?: () => Date;
 }): Promise<BosaiStaticSnapshot> {
-  const builtAt = (options?.now ?? (() => new Date()))().toISOString();
+  const now = options?.now ?? (() => new Date());
+  const builtAt = now().toISOString();
   const client = resolveClient(options?.client);
 
   if (!client) {
@@ -199,7 +200,7 @@ export async function fetchBosaiStaticSnapshot(options?: {
   const entries = await Promise.all(
     SITE_LANGUAGES.map(
       async (lang) =>
-        [lang, await fetchLangSnapshot(client, lang, builtAt)] as const,
+        [lang, await fetchLangSnapshot(client, lang, now)] as const,
     ),
   );
 

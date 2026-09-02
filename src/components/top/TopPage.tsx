@@ -208,7 +208,7 @@ export function TopPage({ initialSnapshot }: TopPageProps = {}) {
             />
           ) : null}
         </>
-      ) : bannerView.kind === "error" ? (
+      ) : bannerView.kind === "empty" ? null : bannerView.kind === "error" ? (
         <EmergencyBannerError
           message={formatLoadError(strings, bannerView.lastFetchedAt, lang)}
         />
@@ -232,7 +232,7 @@ export function TopPage({ initialSnapshot }: TopPageProps = {}) {
               />
             ) : null}
           </>
-        ) : alertView.kind === "error" ? (
+        ) : alertView.kind === "empty" ? null : alertView.kind === "error" ? (
           <AlertLevelError
             heading={strings.alertLevelHeading}
             message={formatLoadError(strings, alertView.lastFetchedAt, lang)}
@@ -259,7 +259,8 @@ export function TopPage({ initialSnapshot }: TopPageProps = {}) {
               />
             ) : null}
           </>
-        ) : noticesView.kind === "error" ? (
+        ) : noticesView.kind === "empty" ? null : noticesView.kind ===
+          "error" ? (
           <NewsListError
             heading={strings.newsHeading}
             message={formatLoadError(strings, noticesView.lastFetchedAt, lang)}

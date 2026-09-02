@@ -125,6 +125,39 @@ describe("fetchBosaiStaticSnapshot", () => {
     );
   });
 
+  it("records per-resource fetchedAt at success time (not builtAt start)", async () => {
+    let tick = 0;
+    const getEntities = vi.fn(async (params: { type: string; q?: string }) => {
+      if (!params.q?.includes('"ja"')) return [];
+      if (params.type === "bosai-EmergencyBanner")
+        return [makeBanner("notice")];
+      if (params.type === "bosai-AlertLevel") return [makeAlertLevel(1)];
+      if (params.type === "bosai-Notice") return [makeNotice()];
+      return [];
+    });
+    const snapshot = await fetchBosaiStaticSnapshot({
+      client: { getEntities },
+      now: () => {
+        tick += 1;
+        return new Date(Date.UTC(2026, 8, 2, 0, tick, 0));
+      },
+    });
+    expect(snapshot.builtAt).toBe("2026-09-02T00:01:00.000Z");
+    expect(snapshot.languages.ja.banner.ok).toBe(true);
+    expect(snapshot.languages.ja.alertLevel.ok).toBe(true);
+    expect(snapshot.languages.ja.notices.ok).toBe(true);
+    if (
+      snapshot.languages.ja.banner.ok &&
+      snapshot.languages.ja.alertLevel.ok &&
+      snapshot.languages.ja.notices.ok
+    ) {
+      expect(snapshot.languages.ja.banner.fetchedAt).not.toBe(snapshot.builtAt);
+      expect(snapshot.languages.ja.banner.fetchedAt).toMatch(
+        /^2026-09-02T00:0[2-9]:00\.000Z$/,
+      );
+    }
+  });
+
   it("near-miss: a single successful resource is enough to deploy", () => {
     const fail = { ok: false as const, data: null, fetchedAt: null };
     const snapshot: BosaiStaticSnapshot = {
