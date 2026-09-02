@@ -8,9 +8,17 @@ import {
 
 describe("accessibility-content invariants", () => {
   it("keeps JB.3.1 field list exactly 9 items required by the annex", () => {
-    expect(TEST_RESULT_JB31_FIELDS).toHaveLength(9);
-    expect(TEST_RESULT_JB31_FIELDS).toContain("達成基準チェックリスト");
-    expect(TEST_RESULT_JB31_FIELDS).toContain("試験を行ったウェブページのURI");
+    expect([...TEST_RESULT_JB31_FIELDS]).toEqual([
+      "表明日",
+      "規格の規格番号及び改正年",
+      "満たしている適合レベル",
+      "対象となるウェブページに関する簡潔な説明",
+      "依存したウェブコンテンツ技術のリスト",
+      "試験対象のウェブページを選択した方法",
+      "試験を行ったウェブページのURI",
+      "達成基準チェックリスト",
+      "試験実施期間",
+    ]);
   });
 
   it("covers all six WCAG 2.2 additions required by N-02", () => {

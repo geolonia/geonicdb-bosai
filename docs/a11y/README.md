@@ -6,7 +6,7 @@
 
 | ファイル | 用途 |
 | --- | --- |
-| [`wcag22-aa-checklist.md`](./wcag22-aa-checklist.md) | WCAG 2.2 AA（2.2 追加基準含む）の達成基準チェックリスト |
+| [`wcag22-aa-checklist.md`](./wcag22-aa-checklist.md) | WCAG 2.2 追加 6 基準と N-01〜N-08 / JIS 要約欄（完全一覧は WAIC 配布物へ委譲） |
 | [`assistive-tech-scenarios.md`](./assistive-tech-scenarios.md) | NVDA / VoiceOver / TalkBack 向け主要シナリオ |
 
 サイト上の公開ページ:

@@ -47,10 +47,10 @@ npm run dev
 
 ### チェックリスト・支援技術シナリオ
 
-| ドキュメント                                                                     | 用途                                                                       |
-| -------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| [`docs/a11y/wcag22-aa-checklist.md`](docs/a11y/wcag22-aa-checklist.md)           | WCAG 2.2 AA（2.4.11 / 2.5.7 / 2.5.8 / 3.2.6 / 3.3.7 / 3.3.8 含む）の記入用 |
-| [`docs/a11y/assistive-tech-scenarios.md`](docs/a11y/assistive-tech-scenarios.md) | NVDA / VoiceOver / TalkBack の主要シナリオ                                 |
+| ドキュメント                                                                     | 用途                                                                                    |
+| -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| [`docs/a11y/wcag22-aa-checklist.md`](docs/a11y/wcag22-aa-checklist.md)           | WCAG 2.2 追加基準（N-02）と N-01〜N-08 の記入用。完全な達成基準一覧は WAIC 配布物へ委譲 |
+| [`docs/a11y/assistive-tech-scenarios.md`](docs/a11y/assistive-tech-scenarios.md) | NVDA / VoiceOver / TalkBack の主要シナリオ                                              |
 
 導入時の流れ:
 
