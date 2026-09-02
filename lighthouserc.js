@@ -7,7 +7,7 @@
  *
  * 実行: `npm run lighthouse`（先に `npm run build`）
  *
- * CI ランナーでは単発計測が揺れやすいため numberOfRuns=3 + optimistic
+ * CI ランナーでは単発計測が揺れやすいため numberOfRuns=3 + median
  * （閾値 0.9 / 3MiB 自体は変更しない）。
  */
 module.exports = {
@@ -25,11 +25,11 @@ module.exports = {
       assertions: {
         "categories:performance": [
           "error",
-          { minScore: 0.9, aggregationMethod: "optimistic" },
+          { minScore: 0.9, aggregationMethod: "median" },
         ],
         "resource-summary:total:size": [
           "error",
-          { maxNumericValue: 3_145_728, aggregationMethod: "optimistic" },
+          { maxNumericValue: 3_145_728, aggregationMethod: "median" },
         ],
       },
     },
