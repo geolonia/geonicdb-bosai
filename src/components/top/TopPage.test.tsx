@@ -36,7 +36,7 @@ function makeSnapshot(overrides?: { bannerOk?: boolean }): BosaiStaticSnapshot {
   const langSnap = {
     banner: bannerOk
       ? ({ ok: true, data: bannerJa, fetchedAt: builtAt } as const)
-      : ({ ok: false, data: null, fetchedAt: builtAt } as const),
+      : ({ ok: false, data: null, fetchedAt: null } as const),
     alertLevel: {
       ok: true as const,
       data: alertJa,
@@ -156,7 +156,7 @@ describe("TopPage load states", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows F-45 last-fetch error when live and snapshot both fail", async () => {
+  it("shows generic loadError when live and snapshot both fail without last fetch time", async () => {
     useLdEntitiesMock.mockReturnValue({
       ...idle,
       error: new Error("network"),
@@ -165,8 +165,9 @@ describe("TopPage load states", () => {
     render(<TopPage initialSnapshot={makeSnapshot({ bannerOk: false })} />);
     await waitFor(() => {
       expect(
-        screen.getByText(/情報を取得できません（最終取得/),
+        screen.getByText(/情報を読み込めませんでした/),
       ).toBeInTheDocument();
     });
+    expect(screen.queryByText(/最終取得/)).not.toBeInTheDocument();
   });
 });

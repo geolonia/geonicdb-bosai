@@ -36,12 +36,14 @@
 |---|---|
 | 通常時 | ビルド時の値を即座に表示 → WS / REST で最新値へ差し替え |
 | JS 無効・古いブラウザ | ビルド時の値が表示される |
-| GeonicDB 停止 | ビルド時の値が表示され続ける（N-10） |
+| GeonicDB 停止（閲覧時） | **直近に成功したビルド**の埋込値が表示され続ける（N-10） |
+| GeonicDB 停止（定期リビルド時） | スナップショット全滅なら **build 失敗 → deploy スキップ**。CDN 上の前回成功成果物は上書きされない |
 | ビルド後にデータ更新 | WS で即時反映（N-14） |
 
 - **職員側（書き込み）**: GeonicDB の NGSI-LD API を `geonic` CLI や Claude Desktop（MCP）経由で直接操作する。`bosai-write` ポリシー + `bosai-staff-write` APIキーを使用（`docs/geonicdb-setup.md`）。職員向け管理画面（Web UI）は当面実装しない（`REQUIREMENTS.md` 5節）。
 - **住民側（読み取り）**: 初期 HTML はビルド時スナップショット。ライブ更新用 SDK は **匿名モード（`anonymous: true`）**（REST）および読み取り専用 WS キー（任意）。読み取り可否はサーバー側の XACML ポリシー `bosai-public-read` で制御する。`NEXT_PUBLIC_GEONICDB_URL` / `NEXT_PUBLIC_GEONICDB_TENANT` は秘密情報ではない。
-- **鮮度の明示（F-45）**: ビルド時の値を表示している間は「この情報は HH:MM 時点」と必ず明示する。取得失敗時は「情報を取得できません（最終取得 HH:MM）」とする。リソース単位で独立させ、1 つの失敗が他を巻き込まない。
+- **鮮度の明示（F-45）**: ビルド時の値を表示している間は「この情報は HH:MM 時点」と必ず明示する。取得失敗時は、**成功した最終取得時刻が分かる場合のみ**「情報を取得できません（最終取得 HH:MM）」とし、無ければ汎用の読み込みエラー文言にする（試行失敗時刻を最終取得と偽らない）。リソース単位で独立させ、1 つの失敗が他を巻き込まない。
+- **全滅時の fail-closed**: 成功リソースが 0 のスナップショットは `assertBosaiStaticSnapshotDeployable` でビルドを失敗させ、定期リビルドが空 HTML で前回公開を上書きしないようにする。
 - **実装の入口**: `src/lib/fetch-bosai-static-snapshot.ts`（ビルド時）、`src/lib/resolve-bosai-resource-view.ts`（ライブとの合成）、`src/app/page.tsx` → `TopPage` の `initialSnapshot`。緊急バナー・警戒レベル・お知らせは同じパターン。言語切替時は埋込スナップショットの言語キーを使い、ライブ側は `q: 'language=="<lang>"'` で再フェッチする。
 - **避難所など未実装ページ**: 同じ `fetchBosaiStaticSnapshot` / `resolveBosaiResourceView` パターンを拡張して焼き込む（詳細は `docs/availability-ops.md`）。ページ自体の実装は別 issue（#2 等）。
 

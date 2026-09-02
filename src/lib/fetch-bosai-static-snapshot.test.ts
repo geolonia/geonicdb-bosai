@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SITE_LANGUAGES } from "@/config/site-language";
 import { makeAlertLevel, makeBanner, makeNotice } from "@/test/fixtures";
+import type { BosaiStaticSnapshot } from "@/types/bosai-static-snapshot";
 
 vi.mock("@/lib/geonicdb-public-client", async () => {
   const actual = await vi.importActual<
@@ -14,7 +15,11 @@ vi.mock("@/lib/geonicdb-public-client", async () => {
   };
 });
 
-import { fetchBosaiStaticSnapshot } from "@/lib/fetch-bosai-static-snapshot";
+import {
+  assertBosaiStaticSnapshotDeployable,
+  countSuccessfulBosaiResources,
+  fetchBosaiStaticSnapshot,
+} from "@/lib/fetch-bosai-static-snapshot";
 
 describe("fetchBosaiStaticSnapshot", () => {
   beforeEach(() => {
@@ -54,11 +59,13 @@ describe("fetchBosaiStaticSnapshot", () => {
       fetchedAt: snapshot.builtAt,
     });
     expect(snapshot.languages.en.banner.ok).toBe(false);
+    expect(snapshot.languages.en.banner.fetchedAt).toBeNull();
     expect(snapshot.languages.en.notices).toEqual({
       ok: true,
       data: [],
       fetchedAt: snapshot.builtAt,
     });
+    expect(() => assertBosaiStaticSnapshotDeployable(snapshot)).not.toThrow();
   });
 
   it("isolates per-resource failures (one getEntities throw does not wipe others)", async () => {
@@ -82,12 +89,14 @@ describe("fetchBosaiStaticSnapshot", () => {
     expect(snapshot.languages.ja.alertLevel).toEqual({
       ok: false,
       data: null,
-      fetchedAt: snapshot.builtAt,
+      fetchedAt: null,
     });
     expect(snapshot.languages.ja.notices.ok).toBe(true);
+    // 部分失敗でもデプロイ可（N-10 のリソース隔離）
+    expect(() => assertBosaiStaticSnapshotDeployable(snapshot)).not.toThrow();
   });
 
-  it("returns all-failed snapshot when no client can be resolved (build without URL)", async () => {
+  it("returns all-failed snapshot with null fetchedAt when no client (not deployable)", async () => {
     const snapshot = await fetchBosaiStaticSnapshot({
       now: () => new Date("2026-09-02T00:00:00Z"),
     });
@@ -95,6 +104,49 @@ describe("fetchBosaiStaticSnapshot", () => {
     for (const lang of SITE_LANGUAGES) {
       expect(snapshot.languages[lang].banner.ok).toBe(false);
       expect(snapshot.languages[lang].banner.fetchedAt).toBeNull();
+      expect(snapshot.languages[lang].alertLevel.fetchedAt).toBeNull();
+      expect(snapshot.languages[lang].notices.fetchedAt).toBeNull();
     }
+    expect(countSuccessfulBosaiResources(snapshot)).toBe(0);
+  });
+
+  it("refuses deploy when every resource failed (N-10 fail-closed on total wipeout)", async () => {
+    const getEntities = vi.fn(async () => {
+      throw new Error("GeonicDB down");
+    });
+    const snapshot = await fetchBosaiStaticSnapshot({
+      client: { getEntities },
+      now: () => new Date("2026-09-02T00:00:00Z"),
+    });
+    expect(countSuccessfulBosaiResources(snapshot)).toBe(0);
+    expect(() => assertBosaiStaticSnapshotDeployable(snapshot)).toThrow(
+      /refusing to overwrite last published state \(N-10\)/,
+    );
+  });
+
+  it("near-miss: a single successful resource is enough to deploy", () => {
+    const fail = { ok: false as const, data: null, fetchedAt: null };
+    const snapshot: BosaiStaticSnapshot = {
+      builtAt: "2026-09-02T00:00:00.000Z",
+      languages: Object.fromEntries(
+        SITE_LANGUAGES.map((lang) => [
+          lang,
+          {
+            banner: fail,
+            alertLevel: fail,
+            notices:
+              lang === "ja"
+                ? {
+                    ok: true as const,
+                    data: [makeNotice()],
+                    fetchedAt: "2026-09-02T00:00:00.000Z",
+                  }
+                : fail,
+          },
+        ]),
+      ) as BosaiStaticSnapshot["languages"],
+    };
+    expect(countSuccessfulBosaiResources(snapshot)).toBe(1);
+    expect(() => assertBosaiStaticSnapshotDeployable(snapshot)).not.toThrow();
   });
 });

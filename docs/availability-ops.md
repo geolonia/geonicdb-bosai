@@ -73,8 +73,10 @@ hey -n 20000 -c 200 -m GET "https://staging.example.jp/"
 閲覧者がいない間の更新を静的側へ取り込むため、Deploy workflow に schedule を付ける（issue #9 方針）。
 
 - 既定: 6 時間ごと（導入自治体で変更可）
-- 成功時: 最新エンティティが HTML に焼き込まれる
-- 失敗時: 前回成功成果物が CDN に残る（N-10）。監視でビルド失敗を拾う
+- 成功時: 最新エンティティが HTML に焼き込まれてデプロイされる
+- **失敗時（GeonicDB 全滅など、成功リソース 0）**: `assertBosaiStaticSnapshotDeployable` が build を落とす → `deploy` job は `needs: build` でスキップ → **前回成功成果物が CDN / Pages に残る（N-10）**
+- リソース単位の部分失敗（例: 警戒レベルだけ取得失敗）では build は通る。失敗リソースは `ok:false`（`fetchedAt: null`）として埋め込み、他リソースは公開する
+- PR CI など GeonicDB が無い環境だけ `BOSAI_USE_SNAPSHOT_FIXTURE=1` を使う。**本番 deploy-pages では立てない**
 
 ## 4. 代替サイト・DNS（N-15・SHOULD）
 
