@@ -5,6 +5,7 @@ import Link from "next/link";
 type Props = {
   accessibilityLabel: string;
   testResultsLabel: string;
+  privacyLabel: string;
   linksLabel: string;
   contactLabel: string;
   contactValue: string;
@@ -13,6 +14,7 @@ type Props = {
 export function SiteFooter({
   accessibilityLabel,
   testResultsLabel,
+  privacyLabel,
   linksLabel,
   contactLabel,
   contactValue,
@@ -29,6 +31,9 @@ export function SiteFooter({
               <Link href="/accessibility/test-results/">
                 {testResultsLabel}
               </Link>
+            </li>
+            <li>
+              <Link href="/privacy/">{privacyLabel}</Link>
             </li>
           </ul>
         </nav>

@@ -232,6 +232,7 @@ export function TopPage() {
       <SiteFooter
         accessibilityLabel={strings.footerAccessibility}
         testResultsLabel={strings.footerTestResults}
+        privacyLabel={strings.footerPrivacy}
         linksLabel={strings.footerLinksLabel}
         contactLabel={strings.footerContact}
         contactValue={strings.footerContactValue}
