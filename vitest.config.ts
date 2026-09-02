@@ -8,8 +8,10 @@ export default defineConfig({
     include: [
       "src/**/*.test.ts",
       "src/**/*.test.tsx",
-      "infra/cdk/lib/**/*.test.ts",
+      // csp-policy は aws-cdk 非依存。Stack synth テストは infra/cdk 側で実行（CI で npm ci --prefix）
+      "infra/cdk/lib/csp-policy.test.ts",
     ],
+    exclude: ["infra/cdk/lib/bosai-site-stack.test.ts"],
   },
   resolve: {
     alias: {

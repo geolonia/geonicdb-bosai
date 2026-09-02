@@ -27,9 +27,14 @@ jobs:
         with:
           node-version: "22"
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            infra/cdk/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          npm ci
+          npm ci --prefix infra/cdk
 
       - name: Lint
         run: npm run lint
@@ -42,6 +47,9 @@ jobs:
 
       - name: Unit tests
         run: npm test
+
+      - name: CDK sample unit tests
+        run: npm test --prefix infra/cdk
 
       - name: Build (static export)
         run: npm run build
