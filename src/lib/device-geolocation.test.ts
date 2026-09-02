@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+// @vitest-environment jsdom
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   DeviceGeolocationError,
   distanceMetersBetween,
@@ -10,6 +11,32 @@ function mockGeolocation(
   impl: Pick<Geolocation, "getCurrentPosition">,
 ): Pick<Geolocation, "getCurrentPosition"> {
   return impl;
+}
+
+function successPosition(
+  latitude: number,
+  longitude: number,
+  accuracy = 12,
+  timestamp = 1_700_000_000_000,
+): GeolocationPosition {
+  return {
+    coords: {
+      latitude,
+      longitude,
+      accuracy,
+      altitude: null,
+      altitudeAccuracy: null,
+      heading: null,
+      speed: null,
+      toJSON() {
+        return this;
+      },
+    },
+    timestamp,
+    toJSON() {
+      return this;
+    },
+  };
 }
 
 describe("isValidDeviceCoordinates", () => {
@@ -31,27 +58,15 @@ describe("isValidDeviceCoordinates", () => {
 });
 
 describe("requestDevicePosition", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
   it("returns device coordinates from geolocation API", async () => {
     const geo = mockGeolocation({
       getCurrentPosition(success) {
-        success({
-          coords: {
-            latitude: 35.6812,
-            longitude: 139.7671,
-            accuracy: 12,
-            altitude: null,
-            altitudeAccuracy: null,
-            heading: null,
-            speed: null,
-            toJSON() {
-              return this;
-            },
-          },
-          timestamp: 1_700_000_000_000,
-          toJSON() {
-            return this;
-          },
-        });
+        success(successPosition(35.6812, 139.7671));
       },
     });
 
@@ -96,24 +111,7 @@ describe("requestDevicePosition", () => {
   it("rejects invalid coordinates from the API", async () => {
     const geo = mockGeolocation({
       getCurrentPosition(success) {
-        success({
-          coords: {
-            latitude: 91,
-            longitude: 0,
-            accuracy: 1,
-            altitude: null,
-            altitudeAccuracy: null,
-            heading: null,
-            speed: null,
-            toJSON() {
-              return this;
-            },
-          },
-          timestamp: 1,
-          toJSON() {
-            return this;
-          },
-        });
+        success(successPosition(91, 0, 1, 1));
       },
     });
 
@@ -123,15 +121,34 @@ describe("requestDevicePosition", () => {
   });
 
   /**
-   * N-26 回帰: 公開 API にサーバ送信系が混入していないこと。
-   * 変異注入で send/upload 等を export するとこのテストが赤くなる想定。
+   * N-26: 座標取得中にネットワーク送信が発生しないこと（実挙動）。
+   * 内部で fetch / XHR / sendBeacon を呼ぶ変異はここで赤くなる。
    */
-  it("does not export server-upload helpers", async () => {
-    const mod = await import("@/lib/device-geolocation");
-    const banned = Object.keys(mod).filter((name) =>
-      /send|upload|post|persist|save|store|transmit/i.test(name),
-    );
-    expect(banned).toEqual([]);
+  it("does not call fetch, XHR, or sendBeacon while obtaining position", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 204 }));
+    const xhrOpenSpy = vi.spyOn(XMLHttpRequest.prototype, "open");
+    const xhrSendSpy = vi.spyOn(XMLHttpRequest.prototype, "send");
+    const beaconSpy = vi.fn().mockReturnValue(true);
+    Object.defineProperty(navigator, "sendBeacon", {
+      configurable: true,
+      writable: true,
+      value: beaconSpy,
+    });
+
+    const geo = mockGeolocation({
+      getCurrentPosition(success) {
+        success(successPosition(35.6812, 139.7671));
+      },
+    });
+
+    await requestDevicePosition({ geolocation: geo });
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(xhrOpenSpy).not.toHaveBeenCalled();
+    expect(xhrSendSpy).not.toHaveBeenCalled();
+    expect(beaconSpy).not.toHaveBeenCalled();
   });
 });
 
