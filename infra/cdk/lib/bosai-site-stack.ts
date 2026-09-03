@@ -56,10 +56,12 @@ const CUSTOM_SECURITY_HEADERS = [
 /**
  * CloudFront ビューワー証明書用 ACM ARN は us-east-1 のみ。
  * 他リージョンの ARN は Distribution 作成時に失敗する。
+ * @returns 前後空白を除いた正規化 ARN
  */
-export function assertCloudFrontAcmCertificateArn(arn: string): void {
+export function assertCloudFrontAcmCertificateArn(arn: string): string {
+  const normalized = arn.trim();
   const match = /^arn:aws:acm:([^:]+):\d{12}:certificate\/[\w-]+$/.exec(
-    arn.trim(),
+    normalized,
   );
   if (!match) {
     throw new Error(
@@ -71,6 +73,7 @@ export function assertCloudFrontAcmCertificateArn(arn: string): void {
       `BosaiSiteStack: CloudFront viewer certificates must be in us-east-1 (got region ${match[1]})`,
     );
   }
+  return normalized;
 }
 
 export class BosaiSiteStack extends cdk.Stack {
@@ -170,17 +173,17 @@ export class BosaiSiteStack extends cdk.Stack {
       );
     }
 
+    let certificate: acm.ICertificate | undefined;
     if (hasCert) {
-      assertCloudFrontAcmCertificateArn(props.certificateArn!);
+      const normalizedArn = assertCloudFrontAcmCertificateArn(
+        props.certificateArn!,
+      );
+      certificate = acm.Certificate.fromCertificateArn(
+        this,
+        "ViewerCertificate",
+        normalizedArn,
+      );
     }
-
-    const certificate = hasCert
-      ? acm.Certificate.fromCertificateArn(
-          this,
-          "ViewerCertificate",
-          props.certificateArn!,
-        )
-      : undefined;
 
     this.distribution = new cloudfront.Distribution(this, "Distribution", {
       defaultRootObject: "index.html",

@@ -94,6 +94,21 @@ describe("isExternalizableJsScript", () => {
     expect(html).toContain('import "./x.js"');
   });
 
+  it("preserves nomodule on externalized classic scripts", () => {
+    const { html, replaced } = externalizeInlineScriptsInHtml(
+      "<script nomodule>legacy()</script>",
+      {
+        writeFile(relPath) {
+          return `/${relPath}`;
+        },
+      },
+    );
+    expect(replaced).toBe(1);
+    expect(html).toMatch(
+      /<script nomodule src="\/_next\/csp-inline\/[a-f0-9]{16}\.js"><\/script>/,
+    );
+  });
+
   it("skips non-JS data blocks (near-miss: application/ld+json)", () => {
     expect(isExternalizableJsScript(' type="application/ld+json"')).toBe(false);
     expect(isExternalizableJsScript(' type="application/json"')).toBe(false);

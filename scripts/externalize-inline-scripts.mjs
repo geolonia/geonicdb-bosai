@@ -166,7 +166,9 @@ export function externalizeInlineScriptsInHtml(html, opts) {
     const hash = contentHash(m.body);
     const relPath = `_next/csp-inline/${hash}.js`;
     const srcPath = opts.writeFile(relPath, m.body);
-    const replacement = `<script src="${srcPath}"></script>`;
+    const parsed = parseScriptAttributes(m.attrs);
+    const nomoduleAttr = parsed.has("nomodule") ? " nomodule" : "";
+    const replacement = `<script${nomoduleAttr} src="${srcPath}"></script>`;
     result =
       result.slice(0, m.index) +
       replacement +

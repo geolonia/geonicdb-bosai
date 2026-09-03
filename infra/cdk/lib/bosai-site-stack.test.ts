@@ -133,6 +133,22 @@ describe("BosaiSiteStack Response Headers Policy", () => {
     ).toThrow(/us-east-1/);
   });
 
+  it("normalizes surrounding whitespace on certificateArn", () => {
+    const certArn =
+      "arn:aws:acm:us-east-1:111111111111:certificate/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+    const template = synth({
+      certificateArn: `  ${certArn}  `,
+      domainNames: ["bosai.example.example"],
+    });
+    template.hasResourceProperties("AWS::CloudFront::Distribution", {
+      DistributionConfig: {
+        ViewerCertificate: {
+          AcmCertificateArn: certArn,
+        },
+      },
+    });
+  });
+
   it("includes connectSrc extras in the CSP header value", () => {
     const template = synth({
       cspExtras: { connectSrc: ["https://geonicdb.example.example"] },
