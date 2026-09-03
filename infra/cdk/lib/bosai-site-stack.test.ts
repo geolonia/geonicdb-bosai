@@ -123,6 +123,16 @@ describe("BosaiSiteStack Response Headers Policy", () => {
     );
   });
 
+  it("rejects ACM certificate ARNs outside us-east-1", () => {
+    expect(() =>
+      synth({
+        certificateArn:
+          "arn:aws:acm:ap-northeast-1:111111111111:certificate/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+        domainNames: ["bosai.example.example"],
+      }),
+    ).toThrow(/us-east-1/);
+  });
+
   it("includes connectSrc extras in the CSP header value", () => {
     const template = synth({
       cspExtras: { connectSrc: ["https://geonicdb.example.example"] },

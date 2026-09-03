@@ -17,10 +17,12 @@ import {
 } from "../../scripts/externalize-inline-scripts.mjs";
 
 describe("isExternalizableJsScript", () => {
-  it("treats default and explicit JS types as externalizable", () => {
+  it("treats default and classic JS types as externalizable", () => {
     expect(isExternalizableJsScript("")).toBe(true);
-    expect(isExternalizableJsScript(' type="module"')).toBe(true);
     expect(isExternalizableJsScript(' type="text/javascript"')).toBe(true);
+    expect(isExternalizableJsScript(' type="application/javascript"')).toBe(
+      true,
+    );
   });
 
   it("skips scripts that already have src", () => {
@@ -77,7 +79,8 @@ describe("isExternalizableJsScript", () => {
     expect(replaced).toBe(1);
   });
 
-  it("preserves type=module on externalized tags", () => {
+  it("does not externalize type=module (base URL would change)", () => {
+    expect(isExternalizableJsScript(' type="module"')).toBe(false);
     const { html, replaced } = externalizeInlineScriptsInHtml(
       '<script type="module">import "./x.js"</script>',
       {
@@ -86,10 +89,9 @@ describe("isExternalizableJsScript", () => {
         },
       },
     );
-    expect(replaced).toBe(1);
-    expect(html).toMatch(
-      /<script type="module" src="\/_next\/csp-inline\/[a-f0-9]{16}\.js"><\/script>/,
-    );
+    expect(replaced).toBe(0);
+    expect(html).toContain('type="module"');
+    expect(html).toContain('import "./x.js"');
   });
 
   it("skips non-JS data blocks (near-miss: application/ld+json)", () => {
@@ -204,6 +206,18 @@ describe("externalizeOutDirectory", () => {
     expect(readFileSync(filePath, "utf8")).toBe(body);
     expect(readFileSync(path.join(root, "index.html"), "utf8")).toContain(
       `src="/_next/csp-inline/${hash}.js"`,
+    );
+  });
+
+  it("fail-closes when unsupported inline type=module remains", () => {
+    const root = mkdtempSync(path.join(tmpdir(), "csp-mod-"));
+    dirs.push(root);
+    writeFileSync(
+      path.join(root, "index.html"),
+      '<script type="module">import "./x.js"</script>',
+    );
+    expect(() => externalizeOutDirectory(root, { basePath: "" })).toThrow(
+      /type=module/,
     );
   });
 });

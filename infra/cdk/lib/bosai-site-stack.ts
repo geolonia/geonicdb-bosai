@@ -53,6 +53,26 @@ const CUSTOM_SECURITY_HEADERS = [
   },
 ] as const;
 
+/**
+ * CloudFront ビューワー証明書用 ACM ARN は us-east-1 のみ。
+ * 他リージョンの ARN は Distribution 作成時に失敗する。
+ */
+export function assertCloudFrontAcmCertificateArn(arn: string): void {
+  const match = /^arn:aws:acm:([^:]+):\d{12}:certificate\/[\w-]+$/.exec(
+    arn.trim(),
+  );
+  if (!match) {
+    throw new Error(
+      `BosaiSiteStack: certificateArn must be an ACM certificate ARN (got: ${arn})`,
+    );
+  }
+  if (match[1] !== "us-east-1") {
+    throw new Error(
+      `BosaiSiteStack: CloudFront viewer certificates must be in us-east-1 (got region ${match[1]})`,
+    );
+  }
+}
+
 export class BosaiSiteStack extends cdk.Stack {
   public readonly bucket: s3.Bucket;
   public readonly distribution: cloudfront.Distribution;
@@ -148,6 +168,10 @@ export class BosaiSiteStack extends cdk.Stack {
       throw new Error(
         "BosaiSiteStack: certificateArn is required when domainNames is set",
       );
+    }
+
+    if (hasCert) {
+      assertCloudFrontAcmCertificateArn(props.certificateArn!);
     }
 
     const certificate = hasCert

@@ -67,12 +67,25 @@ export function isExternalizableJsScript(attrs) {
     return true;
   }
   const type = parsed.get("type")?.trim().toLowerCase() ?? "";
+  // type=module は base URL / import.meta が変わるため対象外（未対応なら fail-closed）
   return (
     type === "" ||
     type === "text/javascript" ||
-    type === "application/javascript" ||
-    type === "module"
+    type === "application/javascript"
   );
+}
+
+/**
+ * src 無しの type=module（CSP script-src 'self' 下では外部化か削除が必要だが未対応）。
+ * @param {string | undefined} attrs
+ * @returns {boolean}
+ */
+export function isUnsupportedInlineModuleScript(attrs) {
+  const parsed = parseScriptAttributes(attrs ?? "");
+  if (parsed.has("src")) {
+    return false;
+  }
+  return parsed.get("type")?.trim().toLowerCase() === "module";
 }
 
 /**
@@ -88,6 +101,31 @@ export function findExternalizableInlineScripts(html) {
     const attrs = match[1] ?? "";
     const body = match[2] ?? "";
     if (!isExternalizableJsScript(attrs)) {
+      continue;
+    }
+    found.push({
+      index: match.index,
+      attrs,
+      body,
+      full: match[0],
+    });
+  }
+  return found;
+}
+
+/**
+ * @param {string} html
+ * @returns {{ index: number, attrs: string, body: string, full: string }[]}
+ */
+export function findUnsupportedInlineModuleScripts(html) {
+  /** @type {{ index: number, attrs: string, body: string, full: string }[]} */
+  const found = [];
+  SCRIPT_TAG_RE.lastIndex = 0;
+  let match;
+  while ((match = SCRIPT_TAG_RE.exec(html)) !== null) {
+    const attrs = match[1] ?? "";
+    const body = match[2] ?? "";
+    if (!isUnsupportedInlineModuleScript(attrs)) {
       continue;
     }
     found.push({
@@ -128,10 +166,7 @@ export function externalizeInlineScriptsInHtml(html, opts) {
     const hash = contentHash(m.body);
     const relPath = `_next/csp-inline/${hash}.js`;
     const srcPath = opts.writeFile(relPath, m.body);
-    const parsed = parseScriptAttributes(m.attrs);
-    const type = parsed.get("type")?.trim().toLowerCase() ?? "";
-    const typeAttr = type === "module" ? ' type="module"' : "";
-    const replacement = `<script${typeAttr} src="${srcPath}"></script>`;
+    const replacement = `<script src="${srcPath}"></script>`;
     result =
       result.slice(0, m.index) +
       replacement +
@@ -190,22 +225,27 @@ export function externalizeOutDirectory(outDir, options = {}) {
     }
   }
 
-  // fail-closed: 置換後も src 無し JS script が残っていれば失敗
+  // fail-closed: 置換後も src 無し classic JS、または未対応の type=module が残っていれば失敗
   /** @type {string[]} */
   const leftovers = [];
   for (const htmlPath of listHtmlFiles(outDir)) {
-    const remaining = findExternalizableInlineScripts(
-      readFileSync(htmlPath, "utf8"),
-    );
+    const html = readFileSync(htmlPath, "utf8");
+    const remaining = findExternalizableInlineScripts(html);
+    const modules = findUnsupportedInlineModuleScripts(html);
     if (remaining.length > 0) {
       leftovers.push(
-        `${path.relative(outDir, htmlPath)}: ${remaining.length} inline script(s)`,
+        `${path.relative(outDir, htmlPath)}: ${remaining.length} inline classic script(s)`,
+      );
+    }
+    if (modules.length > 0) {
+      leftovers.push(
+        `${path.relative(outDir, htmlPath)}: ${modules.length} unsupported inline type=module script(s)`,
       );
     }
   }
   if (leftovers.length > 0) {
     throw new Error(
-      `externalize-inline-scripts: inline JS <script> still present after rewrite:\n${leftovers.join("\n")}`,
+      `externalize-inline-scripts: unsupported or residual inline <script> after rewrite:\n${leftovers.join("\n")}`,
     );
   }
 
