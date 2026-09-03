@@ -12,7 +12,7 @@ HTTP ヘッダーの実設定はホスティング側の責務（ラウンド2�
 |---|---|
 | ハッシュ付き JS/CSS（`/_next/static/**`） | `public, max-age=31536000, immutable` |
 | HTML（`*.html` / `/`） | 短 TTL（例: `public, max-age=60, must-revalidate`）または CDN で即時無効化可能に |
-| GeonicDB NGSI-LD 応答（ブラウザから直接 AJAX） | GeonicDB / CDN のキャッシュ方針に従う。公開ページは匿名 GET（`REQUIREMENTS.md` 2.1） |
+| GeonicDB NGSI-LD 応答（ブラウザからの差分取得） | GeonicDB / CDN のキャッシュ方針に従う。初期表示はビルド時スナップショット（`REQUIREMENTS.md` 2.1） |
 
 ## 画像
 
@@ -33,4 +33,8 @@ npm run build
 npm run lighthouse
 ```
 
-Performance >= 90、総サイズ <= 3MiB。
+Performance >= 90、総サイズ <= 3MiB。CI（`.github/workflows/ci.yml`）でも同予算を強制する。閾値の引き上げは issue #6。
+
+## 可用性・負荷試験
+
+災害時の最終公開状態維持・定期リビルド・負荷試験／監視の手順は [`availability-ops.md`](availability-ops.md) を参照。

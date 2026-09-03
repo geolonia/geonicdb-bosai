@@ -20,6 +20,10 @@ export type UiStrings = {
   comingSoon: string;
   loading: string;
   loadError: string;
+  /** ビルド時スナップショット表示時。`{time}` は HH:MM。 */
+  asOfLabel: string;
+  /** F-45: 取得失敗かつ最終取得時刻あり。`{time}` は HH:MM。 */
+  loadErrorWithLastFetch: string;
   bannerLoadingLabel: string;
   quickLinks: {
     shelters: string;
@@ -60,6 +64,8 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
     comingSoon: "準備中",
     loading: "読み込み中…",
     loadError: "情報を読み込めませんでした。時間をおいて再度お試しください。",
+    asOfLabel: "この情報は {time} 時点",
+    loadErrorWithLastFetch: "情報を取得できません（最終取得 {time}）",
     bannerLoadingLabel: "緊急情報を読み込み中",
     quickLinks: {
       shelters: "避難所を探す",
@@ -107,6 +113,9 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
     comingSoon: "Coming soon",
     loading: "Loading…",
     loadError: "Could not load information. Please try again later.",
+    asOfLabel: "This information is as of {time}",
+    loadErrorWithLastFetch:
+      "Unable to retrieve information (last fetched {time})",
     bannerLoadingLabel: "Loading emergency information",
     quickLinks: {
       shelters: "Find Shelters",
@@ -154,6 +163,8 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
     comingSoon: "准备中",
     loading: "加载中…",
     loadError: "无法加载信息。请稍后再试。",
+    asOfLabel: "本信息截至 {time}",
+    loadErrorWithLastFetch: "无法获取信息（最后获取 {time}）",
     bannerLoadingLabel: "正在加载紧急信息",
     quickLinks: {
       shelters: "查找避难所",
@@ -201,6 +212,8 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
     comingSoon: "Đang chuẩn bị",
     loading: "Đang tải…",
     loadError: "Không thể tải thông tin. Vui lòng thử lại sau.",
+    asOfLabel: "Thông tin này tính đến {time}",
+    loadErrorWithLastFetch: "Không thể lấy thông tin (lần lấy cuối {time})",
     bannerLoadingLabel: "Đang tải thông tin khẩn cấp",
     quickLinks: {
       shelters: "Tìm nơi sơ tán",
@@ -250,6 +263,8 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
     comingSoon: "준비 중",
     loading: "불러오는 중…",
     loadError: "정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    asOfLabel: "이 정보는 {time} 시점입니다",
+    loadErrorWithLastFetch: "정보를 가져올 수 없습니다(마지막 취득 {time})",
     bannerLoadingLabel: "긴급 정보를 불러오는 중",
     quickLinks: {
       shelters: "대피소 찾기",
@@ -286,4 +301,31 @@ export function formatDateTime(iso: string, lang: SiteLanguage): string {
     timeStyle: "short",
     timeZone: "Asia/Tokyo",
   }).format(new Date(iso));
+}
+
+/** F-45 / as-of 用の HH:MM（Asia/Tokyo、24時間制）。 */
+export function formatTimeHHMM(iso: string, lang: SiteLanguage): string {
+  return new Intl.DateTimeFormat(toDateLocale(lang), {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Tokyo",
+  }).format(new Date(iso));
+}
+
+export function formatAsOfLabel(
+  template: string,
+  iso: string,
+  lang: SiteLanguage,
+): string {
+  return template.replace("{time}", formatTimeHHMM(iso, lang));
+}
+
+export function formatLoadError(
+  strings: UiStrings,
+  lastFetchedAt: string | null,
+  lang: SiteLanguage,
+): string {
+  if (!lastFetchedAt) return strings.loadError;
+  return formatAsOfLabel(strings.loadErrorWithLastFetch, lastFetchedAt, lang);
 }

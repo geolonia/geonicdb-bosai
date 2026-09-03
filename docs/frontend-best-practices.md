@@ -31,7 +31,8 @@
 
 **予算監視**:
 - Lighthouse CI（`@lhci/cli`）を導入し、`lighthouserc.js` に上記予算を `assertions` として設定（`resource-summary:total:size` 等）
-- GitHub Actions は現状使わない運用（ローカルのみ）だが、`npm run lighthouse` のようなローカル実行コマンドとして用意し、CI導入時にそのまま使えるようにしておく
+- GitHub Actions の CI（`.github/workflows/ci.yml`）で `lhci autorun` を実行し、予算超過で失敗させる。閾値の厳格化（仕様 5.8.4 の 500KB 等）は issue #6
+- ローカル確認: `npm run lighthouse`
 - `next build` の出力（route毎のJSサイズ）を確認し、閾値を超えたら警告するスクリプトも検討（簡易でよい）
 
 **高速化の具体手法（適用するもの）**:
