@@ -1,0 +1,110 @@
+# 負荷試験・監視設定例（N-11 / N-12）
+
+作成日: 2026-09-02
+関連: 仕様 `docs/spec/requirements-spec-v1.1.md` 5.2（N-11 / N-12）、issue #9
+
+平常時ピークの **100 倍**（N-11）と稼働率 **99.9%**（N-12）の数値目標は、導入自治体の人口・過去アクセス実績・配信基盤に依存する。本テンプレートは **手順と設定例** を同梱し、実測値の確定は導入時に行う。
+
+## 1. 負荷試験手順（N-11）
+
+### 1.1 前提
+
+- 配信は静的ファイル（`out/`）+ CDN。GeonicDB はビルド時スナップショットの取得と、閲覧中の差分更新（REST / WebSocket）に使う。
+- **静的 HTML/アセット** と **GeonicDB API** は別系統で負荷を見る。災害時トップの「表示維持」は CDN 側の耐性が主、ライブ更新は GeonicDB 側。
+
+### 1.2 平常時ピークの決め方（導入時）
+
+1. 既存サイトや類似自治体の月次アクセスから、平常時の **同時セッション数（または RPS）** を取る
+2. 目標 = その **100 倍以上**（仕様 N-11）
+3. シナリオを文書化し、年 1 回以上再測定する
+
+例（仮置き・自治体で置き換えること）:
+
+| 指標 | 平常時ピーク（例） | 目標（×100） |
+|---|---|---|
+| トップ HTML への RPS | 20 | 2,000 |
+| 同時接続（概算） | 200 | 20,000 |
+
+### 1.3 CDN / 静的配信の試験
+
+静的 export 済みの `out/` をステージング CDN に載せ、導入時に決めた目標（例の表なら **2,000 RPS** または同等の同時接続）を **rate × 試験時間** に対応付けて負荷を掛ける。
+
+```bash
+# 例: vegeta — 2,000 RPS を 60 秒（総約 120,000 リクエスト）
+echo "GET https://staging.example.jp/" \
+  | vegeta attack -rate=2000/s -duration=60s \
+  | vegeta report
+
+# 例: k6 — 同じ目標を VU / 到達 RPS で表現する場合
+# k6 run --vus 500 --duration 60s scripts/load-top.js
+# （scripts/load-top.js 内で目標 RPS に合わせて sleep / stages を調整）
+```
+
+確認観点:
+
+- 5xx 率が許容内（目安: 0.1% 未満）
+- p95 レイテンシが要件内（N-13 の 3G 5 秒とは別に、CDN 側のサーバ時間）
+- オリジンへのリクエストがキャッシュヒットで抑制されていること
+
+### 1.4 GeonicDB（ライブ更新経路）の試験
+
+ビルド時焼き込み後も、クライアントは差分取得のため GeonicDB にアクセスしうる。停止時はスナップショット表示に落ちる（N-10）が、平常・災害時の更新反映（N-14）には GeonicDB の余裕が必要。
+
+- `bosai-EmergencyBanner` / `bosai-AlertLevel` / `bosai-Notice` の GET を、想定同時閲覧の一部（例: 全体の 10〜30%）がポーリングまたは初回 fetch する前提で負荷を掛ける
+- WebSocket 購読がある場合は接続数上限も確認する
+- GeonicDB 側のレート制限・XACML・テナント分離を破らないこと
+
+## 2. 監視設定例（N-12）
+
+月次稼働率 99.9% は、おおよそ月間ダウンタイム **43 分未満** に相当する。災害時は **24 時間監視**（仕様）。
+
+### 2.1 外形監視（推奨チェック）
+
+| 対象 | 方法 | 間隔 | アラート |
+|---|---|---|---|
+| トップ HTML（CDN） | HTTPS GET `/` が 200 かつ本文に自治体名・主要ランドマーク | 1 分 | 連続 3 失敗で Pager |
+| ビルド成果物の鮮度 | デプロイ時刻 / `builtAt`（埋め込み JSON）が SLA 内 | 15 分 | 定期リビルド失敗時 |
+| GeonicDB 匿名 GET | `bosai-AlertLevel` 等 1 件 GET | 1〜5 分 | 失敗でもサイトはスナップショット表示可。更新遅延として警告 |
+| GitHub Actions 定期ビルド | workflow 失敗通知 | 都度 | 担当へ |
+
+### 2.2 災害時 24 時間体制のチェックリスト
+
+- [ ] オンコールローテーションとエスカレーション先が定義されている
+- [ ] CDN / DNS / 代替サイト（SNS・外部ブログ）の連絡先が手元にある（N-15）
+- [ ] 「GeonicDB 停止」と「CDN 障害」を切り分けられる手順がある
+- [ ] 定期リビルド（下記）が止まっていないことを確認する
+
+## 3. 定期リビルド（スナップショット鮮度）
+
+閲覧者がいない間の更新を静的側へ取り込むため、Deploy workflow に schedule を付ける（issue #9 方針）。
+
+- 既定: 6 時間ごと（導入自治体で変更可）
+- 成功時: 最新エンティティが HTML に焼き込まれてデプロイされる
+- **失敗時（GeonicDB 全滅など、成功リソース 0）**: `assertBosaiStaticSnapshotDeployable` が build を落とす → `deploy` job は `needs: build` でスキップ → **前回成功成果物が CDN / Pages に残る（N-10）**
+- リソース単位の部分失敗（例: 警戒レベルだけ取得失敗）では build は通る。失敗リソースは `ok:false`（`fetchedAt: null`）として埋め込み、他リソースは公開する
+- PR CI など GeonicDB が無い環境だけ `BOSAI_USE_SNAPSHOT_FIXTURE=1` を使う。**本番 deploy-pages では立てない**
+
+## 4. 代替サイト・DNS（N-15・SHOULD）
+
+- DNS TTL を短くする（例: 60〜300 秒）手順を自治体の DNS 運用に合わせて文書化する
+- 障害時の案内先（SNS / ブログ）URL をフッターまたは緊急バナー用の定型文として用意する
+- 複数リージョン / 複数事業者フェイルオーバーは配信基盤選定（#6 の S3+CloudFront 想定）に依存。テンプレートでは手順の置き場のみ提供する
+
+## 5. 避難所など未実装ページへの再利用（N-10 / #2 引き継ぎ）
+
+避難所・避難情報ページは本テンプレート時点では未実装のため、N-10 の「避難所ページ」分はページ実装 issue（#2）へ引き継ぐ。**空の雛形ページは置かない。** 実装時は災害時トップと同じビルド時焼き込みパターンを再利用すること。
+
+| 役割 | モジュール | 使い方 |
+|---|---|---|
+| ビルド時取得 | `src/lib/fetch-bosai-static-snapshot.ts`（`fetchBosaiStaticSnapshot`） | Server Component（`page.tsx`）から `await` し、結果を client へ props で渡す。エンティティ型を足す場合は同ファイル内のリソース単位 fetch を増やすか、同型のヘルパを横並びで追加する |
+| スナップショット型 | `src/types/bosai-static-snapshot.ts` | リソース単位で `BosaiResourceResult<T>`（成功/失敗が独立） |
+| ライブとの合成 | `src/lib/resolve-bosai-resource-view.ts` | `useLdEntities` の loading/error/data と snapshot を合成。loading 中でも snapshot があれば即表示（N-10） |
+| 鮮度表示 | `formatAsOfLabel` / `formatLoadError`（`src/config/ui-strings.ts`） | stale 時は「HH:MM 時点」、双方失敗時は F-45 文言 |
+| 定期反映 | `.github/workflows/deploy-pages.yml` の `schedule` | 閲覧者不在時の更新を静的側へ取り込む |
+
+避難所エンティティを足すときの最小手順:
+
+1. パース関数を `validate-*-data` 系に追加する
+2. ビルド時 fetch にリソースを追加し、言語キー付きでスナップショットへ載せる
+3. 避難所 `page.tsx`（Server）で snapshot を取り、client コンポーネントへ `initialSnapshot`（または当該リソースだけ）を渡す
+4. client 側は `resolveBosaiResourceView` + 既存の live hooks / WS 購読で差分更新する

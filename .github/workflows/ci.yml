@@ -55,4 +55,11 @@ jobs:
         run: npm run build --prefix infra/cdk
 
       - name: Build (static export)
+        env:
+          # GeonicDB 無しの PR CI 用。本番 deploy-pages では立てない（N-10 fail-closed）。
+          BOSAI_USE_SNAPSHOT_FIXTURE: "1"
         run: npm run build
+
+      # ページ重量予算（lighthouserc.js）。閾値の厳格化は issue #6 と共有。
+      - name: Lighthouse budget
+        run: npx lhci autorun

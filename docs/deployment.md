@@ -21,7 +21,7 @@
 |---|---|
 | ハッシュ付き JS/CSS（`/_next/static/**`） | `public, max-age=31536000, immutable` |
 | HTML（`*.html` / `/`） | 短 TTL（例: `public, max-age=60, must-revalidate`）または CDN で即時無効化可能に |
-| GeonicDB NGSI-LD 応答（ブラウザから直接 AJAX） | GeonicDB / CDN のキャッシュ方針に従う。公開ページは匿名 GET（`REQUIREMENTS.md` 2.1） |
+| GeonicDB NGSI-LD 応答（ブラウザからの差分取得） | GeonicDB / CDN のキャッシュ方針に従う。初期表示はビルド時スナップショット（`REQUIREMENTS.md` 2.1） |
 
 CloudFront ではパスパターン別に Cache Policy を分ける（HTML と `/_next/static/*`）。Response Headers Policy のセキュリティヘッダとは別に設定する。
 
@@ -46,7 +46,7 @@ npm run build
 npm run lighthouse
 ```
 
-仕様 5.8.4（災害時トップ）: HTML ≤ 50KB・CSS ≤ 30KB は **error**（CI ブロック）。JS ≤ 100KB・合計 ≤ 500KB は当面 **warn**（現状 Next.js クライアントランタイムが JS 予算を超過）。4 カテゴリは目標 100（`minScore: 1`）。performance / accessibility / seo は **error**、best-practices は実測 0.96 のため当面 **warn**。閾値は `lighthouserc.js`。
+仕様 5.8.4（災害時トップ）: HTML ≤ 50KB・CSS ≤ 30KB は **error**（CI ブロック）。JS ≤ 100KB・合計 ≤ 500KB は当面 **warn**（現状 Next.js クライアントランタイムが JS 予算を超過）。4 カテゴリは目標 100（`minScore: 1`）。performance / accessibility / seo は **error**、best-practices は実測 0.96 のため当面 **warn**。閾値は `lighthouserc.js`。CI（`.github/workflows/ci.yml`、#9）でも同設定を `lhci autorun` する（`numberOfRuns=3` + median）。
 
 ## Content-Security-Policy（5.8.2）
 
@@ -140,3 +140,7 @@ npx cdk deploy
 ## 監査結果の公開（5.8.5 SHOULD）
 
 Lighthouse レポート（`.lighthouseci`）や Observatory / SSL Labs のスコアへのリンクを、アクセシビリティ方針ページ（`/accessibility/`）から辿れるようにする運用を推奨する。自動スキャンの通知パイプラインはデプロイ先アカウント側で設定する。
+
+## 可用性・負荷試験
+
+災害時の最終公開状態維持・定期リビルド・負荷試験／監視の手順は [`availability-ops.md`](availability-ops.md) を参照。

@@ -17,24 +17,35 @@
 
 ## 2. アーキテクチャ方針
 
-### 2.1 バックエンド: GeonicDB へクライアントサイドから直接AJAX（2026-09-01 改訂）
+### 2.1 バックエンド: ビルド時スナップショット + クライアント差分更新（2026-09-02 改訂）
 
-**方針転換**: 当初は「GeonicDBには住民のブラウザから直接アクセスさせない、間に短TTLキャッシュ層を挟む」という設計だったが、キャッシュ層は別途バックエンドサービスの実装が必要になり、テンプレートとしての単純さを損なうと判断した。**`@geolonia/geonicdb-sdk` の React hooks（`useLdEntities`）を使い、住民のブラウザから GeonicDB の NGSI-LD API へ直接 AJAX する。**
+**方針（issue #9 / N-10）**: 災害時トップ等の主要情報は **ビルド時に GeonicDB から取得して静的 HTML へ焼き込む**。住民のブラウザは初期表示に GeonicDB を必要としない。差分の反映だけを `@geolonia/geonicdb-sdk` の React hooks（`useLdEntities`）と WebSocket 購読（`useBosaiLiveUpdates`）が担う。これにより N-10（CMS・DB 停止時も最終公開状態を維持）と N-30（プログレッシブエンハンスメント）を両立する。
 
+```text
+[職員]                     [GeonicDB]                         [ビルド / CDN]          [住民のブラウザ]
+  |  NGSI-LD Entity更新       |                                     |                        |
+  |  (geonic CLI /            |  fetchBosaiStaticSnapshot() ------->|  静的 HTML に埋込        |
+  |   Claude Desktop MCP) -->  |  （anonymous GET）                  |  （定期リビルド含む）     |
+  |  bosai-write ポリシー      |                                     |                        |
+  |                           |  useLdEntities / WS 購読 <----------|------------------------|
+  |                           |      bosai-public-read で GET 許可   |  初期表示は埋込値        |
+  |                           |      （差分更新・N-14）              |  失敗時も埋込値を維持    |
 ```
-[職員]                     [GeonicDB]                              [住民のブラウザ]
-  |  NGSI-LD Entity更新       |                                          |
-  |  (geonic CLI /            |  useLdEntities(client, {                |
-  |   Claude Desktop MCP) -->  |    type: "bosai-Notice",                |
-  |  bosai-write ポリシー      |    q: 'language=="ja"'                  |
-  |                           |  })  <-- anonymous（匿名）モード ------- |
-  |                           |      bosai-public-read ポリシーでGET許可 |
-```
+
+| 状況 | 表示 |
+|---|---|
+| 通常時 | ビルド時の値を即座に表示 → WS / REST で最新値へ差し替え |
+| JS 無効・古いブラウザ | ビルド時の値が表示される |
+| GeonicDB 停止（閲覧時） | **直近に成功したビルド**の埋込値が表示され続ける（N-10） |
+| GeonicDB 停止（定期リビルド時） | スナップショット全滅なら **build 失敗 → deploy スキップ**。CDN 上の前回成功成果物は上書きされない |
+| ビルド後にデータ更新 | WS で即時反映（N-14） |
 
 - **職員側（書き込み）**: GeonicDB の NGSI-LD API を `geonic` CLI や Claude Desktop（MCP）経由で直接操作する。`bosai-write` ポリシー + `bosai-staff-write` APIキーを使用（`docs/geonicdb-setup.md`）。職員向け管理画面（Web UI）は当面実装しない（`REQUIREMENTS.md` 5節）。
-- **住民側（読み取り）**: SDKを **匿名モード（`anonymous: true`）** で初期化し、APIキーを一切クライアントに埋め込まない。読み取り可否はサーバー側のXACMLポリシー `bosai-public-read`（`role: anonymous`、`entityType: bosai-*` に一致、`GET`のみ許可）で制御する。クライアントの設定値（`NEXT_PUBLIC_GEONICDB_URL` / `NEXT_PUBLIC_GEONICDB_TENANT`）はどちらも秘密情報ではない（ベースURLとテナント名のみ、書き込み権限は持たない）。
-- **既知のトレードオフ**: `docs/research/guidelines.md` 3.2節Hが求める「災害時の輻輳耐性」は、この直接AJAX構成では GeonicDB 本体の可用性に依存する（静的HTMLシェル自体は引き続きCDN配信できるが、動的部分はGeonicDBが落ちれば表示できない）。本テンプレートでは実装の単純さを優先してこのトレードオフを受け入れる。輻輳耐性を優先する場合は、GeonicDBの前段にキャッシュ層を置く構成（旧設計、`git log` で参照可能）に戻すことも選択肢として残す。
-- 緊急バナー・警戒レベル・お知らせのいずれも同じ `useLdEntities` パターンで取得する。言語切替時は `q: 'language=="<lang>"'` を変えて再フェッチする。
+- **住民側（読み取り）**: 初期 HTML はビルド時スナップショット。ライブ更新用 SDK は **匿名モード（`anonymous: true`）**（REST）および読み取り専用 WS キー（任意）。読み取り可否はサーバー側の XACML ポリシー `bosai-public-read` で制御する。`NEXT_PUBLIC_GEONICDB_URL` / `NEXT_PUBLIC_GEONICDB_TENANT` は秘密情報ではない。
+- **鮮度の明示（F-45）**: ビルド時の値を表示している間は「この情報は HH:MM 時点」と必ず明示する。取得失敗時は、**成功した最終取得時刻が分かる場合のみ**「情報を取得できません（最終取得 HH:MM）」とし、無ければ汎用の読み込みエラー文言にする（試行失敗時刻を最終取得と偽らない）。リソース単位で独立させ、1 つの失敗が他を巻き込まない。
+- **全滅時の fail-closed**: 成功リソースが 0 のスナップショットは `assertBosaiStaticSnapshotDeployable` でビルドを失敗させ、定期リビルドが空 HTML で前回公開を上書きしないようにする。
+- **実装の入口**: `src/lib/fetch-bosai-static-snapshot.ts`（ビルド時）、`src/lib/resolve-bosai-resource-view.ts`（ライブとの合成）、`src/app/page.tsx` → `TopPage` の `initialSnapshot`。緊急バナー・警戒レベル・お知らせは同じパターン。言語切替時は埋込スナップショットの言語キーを使い、ライブ側は `q: 'language=="<lang>"'` で再フェッチする。
+- **避難所など未実装ページ**: 同じ `fetchBosaiStaticSnapshot` / `resolveBosaiResourceView` パターンを拡張して焼き込む（詳細は `docs/availability-ops.md`）。ページ自体の実装は別 issue（#2 等）。
 
 ### 2.2 フロントエンド技術スタック: Next.js
 

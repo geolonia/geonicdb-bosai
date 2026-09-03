@@ -4,9 +4,38 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { SafeMarkdown } from "@/components/SafeMarkdown";
 import { EmergencyBanner } from "@/components/top/EmergencyBanner";
+import { SiteFooter } from "@/components/top/SiteFooter";
 import { SiteHeader } from "@/components/top/SiteHeader";
 import { BANNER_VARIANT_COLORS } from "@/config/alert-colors";
 import { ALL_BANNER_VARIANTS, makeBanner, testStrings } from "@/test/fixtures";
+
+describe("SiteFooter", () => {
+  it("links to accessibility, test results, and privacy policy pages", () => {
+    render(
+      <SiteFooter
+        accessibilityLabel="ウェブアクセシビリティ方針"
+        testResultsLabel="試験結果"
+        privacyLabel="プライバシーポリシー"
+        linksLabel="フッターリンク"
+        contactLabel="お問い合わせ"
+        contactValue="防災担当: 000-0000-0000"
+      />,
+    );
+    expect(
+      screen
+        .getByRole("link", { name: "ウェブアクセシビリティ方針" })
+        .getAttribute("href"),
+    ).toMatch(/^\/accessibility\/?$/);
+    expect(
+      screen.getByRole("link", { name: "試験結果" }).getAttribute("href"),
+    ).toMatch(/^\/accessibility\/test-results\/?$/);
+    expect(
+      screen
+        .getByRole("link", { name: "プライバシーポリシー" })
+        .getAttribute("href"),
+    ).toMatch(/^\/privacy\/?$/);
+  });
+});
 
 describe("SafeMarkdown", () => {
   it("renders safe markdown links as anchors", () => {

@@ -6,6 +6,7 @@
 - ガイドライン調査: [`docs/research/guidelines.md`](docs/research/guidelines.md)
 - APIキー・ポリシー: [`docs/geonicdb-setup.md`](docs/geonicdb-setup.md)
 - アクセシビリティ: [`docs/a11y/README.md`](docs/a11y/README.md)
+- セキュリティ運用（プライバシー・依存更新）: [`docs/security-ops.md`](docs/security-ops.md)
 
 ## セットアップ
 

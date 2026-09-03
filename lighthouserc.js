@@ -12,7 +12,8 @@
  * - best-practices … 実測 0.96 → 目標 100 未達のため warn（minScore 1）
  *
  * 実測ログ: 2026-09-02 `npm run lighthouse` → `.lighthouseci/lhr-*.json`
- * CI 組み込みは ci.yml（#9）。本ファイルは閾値のみ。
+ * CI 組み込みは ci.yml（#9）。本ファイルは閾値。
+ * CI ランナーでは単発計測が揺れやすいため numberOfRuns=3 + median（#9）。
  *
  * 実行: `npm run lighthouse`（内部で build → lhci autorun）
  */
@@ -21,7 +22,7 @@ module.exports = {
     collect: {
       staticDistDir: "./out",
       url: ["http://localhost/"],
-      numberOfRuns: 1,
+      numberOfRuns: 3,
       settings: {
         // 防災サイトはモバイル想定が強いが、予算監視は desktop 固定で再現性を優先
         preset: "desktop",
@@ -29,25 +30,37 @@ module.exports = {
     },
     assert: {
       assertions: {
-        "categories:performance": ["error", { minScore: 1 }],
-        "categories:accessibility": ["error", { minScore: 1 }],
-        "categories:best-practices": ["warn", { minScore: 1 }],
-        "categories:seo": ["error", { minScore: 1 }],
+        "categories:performance": [
+          "error",
+          { minScore: 1, aggregationMethod: "median" },
+        ],
+        "categories:accessibility": [
+          "error",
+          { minScore: 1, aggregationMethod: "median" },
+        ],
+        "categories:best-practices": [
+          "warn",
+          { minScore: 1, aggregationMethod: "median" },
+        ],
+        "categories:seo": [
+          "error",
+          { minScore: 1, aggregationMethod: "median" },
+        ],
         "resource-summary:document:size": [
           "error",
-          { maxNumericValue: 50 * 1024 },
+          { maxNumericValue: 50 * 1024, aggregationMethod: "median" },
         ],
         "resource-summary:stylesheet:size": [
           "error",
-          { maxNumericValue: 30 * 1024 },
+          { maxNumericValue: 30 * 1024, aggregationMethod: "median" },
         ],
         "resource-summary:script:size": [
           "warn",
-          { maxNumericValue: 100 * 1024 },
+          { maxNumericValue: 100 * 1024, aggregationMethod: "median" },
         ],
         "resource-summary:total:size": [
           "warn",
-          { maxNumericValue: 500 * 1024 },
+          { maxNumericValue: 500 * 1024, aggregationMethod: "median" },
         ],
       },
     },
