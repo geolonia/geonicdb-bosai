@@ -1,5 +1,8 @@
 # dependencies
 /node_modules
+/infra/cdk/node_modules
+/infra/cdk/dist
+/infra/cdk/cdk.out
 /.pnp
 .pnp.*
 .yarn/*

@@ -8,13 +8,14 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build && node scripts/externalize-inline-scripts.mjs",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "next typegen && tsc --noEmit -p tsconfig.typecheck.json",
     "test": "vitest run",
     "test:a11y": "vitest run src/components/top/a11y.test.tsx",
+    "test:cdk": "npm test --prefix infra/cdk",
     "lighthouse": "npm run build && lhci autorun",
     "setup:geonicdb": "bash scripts/setup-geonicdb.sh"
   },

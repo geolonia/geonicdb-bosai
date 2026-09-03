@@ -1,14 +1,21 @@
 /**
- * Lighthouse CI 設定（docs/frontend-best-practices.md ラウンド1 C）。
+ * Lighthouse CI 設定（仕様 5.8.4 / 5.8.5 / issue #6）。
  *
- * 予算:
- * - Performance スコア >= 0.9
- * - 1ページ総転送量 <= 3 MiB（東京都ガイドライン上限）
+ * 災害時トップ相当のページ重量予算:
+ * - HTML ≤ 50KB … error（CI ブロック）
+ * - CSS ≤ 30KB … error（CI ブロック）
+ * - JS ≤ 100KB（圧縮後）… warn（現状 Next.js ランタイム超過。削減は別作業）
+ * - 合計 ≤ 500KB … warn
  *
- * 実行: `npm run lighthouse`（先に `npm run build`）
+ * 4 カテゴリ（目標 100。仕様は「少なくとも 95 以上を維持」）:
+ * - performance / accessibility / seo … 実測 1.0 → error（minScore 1）
+ * - best-practices … 実測 0.96 → 目標 100 未達のため warn（minScore 1）
  *
- * CI ランナーでは単発計測が揺れやすいため numberOfRuns=3 + median
- * （閾値 0.9 / 3MiB 自体は変更しない）。
+ * 実測ログ: 2026-09-02 `npm run lighthouse` → `.lighthouseci/lhr-*.json`
+ * CI 組み込みは ci.yml（#9）。本ファイルは閾値。
+ * CI ランナーでは単発計測が揺れやすいため numberOfRuns=3 + median（#9）。
+ *
+ * 実行: `npm run lighthouse`（内部で build → lhci autorun）
  */
 module.exports = {
   ci: {
@@ -25,11 +32,35 @@ module.exports = {
       assertions: {
         "categories:performance": [
           "error",
-          { minScore: 0.9, aggregationMethod: "median" },
+          { minScore: 1, aggregationMethod: "median" },
+        ],
+        "categories:accessibility": [
+          "error",
+          { minScore: 1, aggregationMethod: "median" },
+        ],
+        "categories:best-practices": [
+          "warn",
+          { minScore: 1, aggregationMethod: "median" },
+        ],
+        "categories:seo": [
+          "error",
+          { minScore: 1, aggregationMethod: "median" },
+        ],
+        "resource-summary:document:size": [
+          "error",
+          { maxNumericValue: 50 * 1024, aggregationMethod: "median" },
+        ],
+        "resource-summary:stylesheet:size": [
+          "error",
+          { maxNumericValue: 30 * 1024, aggregationMethod: "median" },
+        ],
+        "resource-summary:script:size": [
+          "warn",
+          { maxNumericValue: 100 * 1024, aggregationMethod: "median" },
         ],
         "resource-summary:total:size": [
-          "error",
-          { maxNumericValue: 3_145_728, aggregationMethod: "median" },
+          "warn",
+          { maxNumericValue: 500 * 1024, aggregationMethod: "median" },
         ],
       },
     },

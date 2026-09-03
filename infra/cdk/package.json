@@ -1,0 +1,29 @@
+{
+  "name": "geonicdb-bosai-cdk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "S3 + CloudFront sample for geonicdb-bosai (security headers / TLS)",
+  "bin": {
+    "geonicdb-bosai-cdk": "bin/app.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "cdk": "cdk",
+    "synth": "cdk synth",
+    "test": "vitest run"
+  },
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.204.0",
+    "constructs": "^10.4.2"
+  },
+  "devDependencies": {
+    "aws-cdk": "^2.1029.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5",
+    "vitest": "^3.2.4"
+  }
+}
