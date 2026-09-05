@@ -22,11 +22,9 @@ export type BuildSubscriptionOptions = {
   siteOrigin?: string;
 };
 
-const HTTPS_ENDPOINT = /^https:\/\//i;
-
 /**
  * Push Service の endpoint URL と VAPID keys を検証する。
- * near-miss: http:// は拒否（GeonicDB も https 必須）。
+ * near-miss: http:// や "https://" のみ（hostname 無し）は拒否。
  */
 export function parsePushSubscription(body: unknown): PushSubscriptionInput {
   if (body === null || typeof body !== "object" || Array.isArray(body)) {
@@ -38,8 +36,14 @@ export function parsePushSubscription(body: unknown): PushSubscriptionInput {
     throw new ValidationError("endpoint is required");
   }
   const trimmedEndpoint = endpoint.trim();
-  if (!HTTPS_ENDPOINT.test(trimmedEndpoint)) {
-    throw new ValidationError("endpoint must be an https:// URL");
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmedEndpoint);
+  } catch {
+    throw new ValidationError("endpoint must be a valid https:// URL");
+  }
+  if (parsed.protocol !== "https:" || !parsed.hostname) {
+    throw new ValidationError("endpoint must be a valid https:// URL");
   }
   const keys = record.keys;
   if (keys === null || typeof keys !== "object" || Array.isArray(keys)) {

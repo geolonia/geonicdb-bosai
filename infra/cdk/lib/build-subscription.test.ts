@@ -31,6 +31,24 @@ describe("parsePushSubscription", () => {
     ).toThrow(ValidationError);
   });
 
+  it('rejects "https://" without hostname', () => {
+    expect(() =>
+      parsePushSubscription({
+        ...VALID,
+        endpoint: "https://",
+      }),
+    ).toThrow(/https:\/\//);
+  });
+
+  it("rejects malformed endpoint URL", () => {
+    expect(() =>
+      parsePushSubscription({
+        ...VALID,
+        endpoint: "https://[bad",
+      }),
+    ).toThrow(/https:\/\//);
+  });
+
   it("rejects missing keys.auth", () => {
     expect(() =>
       parsePushSubscription({
