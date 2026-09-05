@@ -64,7 +64,9 @@ export class WebPushWebAclStack extends cdk.Stack {
                   fieldToMatch: { uriPath: {} },
                   positionalConstraint: "STARTS_WITH",
                   searchString: WEBPUSH_RATE_LIMIT_URI_PREFIX,
-                  textTransformations: [{ priority: 0, type: "NONE" }],
+                  textTransformations: [
+                    { priority: 0, type: "NORMALIZE_PATH" },
+                  ],
                 },
               },
             },

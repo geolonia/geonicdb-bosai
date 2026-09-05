@@ -40,7 +40,9 @@ describe("WebPushWebAclStack", () => {
                   FieldToMatch: { UriPath: {} },
                   PositionalConstraint: "STARTS_WITH",
                   SearchString: WEBPUSH_RATE_LIMIT_URI_PREFIX,
-                  TextTransformations: [{ Priority: 0, Type: "NONE" }],
+                  TextTransformations: [
+                    { Priority: 0, Type: "NORMALIZE_PATH" },
+                  ],
                 },
               },
             },
@@ -61,14 +63,18 @@ describe("WebPushWebAclStack", () => {
       Statement?: {
         RateBasedStatement?: {
           ScopeDownStatement?: {
-            ByteMatchStatement?: { SearchString?: string };
+            ByteMatchStatement?: {
+              SearchString?: string;
+              TextTransformations?: Array<{ Type?: string }>;
+            };
           };
         };
       };
     }>;
-    const search =
+    const byte =
       rules[0]?.Statement?.RateBasedStatement?.ScopeDownStatement
-        ?.ByteMatchStatement?.SearchString;
+        ?.ByteMatchStatement;
+    const search = byte?.SearchString;
     expect(search).toBe("/api/webpush");
     // 通ってはいけない: 静的アセット全体をレート制限する広いプレフィックス
     expect(search).not.toBe("/");
@@ -77,6 +83,10 @@ describe("WebPushWebAclStack", () => {
     // STARTS_WITH なので /api/webpush は /api/webpush* をカバー（指令どおり）
     expect("/api/webpush/extra".startsWith(search!)).toBe(true);
     expect("/api/other".startsWith(search!)).toBe(false);
+    // /api/x/../webpush 回避を防ぐため NORMALIZE_PATH（NONE は不可）
+    expect(byte?.TextTransformations?.map((t) => t.Type)).toEqual([
+      "NORMALIZE_PATH",
+    ]);
   });
 
   it("rate limit threshold and evaluation window are explicit (not CFN-default-only)", () => {
