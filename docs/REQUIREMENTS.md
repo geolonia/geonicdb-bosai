@@ -73,6 +73,7 @@
 | 8 | JIS X 8341-3 AA 相当のアクセシブルなマークアップ、`role="alert"`/`aria-live` | guidelines.md 3.1.E |
 | 9 | 災害時モード切替（職員が1アクションで実行可能） | guidelines.md 3.1.G |
 | 10 | 静的生成 + CDN 配信、災害時モードの軽量化（1ページ1.6〜3MB以内） | guidelines.md 3.2.H |
+| 11 | 住民向け Web Push 通知（緊急バナー・警戒レベル・お知らせの発令をブラウザ通知で配信。Service Worker は受信専用） | issue #35、GeonicDB webpush プロトコル |
 
 ## 4. 非機能要件（初期リリースで満たすべき基準）
 
@@ -87,7 +88,7 @@
 
 - L アラートとの直接連携（[任意]項目、将来課題）
 - CAP形式でのフィード出力
-- オフライン対応（Service Worker）
+- Service WorkerはWeb Push受信専用に限り許可（本issue #35）。オフラインキャッシュ・`fetch`イベントのインターセプト等、汎用的なオフライン対応は引き続きスコープ外
 - SOBO-WEB / 防災DXデータ連携基盤との連携
 - **職員向け管理画面（GeonicDB書き込みUI）の実装**: 当面は Claude Desktop 等のMCP経由でGeonicDBへ直接書き込む運用とする（2026-09-01 方針決定）。`src/config/geonicdb.ts` の接続設定はこの運用でも将来の管理画面実装でも使えるよう残しておく
 

@@ -28,6 +28,16 @@ describe("PrivacyPage (N-26)", () => {
     expect(main.textContent).toMatch(/個人情報を収集・保存しません/);
   });
 
+  it("documents Web Push opt-in and PushSubscription handling (#35)", () => {
+    render(<PrivacyPage />);
+    expect(
+      screen.getByRole("heading", { name: "ブラウザ通知（Web Push）" }),
+    ).toBeInTheDocument();
+    const main = screen.getByRole("main");
+    expect(main.textContent).toMatch(/PushSubscription/);
+    expect(main.textContent).toMatch(/ページ読み込み時に自動では行いません/);
+  });
+
   // near-miss: wording that admits server storage must fail even if "位置情報を" が直前に無い
   it("does not claim server-side storage or upload of location", () => {
     render(<PrivacyPage />);

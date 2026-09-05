@@ -39,6 +39,17 @@ export default function PrivacyPage() {
           </p>
         </section>
 
+        <section aria-labelledby="privacy-push">
+          <h2 id="privacy-push">ブラウザ通知（Web Push）</h2>
+          <p>
+            利用者が「通知を受け取る」を選択した場合に限り、ブラウザの通知許可を求めます。
+            許可後、端末の PushSubscription（endpoint
+            と暗号化鍵）を登録用プロキシへ送信し、 GeonicDB 上の Web Push
+            サブスクリプション作成に利用します。
+            氏名・住所などの個人情報は含みません。通知の許可要求はページ読み込み時に自動では行いません。
+          </p>
+        </section>
+
         <section aria-labelledby="privacy-access">
           <h2 id="privacy-access">アクセス情報</h2>
           <p>

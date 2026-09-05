@@ -174,4 +174,49 @@ describe("BosaiSiteStack Response Headers Policy", () => {
       },
     });
   });
+
+  it("adds Web Push proxy Lambda, Function URL, Secret, and /api/webpush behavior", () => {
+    const template = synth({
+      webPush: {
+        geonicdbUrl: "https://geonicdb.example.example",
+        geonicdbTenant: "miya",
+        siteOrigin: "https://bosai.example.example",
+        corsAllowOrigin: "https://bosai.example.example",
+      },
+      cspExtras: { workerSrc: ["'self'"] },
+    });
+
+    template.resourceCountIs("AWS::Lambda::Function", 1);
+    template.resourceCountIs("AWS::Lambda::Url", 1);
+    template.resourceCountIs("AWS::SecretsManager::Secret", 1);
+
+    template.hasResourceProperties("AWS::Lambda::Function", {
+      Runtime: "nodejs22.x",
+      Timeout: 15,
+      Environment: {
+        Variables: Match.objectLike({
+          GEONICDB_URL: "https://geonicdb.example.example",
+          GEONICDB_TENANT: "miya",
+          CORS_ALLOW_ORIGIN: "https://bosai.example.example",
+        }),
+      },
+    });
+
+    const dist = template.findResources("AWS::CloudFront::Distribution");
+    const config = Object.values(dist)[0].Properties.DistributionConfig;
+    const behaviors = config.CacheBehaviors ?? [];
+    expect(
+      behaviors.some(
+        (b: { PathPattern?: string }) => b.PathPattern === "/api/webpush",
+      ),
+    ).toBe(true);
+
+    const policies = template.findResources(
+      "AWS::CloudFront::ResponseHeadersPolicy",
+    );
+    const csp =
+      Object.values(policies)[0].Properties.ResponseHeadersPolicyConfig
+        .SecurityHeadersConfig.ContentSecurityPolicy.ContentSecurityPolicy;
+    expect(csp).toContain("worker-src 'self'");
+  });
 });

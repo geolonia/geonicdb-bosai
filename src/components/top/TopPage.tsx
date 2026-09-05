@@ -17,6 +17,7 @@ import {
   NewsListError,
   NewsListPlaceholder,
 } from "@/components/top/NewsList";
+import { PushNotificationOptIn } from "@/components/top/PushNotificationOptIn";
 import { QuickLinks } from "@/components/top/QuickLinks";
 import { SiteFooter } from "@/components/top/SiteFooter";
 import { SiteHeader } from "@/components/top/SiteHeader";
@@ -199,6 +200,7 @@ export function TopPage({ initialSnapshot }: TopPageProps = {}) {
   return (
     <>
       <SiteHeader strings={strings} lang={lang} onLangChange={setLang} />
+      <PushNotificationOptIn lang={lang} strings={strings} />
       {bannerView.kind === "ready" ? (
         <>
           <EmergencyBanner data={bannerView.data} strings={strings} />

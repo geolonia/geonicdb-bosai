@@ -115,6 +115,40 @@ select:focus-visible {
   min-height: 2.75rem;
 }
 
+.push-opt-in {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0.75rem 1rem 0;
+}
+
+.push-opt-in__button {
+  appearance: none;
+  border: 2px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+}
+
+.push-opt-in__button:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.push-opt-in__status {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--color-muted);
+}
+
+.push-opt-in__error {
+  margin: 0.5rem 0 0;
+  font-size: 0.875rem;
+  color: #8b0000;
+}
+
 .emergency-banner {
   min-height: var(--banner-min-height);
   border-bottom: 3px solid;
