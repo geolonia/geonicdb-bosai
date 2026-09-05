@@ -63,13 +63,18 @@ npx cdk deploy GeonicdbBosaiWebPushProxy \
 #   -c geonicdbApiKeySecretArn=arn:aws:secretsmanager:ap-northeast-1:705008887115:secret:... \
 #   -c bosaiContextUrl=https://geolonia.github.io/geonicdb-bosai/ngsi-ld/bosai-context.jsonld
 
-# デプロイ後:
+# デプロイ後（静的サイトに Function URL を焼き込む）:
 # 1. Secrets Manager に GEONICDB_API_KEY（平文 or JSON { "apiKey": "..." }）を投入
 # 2. スタック出力 WebPushRegisterUrl を控える
-# 3. GitHub Actions / ローカル build で:
-#      NEXT_PUBLIC_WEBPUSH_REGISTER_URL=<Function URL>
-#      NEXT_PUBLIC_GEONICDB_URL=https://geonicdb.geolonia.com
-#    （CSP connect-src 用に -c webPushRegisterUrl=<同 URL> をサイト synth に渡してもよい）
+# 3. リポジトリルートで環境変数を設定してからビルド（NEXT_PUBLIC_* はビルド時に埋め込まれる）:
+#      cd ../..   # リポジトリルート
+#      export NEXT_PUBLIC_WEBPUSH_REGISTER_URL=<WebPushRegisterUrl の値>
+#      export NEXT_PUBLIC_GEONICDB_URL=https://geonicdb.geolonia.com
+#      export NEXT_PUBLIC_GEONICDB_TENANT=miya
+#      export BOSAI_USE_SNAPSHOT_FIXTURE=1   # ローカル検証時。Pages CI は別途 vars/secrets を使う
+#      npm run build
+#      npx serve out                        # または GitHub Pages へ out/ を配信
+#    （CSP connect-src 用にサイト CDK へ -c webPushRegisterUrl=<同 URL> を渡してもよい）
 ```
 
 | context / 環境変数                               | 必須                | 説明                                                                             |
@@ -102,7 +107,10 @@ npx cdk deploy --all \
   -c geonicdbUrl=https://geonicdb.geolonia.com \
   -c geonicdbTenant=miya \
   -c siteOrigin=https://bosai.example.jp
-# 推奨: NEXT_PUBLIC_WEBPUSH_REGISTER_URL=/api/webpush
+
+# サイト build 前に同一オリジンパスを焼き込む:
+#   export NEXT_PUBLIC_WEBPUSH_REGISTER_URL=/api/webpush
+#   npm run build && aws s3 sync out/ s3://$BUCKET --delete
 ```
 
 ### レート制限の層
