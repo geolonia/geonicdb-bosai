@@ -213,3 +213,19 @@ export async function clearAppBadgeSafely(
     // クリア失敗は無視
   }
 }
+
+/**
+ * 未読件数を 0 に書き戻したうえでバッジを消す。
+ * cache.put 等が失敗しても clearBadge には必ず到達する（#45 検収指摘）。
+ */
+export async function resetUnreadBadgeState(deps: {
+  writeUnreadCount: (count: number) => Promise<void>;
+  clearBadge: () => Promise<void>;
+}): Promise<void> {
+  try {
+    await deps.writeUnreadCount(0);
+  } catch {
+    // Cache 書き込み失敗はバッジ消去を阻害しない
+  }
+  await deps.clearBadge();
+}

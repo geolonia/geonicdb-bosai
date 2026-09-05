@@ -239,6 +239,25 @@ describe("public/sw.js push-only contract", () => {
     );
     expect(pushHandler).toMatch(/incrementUnreadCount/);
   });
+
+  it("writeUnreadCount failures do not block clearAppBadge (#45 audit)", () => {
+    const writeFn = sw.slice(
+      sw.indexOf("async function writeUnreadCount"),
+      sw.indexOf("async function resetUnreadBadge"),
+    );
+    const resetFn = sw.slice(
+      sw.indexOf("async function resetUnreadBadge"),
+      sw.indexOf('self.addEventListener("install"'),
+    );
+    expect(writeFn).toMatch(/try\s*\{/);
+    expect(writeFn).toMatch(/catch\s*\{/);
+    expect(resetFn).toMatch(/clearAppBadgeSafely/);
+    // clear が write の後にあり、write の try 外でも呼ばれる
+    const clearIdx = resetFn.indexOf("clearAppBadgeSafely");
+    const writeCallIdx = resetFn.indexOf("writeUnreadCount");
+    expect(writeCallIdx).toBeGreaterThanOrEqual(0);
+    expect(clearIdx).toBeGreaterThan(writeCallIdx);
+  });
 });
 
 describe("BOSAI_LIVE_ENTITY_TYPES single source", () => {

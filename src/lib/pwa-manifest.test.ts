@@ -89,7 +89,9 @@ describe("unread count helpers (#45)", () => {
 describe("setAppBadgeSafely / clearAppBadgeSafely", () => {
   it("passes a positive numeric count to setAppBadge (#45 regression)", async () => {
     const { setAppBadgeSafely } = await import("@/lib/web-push-sw-logic");
-    const setAppBadge = vi.fn(async (_contents?: number) => undefined);
+    const setAppBadge = vi.fn<(contents?: number) => Promise<void>>(
+      async () => undefined,
+    );
     await setAppBadgeSafely({ setAppBadge }, 3);
     expect(setAppBadge).toHaveBeenCalledTimes(1);
     expect(setAppBadge).toHaveBeenCalledWith(3);
@@ -139,5 +141,20 @@ describe("setAppBadgeSafely / clearAppBadgeSafely", () => {
   it("no-ops when clearAppBadge is missing", async () => {
     const { clearAppBadgeSafely } = await import("@/lib/web-push-sw-logic");
     await expect(clearAppBadgeSafely({})).resolves.toBeUndefined();
+  });
+
+  it("clears badge even when unread count write fails (#45 audit)", async () => {
+    const { resetUnreadBadgeState, clearAppBadgeSafely } =
+      await import("@/lib/web-push-sw-logic");
+    const clearAppBadge = vi.fn(async () => undefined);
+    await expect(
+      resetUnreadBadgeState({
+        writeUnreadCount: async () => {
+          throw new Error("cache.put failed");
+        },
+        clearBadge: () => clearAppBadgeSafely({ clearAppBadge }),
+      }),
+    ).resolves.toBeUndefined();
+    expect(clearAppBadge).toHaveBeenCalledTimes(1);
   });
 });

@@ -197,12 +197,21 @@ async function readUnreadCount() {
 }
 
 async function writeUnreadCount(count) {
-  const cache = await caches.open(META_CACHE);
-  await cache.put(UNREAD_COUNT_PATH, new Response(String(count)));
+  try {
+    const cache = await caches.open(META_CACHE);
+    await cache.put(UNREAD_COUNT_PATH, new Response(String(count)));
+  } catch {
+    // Cache 失敗はバッジ更新・消去を阻害しない
+  }
 }
 
 async function resetUnreadBadge() {
-  await writeUnreadCount(0);
+  // write が throw しても clear に到達する（writeUnreadCount 内でも握りつぶすが二重化）
+  try {
+    await writeUnreadCount(0);
+  } catch {
+    // ignore
+  }
   await clearAppBadgeSafely();
 }
 
