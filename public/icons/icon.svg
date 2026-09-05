@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="防災情報">
+  <rect width="512" height="512" rx="96" fill="#1a1a1a"/>
+  <path fill="#fafafa" d="M256 88 L420 248 H360 V400 H152 V248 H92 Z"/>
+  <rect x="220" y="300" width="72" height="100" rx="8" fill="#1a1a1a"/>
+  <circle cx="384" cy="152" r="56" fill="#c62828"/>
+  <rect x="372" y="124" width="24" height="40" rx="4" fill="#fafafa"/>
+  <circle cx="384" cy="180" r="10" fill="#fafafa"/>
+</svg>

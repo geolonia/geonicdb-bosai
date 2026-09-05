@@ -138,6 +138,13 @@ GeonicDB の `/ngsi-ld/v1/subscriptions` へ直接 POST / DELETE する。
 
 キー発行・Secrets 投入は運用側（課長）。手順の命名規則は [`geonicdb-setup.md`](geonicdb-setup.md) を参照。
 
+### iOS PWA とバッジ（#41）
+
+- **iOS（16.4+）では、ホーム画面に追加した PWA として開いたときだけ Web Push が動作する。**
+  Safari のタブ表示のままでは通知を受け取れない。運用で「iPhone で通知が来ない」と問い合わせがあったら、まずホーム画面追加の有無を確認する。
+- デモ／プレビュー先 `https://geolonia.github.io/geonicdb-bosai/` はプロジェクトサイトのため、`manifest` の `start_url` / `scope` / `icons` と `apple-touch-icon` は **`/geonicdb-bosai` basePath 付き**で出力される（`NEXT_PUBLIC_BASE_PATH`）。
+- アプリアイコンの赤い点／件数は通知 API とは別の **Badging API**（`navigator.setAppBadge` / `clearAppBadge`）で制御する。`showNotification` だけではバッジは付かない。
+
 ## CDK の使い方（要約）
 
 ```bash

@@ -88,7 +88,7 @@
 
 - L アラートとの直接連携（[任意]項目、将来課題）
 - CAP形式でのフィード出力
-- Service WorkerはWeb Push受信専用に限り許可（本issue #35）。オフラインキャッシュ・`fetch`イベントのインターセプト等、汎用的なオフライン対応は引き続きスコープ外
+- Service WorkerはWeb Push受信専用に限り許可（本issue #35 / #41。push 受信・通知表示・Badging API によるバッジ表示／消去を含む）。オフラインキャッシュ・`fetch`イベントのインターセプト等、汎用的なオフライン対応は引き続きスコープ外
 - SOBO-WEB / 防災DXデータ連携基盤との連携
 - **職員向け管理画面（GeonicDB書き込みUI）の実装**: 当面は Claude Desktop 等のMCP経由でGeonicDBへ直接書き込む運用とする（2026-09-01 方針決定）。`src/config/geonicdb.ts` の接続設定はこの運用でも将来の管理画面実装でも使えるよう残しておく
 
