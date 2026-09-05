@@ -80,7 +80,16 @@ if (manifest.scope !== expectedStart) {
     `scope=${JSON.stringify(manifest.scope)} expected ${JSON.stringify(expectedStart)}`,
   );
 }
-for (const icon of manifest.icons || []) {
+const icons = Array.isArray(manifest.icons) ? manifest.icons : [];
+for (const expectedIcon of [
+  `${expectedIconPrefix}icon-192.png`,
+  `${expectedIconPrefix}icon-512.png`,
+]) {
+  if (!icons.some((icon) => icon.src === expectedIcon)) {
+    fail(`required manifest icon missing: ${expectedIcon}`);
+  }
+}
+for (const icon of icons) {
   if (!String(icon.src).startsWith(expectedIconPrefix)) {
     fail(`icon src ${icon.src} missing prefix ${expectedIconPrefix}`);
   }

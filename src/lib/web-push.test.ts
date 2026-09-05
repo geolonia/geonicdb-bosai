@@ -212,8 +212,16 @@ describe("public/sw.js push-only contract", () => {
   });
 
   it("sets and clears app badge around notification (#41)", () => {
-    expect(sw).toMatch(/setAppBadgeSafely/);
-    expect(sw).toMatch(/clearAppBadgeSafely/);
+    const pushHandler = sw.slice(
+      sw.indexOf('self.addEventListener("push"'),
+      sw.indexOf('self.addEventListener("notificationclick"'),
+    );
+    const clickHandler = sw.slice(
+      sw.indexOf('self.addEventListener("notificationclick"'),
+    );
+
+    expect(pushHandler).toContain("await setAppBadgeSafely()");
+    expect(clickHandler).toContain("await clearAppBadgeSafely()");
     expect(sw).toMatch(/nav\.setAppBadge/);
     expect(sw).toMatch(/nav\.clearAppBadge/);
   });
