@@ -111,7 +111,8 @@ describe("a11y: SiteHeader / QuickLinks / NewsList", () => {
 
 describe("a11y: PushNotificationOptIn", () => {
   it("enable button has no axe violations", async () => {
-    process.env.NEXT_PUBLIC_WEBPUSH_REGISTER_URL = "/api/webpush";
+    process.env.NEXT_PUBLIC_GEONICDB_URL = "https://geonicdb.example.example";
+    process.env.NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY = "gdb_webpush_test";
     Object.defineProperty(window, "Notification", {
       configurable: true,
       value: { permission: "default" },

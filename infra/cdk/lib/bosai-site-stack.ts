@@ -8,7 +8,6 @@ import * as cdk from "aws-cdk-lib";
 import * as acm from "aws-cdk-lib/aws-certificatemanager";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
-import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import { Construct } from "constructs";
 import { buildContentSecurityPolicy, type BuildCspOptions } from "./csp-policy";
@@ -33,18 +32,6 @@ export type BosaiSiteStackProps = cdk.StackProps & {
   certificateArn?: string;
   /** ビューワー証明書とセットで指定するドメイン（例: bosai.example.jp） */
   domainNames?: string[];
-  /**
-   * Web Push プロキシ Function URL（#35 / #36）。指定時のみ CloudFront `/api/webpush`
-   * behavior を追加する（フル CDK デプロイ向けオプション）。
-   * Lambda 本体は WebPushProxyStack 側。GitHub Pages 運用では不要。
-   */
-  webPushFunctionUrl?: lambda.IFunctionUrl;
-  /**
-   * WAFv2 WebACL ARN（#36）。CLOUDFRONT scope のため us-east-1 の WebPushWebAclStack から渡し、
-   * Distribution の webAclId に設定する。`crossRegionReferences: true` が必要。
-   * CloudFront フルデプロイ時のみ意味がある。
-   */
-  webAclArn?: string;
 };
 
 const CUSTOM_SECURITY_HEADERS = [
@@ -209,8 +196,6 @@ export class BosaiSiteStack extends cdk.Stack {
               cloudfront.SecurityPolicyProtocol.TLS_V1_2_2021,
           }
         : {}),
-      // #36: WAFv2（us-east-1 WebPushWebAclStack）— /api/webpush* のみ rate-limit
-      ...(props.webAclArn ? { webAclId: props.webAclArn } : {}),
       defaultBehavior: {
         origin: origins.S3BucketOrigin.withOriginAccessIdentity(this.bucket, {
           originAccessIdentity,
@@ -247,27 +232,5 @@ export class BosaiSiteStack extends cdk.Stack {
         ? "Content-Security-Policy-Report-Only value"
         : "Content-Security-Policy value",
     });
-
-    if (props.webPushFunctionUrl) {
-      // フル CDK（CloudFront）向けオプション: 同一オリジン /api/webpush
-      this.distribution.addBehavior(
-        "/api/webpush",
-        new origins.FunctionUrlOrigin(props.webPushFunctionUrl),
-        {
-          viewerProtocolPolicy:
-            cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-          allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
-          cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
-          originRequestPolicy:
-            cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
-          responseHeadersPolicy: this.responseHeadersPolicy,
-        },
-      );
-      new cdk.CfnOutput(this, "WebPushSameOriginPath", {
-        value: "/api/webpush",
-        description:
-          "Prefer NEXT_PUBLIC_WEBPUSH_REGISTER_URL=/api/webpush on CloudFront",
-      });
-    }
   }
 }

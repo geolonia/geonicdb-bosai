@@ -17,6 +17,13 @@ export type GeonicdbPublicConfig = {
    * （WS購読はスキップされる）。
    */
   wsApiKey?: string;
+  /**
+   * Web Push サブスクリプション作成専用 API キー（任意）。
+   * `/ngsi-ld/v1/subscriptions*` への POST / DELETE / GET のみ（ポリシー
+   * `bosai-webpush-proxy-write`）。エンティティの読み書き権限は持たない。
+   * 未設定時は Web Push オプトイン UI を出さない。
+   */
+  webpushApiKey?: string;
 };
 
 function readOptional(env: PublicEnvLike, key: string): string | undefined {
@@ -30,10 +37,14 @@ function readOptional(env: PublicEnvLike, key: string): string | undefined {
  * `NEXT_PUBLIC_*` はビルド時にクライアントへ埋め込まれる。URL とテナント名は
  * 秘密情報ではない（REQUIREMENTS.md 2.1）。
  *
- * `NEXT_PUBLIC_GEONICDB_WS_API_KEY` は WebSocket購読専用の**読み取り専用**
- * APIキー（`bosai-read` ポリシー = GET + WS のみ、書き込み権限なし）を想定する。
- * このキーはクライアントバンドルに含まれ第三者に見える前提のものなので、
- * 書き込み可能なキー（`bosai-write` 系）を絶対に設定しないこと。
+ * クライアント埋め込みキーは第三者に見える前提。**エンティティ書き込み可能な
+ * キー（`bosai-write` / `bosai-staff-write`）を絶対に設定しないこと。**
+ * 許可されるのは次の用途に絞ったキーのみ:
+ * - `NEXT_PUBLIC_GEONICDB_WS_API_KEY` — WebSocket 購読専用（`bosai-read` =
+ *   GET + WS のみ）
+ * - `NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY` — サブスクリプション作成専用
+ *   （`bosai-webpush-proxy-write` = `/ngsi-ld/v1/subscriptions*` の
+ *   POST/DELETE/GET のみ。エンティティ読み書き権限なし）
  */
 export function resolveGeonicdbPublicConfig(
   env: PublicEnvLike = {
@@ -41,6 +52,8 @@ export function resolveGeonicdbPublicConfig(
     NEXT_PUBLIC_GEONICDB_TENANT: process.env.NEXT_PUBLIC_GEONICDB_TENANT,
     NEXT_PUBLIC_GEONICDB_WS_API_KEY:
       process.env.NEXT_PUBLIC_GEONICDB_WS_API_KEY,
+    NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY:
+      process.env.NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY,
   },
 ): GeonicdbPublicConfig {
   const raw = (env.NEXT_PUBLIC_GEONICDB_URL ?? "").trim();
@@ -69,16 +82,22 @@ export function resolveGeonicdbPublicConfig(
     );
   }
   const wsApiKey = readOptional(env, "NEXT_PUBLIC_GEONICDB_WS_API_KEY");
+  const webpushApiKey = readOptional(
+    env,
+    "NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY",
+  );
 
   return {
     baseUrl,
     ...(tenant ? { tenant } : {}),
     ...(wsApiKey ? { wsApiKey } : {}),
+    ...(webpushApiKey ? { webpushApiKey } : {}),
   };
 }
 
 let singleton: GeonicDB | null = null;
 let wsSingleton: GeonicDB | null = null;
+let webpushSingleton: GeonicDB | null = null;
 
 /**
  * 匿名モード（`anonymous: true`）の GeonicDB クライアント（シングルトン）。
@@ -119,10 +138,49 @@ export function getGeonicdbWsClient(): GeonicDB | null {
   return wsSingleton;
 }
 
+/**
+ * Web Push サブスクリプション CRUD 用の GeonicDB クライアント（シングルトン）。
+ * `NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY` 未設定時は null。
+ * DPoP / オリジン制限は SDK の apiKey 経路に委譲する（手書き再実装しない）。
+ */
+export function getGeonicdbWebPushClient(env?: PublicEnvLike): GeonicDB | null {
+  let config: GeonicdbPublicConfig;
+  try {
+    config = resolveGeonicdbPublicConfig(
+      env ?? {
+        NEXT_PUBLIC_GEONICDB_URL: process.env.NEXT_PUBLIC_GEONICDB_URL,
+        NEXT_PUBLIC_GEONICDB_TENANT: process.env.NEXT_PUBLIC_GEONICDB_TENANT,
+        NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY:
+          process.env.NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY,
+      },
+    );
+  } catch {
+    return null;
+  }
+  if (!config.webpushApiKey) return null;
+  // テスト注入の env があるときはシングルトンを使わず毎回生成する
+  if (env) {
+    return new GeonicDB({
+      baseUrl: config.baseUrl,
+      tenant: config.tenant,
+      apiKey: config.webpushApiKey,
+    });
+  }
+  if (!webpushSingleton) {
+    webpushSingleton = new GeonicDB({
+      baseUrl: config.baseUrl,
+      tenant: config.tenant,
+      apiKey: config.webpushApiKey,
+    });
+  }
+  return webpushSingleton;
+}
+
 /** @internal テスト用 */
 export function resetGeonicdbPublicClientForTests(): void {
   singleton = null;
   wsSingleton = null;
+  webpushSingleton = null;
 }
 
 /** NGSI-LD `q` 用: サイト言語で絞り込む。 */

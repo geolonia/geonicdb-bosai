@@ -1,6 +1,6 @@
 /**
  * CDK context / props 用の絶対 http(s) URL 検証。
- * 相対パス（例: /api/webpush）を渡すと生の URL コンストラクタ例外ではなく明示エラーにする。
+ * 相対パスを渡すと生の URL コンストラクタ例外ではなく明示エラーにする。
  */
 
 function rejectRelativeOrInvalid(trimmed: string, paramName: string): URL {
@@ -10,9 +10,7 @@ function rejectRelativeOrInvalid(trimmed: string, paramName: string): URL {
     trimmed.startsWith("../")
   ) {
     throw new Error(
-      `${paramName} must be an absolute http(s) URL (got relative path: ${trimmed}). ` +
-        `For same-origin CloudFront proxy use NEXT_PUBLIC_WEBPUSH_REGISTER_URL=/api/webpush on the site build; ` +
-        `CDK -c webPushRegisterUrl is only for adding a cross-origin Function URL to CSP connect-src.`,
+      `${paramName} must be an absolute http(s) URL (got relative path: ${trimmed}).`,
     );
   }
 

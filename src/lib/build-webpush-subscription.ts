@@ -1,11 +1,12 @@
 /**
  * ブラウザ PushSubscription → NGSI-LD webpush サブスクリプション body の整形。
  * GeonicDB #3014: notification.endpoint.protocol=webpush + webpush.keys。
+ * （旧 Lambda プロキシからフロントへ移設。issue #39）
  */
 import {
   BOSAI_LIVE_ENTITY_TYPES,
   type BosaiLiveEntityType,
-} from "../../../../shared/bosai-live-entity-types";
+} from "../../shared/bosai-live-entity-types";
 
 export { BOSAI_LIVE_ENTITY_TYPES, type BosaiLiveEntityType };
 
@@ -26,6 +27,7 @@ export type BuildSubscriptionOptions = {
  * Push Service の endpoint URL と VAPID keys を検証する。
  * near-miss: http:// や "https://" のみ（hostname 無し）は拒否。
  * SSRF: localhost / プライベート IP / リンクローカル / 内部 DNS 名は拒否（拒否リスト方式）。
+ * 最終防御は GeonicDB の pinnedRequest（配信時）だが、登録前の防衛線としても残す。
  */
 export function parsePushSubscription(body: unknown): PushSubscriptionInput {
   if (body === null || typeof body !== "object" || Array.isArray(body)) {

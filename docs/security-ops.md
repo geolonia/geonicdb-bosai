@@ -52,6 +52,6 @@
 | ID | 扱い |
 |---|---|
 | N-21 ヘッダ・TLS | #6 |
-| N-22 DDoS / Bot | CDN/WAF は CloudFront 前提。災害時に CAPTCHA 等で住民を締め出しない。Web Push: Function URL は常に公開到達可能で **WAF を迂回しうる**（`reservedConcurrentExecutions: 50` が常時の粗い上限）。WAFv2 rate-based は CloudFront 経由 `/api/webpush*` への**追加**防御（#36）。Function URL 直叩きの完全遮断は follow-up |
+| N-22 DDoS / Bot | CDN/WAF は CloudFront 前提。災害時に CAPTCHA 等で住民を締め出しない。Web Push の購読登録は GeonicDB 直接（#39）。量産防御は API キーの `rateLimit` と GeonicDB 本体の配信時 SSRF 拒否に委ねる |
 | N-23 管理画面認証 | 管理 UI 実装時の issue で扱う |
 | N-25 ISMAP | SHOULD。クラウド選定時に登録サービスまたは同等を確認 |

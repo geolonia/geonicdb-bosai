@@ -125,54 +125,18 @@ npx cdk deploy \
 
 CAA / DNSSEC は独自ドメイン接続後に DNS 側で設定する。
 
-## Web Push 購読プロキシとレート制限（#35 / #36）
+## Web Push（#39）
 
-**GitHub Pages 運用が既定。** Web Push は `GeonicdbBosaiWebPushProxy`（Lambda Function URL）を
-**単体デプロイ**し、ブラウザから Function URL を直接呼べば動作する。CloudFront / WAF は
-本番向けの追加ハードニングであり **必須ではない**。
+**中間サーバーは不要。** Web Push は gh-pages 上の静的アセットと GeonicDB の 2 者で完結する。
+ブラウザが `NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY`（サブスクリプション作成専用）を使い、
+GeonicDB の `/ngsi-ld/v1/subscriptions` へ直接 POST / DELETE する。
 
-| スタック | 役割 | いつ使うか |
-|---|---|---|
-| `GeonicdbBosaiWebPushProxy` | Lambda + Function URL + Secrets | `enableWebPush=true`（GitHub Pages でも必須） |
-| `GeonicdbBosaiWebAcl`（us-east-1） | WAFv2 rate-based | `enableWebPushCloudFront=true` のフル CDK のみ |
-| `GeonicdbBosaiSite` | S3 + CloudFront。任意で `/api/webpush` → プロキシ | フル CDK 配信時。Pages では未デプロイでよい |
+- VAPID 公開鍵: `GET /.well-known/webpush-vapid-key`（認証不要）
+- 登録キーのポリシー: `bosai-webpush-proxy-write`（subscriptions のみ。エンティティ書き込み不可）
+- SSRF / 量産防御は GeonicDB 本体（配信時の `pinnedRequest` + API キー `rateLimit`）に委ねる
+- Lambda Function URL / CloudFront `/api/webpush` / WAFv2 は使わない（#35/#36 の中間層は撤去）
 
-- **WAF** は CloudFront に関連付けるものなので、フル CDK デプロイ時のみ有効（`/api/webpush*`）。
-- **`reservedConcurrentExecutions: 50` は常時有効**（プロキシ Lambda）。同時実行の粗い上限であり、時系列のリクエスト量そのものは制限しない。
-- **残存リスク（フル CDK でも）:** Function URL 自体は公開のまま残るため、直接叩きは **CloudFront WAF を迂回する**。推奨はフロントを `/api/webpush`（同一オリジン）に向け、Function URL をブラウザに埋め込まないこと。OAC / 共有シークレットによる直叩き拒否は **本 issue スコープ外（follow-up）**。
-- CORS は `-c siteOrigin=`（GitHub Pages の HTTPS origin 可。`*` 不可）。
-
-### 単体デプロイ例（ステージング）
-
-詳細な context 一覧・コマンドは [`infra/cdk/README.md`](../infra/cdk/README.md) を参照。
-
-```bash
-cd infra/cdk
-export CDK_DEFAULT_ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
-# ステージング固定例: export CDK_DEFAULT_ACCOUNT=705008887115
-npx cdk bootstrap aws://$CDK_DEFAULT_ACCOUNT/ap-northeast-1
-npx cdk deploy GeonicdbBosaiWebPushProxy \
-  -c enableWebPush=true \
-  -c geonicdbUrl=https://geonicdb.geolonia.com \
-  -c geonicdbTenant=miya \
-  -c siteOrigin=https://geolonia.github.io
-# 出力 WebPushRegisterUrl → NEXT_PUBLIC_WEBPUSH_REGISTER_URL
-# Secrets Manager に GEONICDB_API_KEY を投入
-```
-
-### フル CDK（CloudFront + WAF）
-
-```bash
-export CDK_DEFAULT_ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
-npx cdk bootstrap aws://$CDK_DEFAULT_ACCOUNT/ap-northeast-1
-npx cdk bootstrap aws://$CDK_DEFAULT_ACCOUNT/us-east-1
-npx cdk deploy --all \
-  -c enableWebPush=true \
-  -c enableWebPushCloudFront=true \
-  -c geonicdbUrl=https://geonicdb.geolonia.com \
-  -c siteOrigin=https://bosai.example.jp
-# 推奨: NEXT_PUBLIC_WEBPUSH_REGISTER_URL=/api/webpush
-```
+キー発行・Secrets 投入は運用側（課長）。手順の命名規則は [`geonicdb-setup.md`](geonicdb-setup.md) を参照。
 
 ## CDK の使い方（要約）
 

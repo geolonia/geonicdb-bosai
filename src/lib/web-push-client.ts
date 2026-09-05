@@ -1,5 +1,15 @@
 import type { SiteLanguage } from "@/config/site-language";
-import { resolveGeonicdbPublicConfig } from "@/lib/geonicdb-public-client";
+import {
+  assertSubscriptionId,
+  buildNgsiLdWebPushSubscription,
+  extractSubscriptionId,
+  parsePushSubscription,
+} from "@/lib/build-webpush-subscription";
+import {
+  getGeonicdbWebPushClient,
+  resolveGeonicdbPublicConfig,
+  type PublicEnvLike,
+} from "@/lib/geonicdb-public-client";
 
 const STORAGE_KEY = "bosai-webpush-subscription";
 
@@ -9,7 +19,12 @@ export type StoredWebPushState = {
   enabledAt: string;
 };
 
-export type PublicWebPushEnv = Record<string, string | undefined>;
+export type PublicWebPushEnv = PublicEnvLike;
+
+/** @internal テスト注入用。SDK の requestRaw 面だけ。 */
+export type WebPushGeonicdbClient = {
+  requestRaw(method: string, path: string, body?: unknown): Promise<Response>;
+};
 
 /** VAPID 公開鍵取得（認証不要）。 */
 export async function fetchVapidPublicKey(
@@ -37,18 +52,22 @@ export async function fetchVapidPublicKey(
 }
 
 /**
- * 登録プロキシ URL。
- * CloudFront 利用時は同一オリジン `/api/webpush` を推奨。
+ * Web Push 購読登録が有効か（サブスクリプション作成専用 API キーの有無）。
+ * 未設定時はオプトイン UI を出さない。
  */
-export function resolveWebPushRegisterUrl(
+export function isWebPushConfigured(
   env: PublicWebPushEnv = {
-    NEXT_PUBLIC_WEBPUSH_REGISTER_URL:
-      process.env.NEXT_PUBLIC_WEBPUSH_REGISTER_URL,
+    NEXT_PUBLIC_GEONICDB_URL: process.env.NEXT_PUBLIC_GEONICDB_URL,
+    NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY:
+      process.env.NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY,
   },
-): string | null {
-  const raw = env.NEXT_PUBLIC_WEBPUSH_REGISTER_URL?.trim();
-  if (!raw) return null;
-  return raw.replace(/\/+$/, "");
+): boolean {
+  try {
+    const config = resolveGeonicdbPublicConfig(env);
+    return Boolean(config.webpushApiKey);
+  } catch {
+    return false;
+  }
 }
 
 /** applicationServerKey 用に base64url → Uint8Array */
@@ -100,49 +119,85 @@ export function clearStoredWebPushState(
   storage.removeItem(STORAGE_KEY);
 }
 
-export async function registerPushWithProxy(
+/**
+ * GeonicDB へ NGSI-LD webpush サブスクリプションを直接作成する。
+ * 認証・DPoP は SDK（getGeonicdbWebPushClient）に委譲する。
+ */
+export async function registerWebPushSubscription(
   pushSubscriptionJson: {
     endpoint: string;
     keys?: { p256dh?: string; auth?: string };
   },
-  registerUrl: string,
-  fetchFn: typeof fetch = fetch,
+  options: {
+    env?: PublicWebPushEnv;
+    client?: WebPushGeonicdbClient;
+    siteOrigin?: string;
+  } = {},
 ): Promise<string> {
-  const p256dh = pushSubscriptionJson.keys?.p256dh;
-  const auth = pushSubscriptionJson.keys?.auth;
-  if (!p256dh || !auth) {
-    throw new Error("PushSubscription keys missing");
-  }
-  const response = await fetchFn(registerUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify({
-      endpoint: pushSubscriptionJson.endpoint,
-      keys: { p256dh, auth },
-    }),
+  const parsed = parsePushSubscription({
+    endpoint: pushSubscriptionJson.endpoint,
+    keys: pushSubscriptionJson.keys,
   });
-  if (!response.ok) {
+  const siteOrigin =
+    options.siteOrigin ??
+    (typeof globalThis.location?.origin === "string"
+      ? globalThis.location.origin
+      : undefined);
+  const body = buildNgsiLdWebPushSubscription(parsed, { siteOrigin });
+
+  const client =
+    options.client ??
+    getGeonicdbWebPushClient(options.env) ??
+    (() => {
+      throw new Error("NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY is not set");
+    })();
+
+  const response = await client.requestRaw(
+    "POST",
+    "/ngsi-ld/v1/subscriptions",
+    body,
+  );
+  const responseText = await response.text();
+  let responseJson: unknown = null;
+  if (responseText) {
+    try {
+      responseJson = JSON.parse(responseText);
+    } catch {
+      responseJson = null;
+    }
+  }
+  if (response.status !== 201 && response.status !== 200) {
     throw new Error(`Web Push register failed: ${response.status}`);
   }
-  const json = (await response.json()) as { subscriptionId?: unknown };
-  if (typeof json.subscriptionId !== "string" || !json.subscriptionId) {
+  const location =
+    response.headers.get("Location") ?? response.headers.get("location");
+  const subscriptionId = extractSubscriptionId(location, responseJson);
+  if (!subscriptionId) {
     throw new Error("subscriptionId missing in register response");
   }
-  return json.subscriptionId;
+  return assertSubscriptionId(subscriptionId);
 }
 
-export async function unregisterPushWithProxy(
+/** GeonicDB 上のサブスクリプションを DELETE する。 */
+export async function unregisterWebPushSubscription(
   subscriptionId: string,
-  registerUrl: string,
-  fetchFn: typeof fetch = fetch,
+  options: {
+    env?: PublicWebPushEnv;
+    client?: WebPushGeonicdbClient;
+  } = {},
 ): Promise<void> {
-  const url = new URL(
-    registerUrl.includes("://")
-      ? registerUrl
-      : `${globalThis.location?.origin ?? "http://localhost"}${registerUrl.startsWith("/") ? "" : "/"}${registerUrl}`,
+  const id = assertSubscriptionId(subscriptionId);
+  const client =
+    options.client ??
+    getGeonicdbWebPushClient(options.env) ??
+    (() => {
+      throw new Error("NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY is not set");
+    })();
+
+  const response = await client.requestRaw(
+    "DELETE",
+    `/ngsi-ld/v1/subscriptions/${encodeURIComponent(id)}`,
   );
-  url.searchParams.set("id", subscriptionId);
-  const response = await fetchFn(url.toString(), { method: "DELETE" });
   if (!response.ok && response.status !== 204) {
     throw new Error(`Web Push unregister failed: ${response.status}`);
   }
@@ -194,13 +249,14 @@ export async function resolveActiveWebPushState(
 }
 
 /**
- * 通知許可 → SW 登録 → pushManager.subscribe → プロキシ登録。
+ * 通知許可 → SW 登録 → pushManager.subscribe → GeonicDB へ直接登録。
  * 同一 endpoint の既存購読 + 保存済み subscriptionId がある場合は再 POST しない。
  */
 export async function enableWebPushNotifications(options: {
   lang: SiteLanguage;
   env?: PublicWebPushEnv;
   fetchFn?: typeof fetch;
+  client?: WebPushGeonicdbClient;
 }): Promise<StoredWebPushState> {
   if (typeof window === "undefined" || !("Notification" in window)) {
     throw new Error("Notifications are not supported");
@@ -209,9 +265,8 @@ export async function enableWebPushNotifications(options: {
     throw new Error("Push messaging is not supported");
   }
 
-  const registerUrl = resolveWebPushRegisterUrl(options.env);
-  if (!registerUrl) {
-    throw new Error("NEXT_PUBLIC_WEBPUSH_REGISTER_URL is not set");
+  if (!isWebPushConfigured(options.env)) {
+    throw new Error("NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY is not set");
   }
 
   const permission = await Notification.requestPermission();
@@ -257,13 +312,12 @@ export async function enableWebPushNotifications(options: {
   }
   const json = subscription.toJSON();
   const endpoint = json.endpoint ?? subscription.endpoint;
-  const subscriptionId = await registerPushWithProxy(
+  const subscriptionId = await registerWebPushSubscription(
     {
       endpoint,
       keys: json.keys,
     },
-    registerUrl,
-    options.fetchFn,
+    { env: options.env, client: options.client },
   );
 
   const state: StoredWebPushState = {
@@ -275,23 +329,21 @@ export async function enableWebPushNotifications(options: {
   return state;
 }
 
-/** プロキシ DELETE + PushSubscription.unsubscribe。両方成功後に localStorage を消す。 */
+/** GeonicDB DELETE + PushSubscription.unsubscribe。両方成功後に localStorage を消す。 */
 export async function disableWebPushNotifications(options: {
   env?: PublicWebPushEnv;
-  fetchFn?: typeof fetch;
+  client?: WebPushGeonicdbClient;
 }): Promise<void> {
-  const registerUrl = resolveWebPushRegisterUrl(options.env);
-  if (!registerUrl) {
-    throw new Error("NEXT_PUBLIC_WEBPUSH_REGISTER_URL is not set");
+  if (!isWebPushConfigured(options.env)) {
+    throw new Error("NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY is not set");
   }
   const stored = readStoredWebPushState();
   if (!stored) return;
 
-  await unregisterPushWithProxy(
-    stored.subscriptionId,
-    registerUrl,
-    options.fetchFn,
-  );
+  await unregisterWebPushSubscription(stored.subscriptionId, {
+    env: options.env,
+    client: options.client,
+  });
 
   if ("serviceWorker" in navigator) {
     const registration = await navigator.serviceWorker.getRegistration();
