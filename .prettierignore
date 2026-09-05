@@ -6,3 +6,5 @@ package-lock.json
 *.tsbuildinfo
 docs
 CLAUDE.md
+# #42 generated Service Worker — do not reformat (assert-sw-fresh)
+public/sw.js

@@ -17,6 +17,7 @@ import {
 } from "@/lib/web-push-client";
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 describe("web-push-sw-logic", () => {
   it("extracts entity type from NGSI-LD notification payload", () => {
@@ -45,6 +46,24 @@ describe("web-push-sw-logic", () => {
 
   it("near-miss: unknown lang prefix falls back to ja", () => {
     expect(normalizePushLang("fr-FR")).toBe("ja");
+  });
+
+  it("WEB_PUSH_SITE_LANGUAGES matches SITE_LANGUAGES (#42)", async () => {
+    const { SITE_LANGUAGES } = await import("@/config/site-language");
+    const { WEB_PUSH_SITE_LANGUAGES } = await import("@/lib/web-push-sw-logic");
+    expect([...WEB_PUSH_SITE_LANGUAGES]).toEqual([...SITE_LANGUAGES]);
+  });
+
+  it("near-miss: reordered language list must not match SITE_LANGUAGES (#42)", async () => {
+    const { SITE_LANGUAGES } = await import("@/config/site-language");
+    const { WEB_PUSH_SITE_LANGUAGES } = await import("@/lib/web-push-sw-logic");
+    const base = [...SITE_LANGUAGES];
+    expect(base.length).toBeGreaterThanOrEqual(2);
+    // 要素は同じでも順序が違えばサイト言語の優先順位とズレる（通ってはいけない）
+    const reordered = [base[1], base[0], ...base.slice(2)];
+    expect(reordered).not.toEqual([...SITE_LANGUAGES]);
+    expect(reordered).not.toEqual([...WEB_PUSH_SITE_LANGUAGES]);
+    expect([...WEB_PUSH_SITE_LANGUAGES]).toEqual([...SITE_LANGUAGES]);
   });
 });
 
@@ -228,7 +247,7 @@ describe("public/sw.js push-only contract", () => {
       sw.indexOf('self.addEventListener("notificationclick"'),
     );
 
-    expect(pushHandler).toMatch(/await setAppBadgeSafely\(/);
+    expect(pushHandler).toMatch(/setAppBadgeSafely/);
     expect(clickHandler).toMatch(/await resetUnreadBadge\(\)/);
     expect(sw).toMatch(/nav\.setAppBadge/);
     expect(sw).toMatch(/nav\.clearAppBadge/);
@@ -238,14 +257,15 @@ describe("public/sw.js push-only contract", () => {
     // 引数なし setAppBadge() は iOS でバッジが描画されない
     expect(sw).not.toMatch(/nav\.setAppBadge\(\s*\)/);
     expect(sw).toMatch(/nav\.setAppBadge\(\s*[a-zA-Z_]\w*\s*\)/);
-    expect(sw).toMatch(/await setAppBadgeSafely\(\s*count\s*\)/);
+    // 1 引数ラッパ経由（生成後は WithNav 正本 + count ラッパ）
+    expect(sw).toMatch(/async function setAppBadgeSafely\(\s*count\s*\)/);
     expect(sw).toMatch(/["']\/unread-count["']/);
     expect(sw).toMatch(/RESET_UNREAD_COUNT/);
     const pushHandler = sw.slice(
       sw.indexOf('self.addEventListener("push"'),
       sw.indexOf('self.addEventListener("notificationclick"'),
     );
-    expect(pushHandler).toMatch(/incrementUnreadCount/);
+    expect(pushHandler).toMatch(/bumpUnreadCountState|incrementUnreadCount/);
   });
 
   it("writeUnreadCount failures do not block clearAppBadge (#45 audit)", () => {
@@ -258,23 +278,109 @@ describe("public/sw.js push-only contract", () => {
       sw.indexOf('self.addEventListener("install"'),
     );
     expect(writeFn).toMatch(/try\s*\{/);
-    expect(writeFn).toMatch(/catch\s*\{/);
-    expect(resetFn).toMatch(/clearAppBadgeSafely/);
+    // tsc は catch { を catch (_a) { に下げうる
+    expect(writeFn).toMatch(/catch\s*(\(\w*\)\s*)?\{/);
+    expect(resetFn).toMatch(/clearAppBadgeSafely|clearBadge/);
     expect(resetFn).toMatch(/runUnreadExclusive/);
     // clear が write の後にあり、write の try 外でも呼ばれる
-    const clearIdx = resetFn.indexOf("clearAppBadgeSafely");
+    const clearIdx = Math.max(
+      resetFn.indexOf("clearBadge"),
+      resetFn.indexOf("clearAppBadgeSafely"),
+    );
     const writeCallIdx = resetFn.indexOf("writeUnreadCount");
     expect(writeCallIdx).toBeGreaterThanOrEqual(0);
     expect(clearIdx).toBeGreaterThan(writeCallIdx);
   });
 
   it("serializes unread RMW via runUnreadExclusive (#45 CodeRabbit)", () => {
-    expect(sw).toMatch(/function runUnreadExclusive/);
+    expect(sw).toMatch(/runUnreadExclusive/);
     const pushHandler = sw.slice(
       sw.indexOf('self.addEventListener("push"'),
       sw.indexOf('self.addEventListener("notificationclick"'),
     );
     expect(pushHandler).toMatch(/runUnreadExclusive/);
+  });
+
+  it("is generated from web-push-sw-logic (#42 freshness)", async () => {
+    const { buildServiceWorkerSource } = await import(
+      pathToFileURL(path.resolve(__dirname, "../../scripts/generate-sw.mjs"))
+        .href
+    );
+    const expected = buildServiceWorkerSource();
+    expect(sw.replace(/\r\n/g, "\n")).toBe(expected);
+  });
+
+  it("rejects module syntax left in generated output (#42 fail-closed)", async () => {
+    const { assertClassicScriptOutput, assertBadgeRenameConsistency } =
+      await import(
+        pathToFileURL(path.resolve(__dirname, "../../scripts/generate-sw.mjs"))
+          .href
+      );
+    expect(() => assertClassicScriptOutput("const x = 1;\n")).not.toThrow();
+    // コメント内の import 言及は許容
+    expect(() =>
+      assertClassicScriptOutput("/* do not import */\nconst x = 1;\n"),
+    ).not.toThrow();
+    // near-miss: require( が残ると classic SW として壊れる
+    expect(() =>
+      assertClassicScriptOutput('const m = require("fs");\n'),
+    ).toThrow(/require\(/);
+    expect(() =>
+      assertClassicScriptOutput('const m = await import("./x.js");\n'),
+    ).toThrow(/import/);
+    expect(() => assertClassicScriptOutput("export const x = 1;\n")).toThrow(
+      /export/,
+    );
+
+    const good = `async function setAppBadgeSafelyWithNav(nav, count) {}
+async function clearAppBadgeSafelyWithNav(nav) {}
+async function setAppBadgeSafely(count) {
+  await setAppBadgeSafelyWithNav(self.navigator, count);
+}
+async function clearAppBadgeSafely() {
+  await clearAppBadgeSafelyWithNav(self.navigator);
+}
+`;
+    expect(() => assertBadgeRenameConsistency(good)).not.toThrow();
+    expect(() =>
+      assertBadgeRenameConsistency(
+        good.replace(/setAppBadgeSafelyWithNav/g, "setAppBadgeSafely"),
+      ),
+    ).toThrow(/duplicate top-level function|missing renamed/);
+
+    // ラッパー本体から呼び出しを消し、後続関数に同名呼び出しを置くと赤（範囲外マッチ禁止）
+    const callMovedLater = `async function setAppBadgeSafelyWithNav(nav, count) {}
+async function clearAppBadgeSafelyWithNav(nav) {}
+async function setAppBadgeSafely(count) {
+  return;
+}
+async function clearAppBadgeSafely() {
+  return;
+}
+async function decoy() {
+  await setAppBadgeSafelyWithNav(self.navigator, 1);
+  await clearAppBadgeSafelyWithNav(self.navigator);
+}
+`;
+    expect(() => assertBadgeRenameConsistency(callMovedLater)).toThrow(
+      /wrapper must call/,
+    );
+
+    // 文字列リテラル中の呼び出し文言だけでは通さない
+    const callOnlyInString = `async function setAppBadgeSafelyWithNav(nav, count) {}
+async function clearAppBadgeSafelyWithNav(nav) {}
+async function setAppBadgeSafely(count) {
+  const s = "setAppBadgeSafelyWithNav(";
+  return s;
+}
+async function clearAppBadgeSafely() {
+  const s = "clearAppBadgeSafelyWithNav(";
+  return s;
+}
+`;
+    expect(() => assertBadgeRenameConsistency(callOnlyInString)).toThrow(
+      /wrapper must call/,
+    );
   });
 });
 
