@@ -1,6 +1,6 @@
 /**
- * Service Worker の push 通知文言ロジック（unit test / ページ側と共有可能な純粋関数）。
- * `public/sw.js` は静的配信のため同内容を埋め込んでいる — 文言を変えるときは両方更新。
+ * Service Worker の push 通知文言・バッジロジック（unit test / ページ側と共有可能な純粋関数）。
+ * `public/sw.js` は静的配信のため同内容を埋め込んでいる — 変更時は両方更新。
  */
 
 import type { SiteLanguage } from "@/config/site-language";
@@ -138,4 +138,37 @@ export function pushMessageFor(
   const pack = WEB_PUSH_MESSAGES[lang];
   if (entityType && pack[entityType]) return pack[entityType];
   return pack.default;
+}
+
+/** Badging API の最小面（Service Worker / Window の navigator）。 */
+export type AppBadgeNavigator = {
+  setAppBadge?: (contents?: number) => Promise<void>;
+  clearAppBadge?: () => Promise<void>;
+};
+
+/**
+ * 通知受信時にアプリアイコンへバッジを立てる。
+ * 未対応環境・失敗時は握りつぶし（通知自体は落とさない）。
+ */
+export async function setAppBadgeSafely(
+  nav: AppBadgeNavigator | null | undefined,
+): Promise<void> {
+  if (!nav || typeof nav.setAppBadge !== "function") return;
+  try {
+    await nav.setAppBadge();
+  } catch {
+    // Badging API 失敗は通知配信を阻害しない
+  }
+}
+
+/** 通知クリック / フォアグラウンド復帰時にバッジを消す。 */
+export async function clearAppBadgeSafely(
+  nav: AppBadgeNavigator | null | undefined,
+): Promise<void> {
+  if (!nav || typeof nav.clearAppBadge !== "function") return;
+  try {
+    await nav.clearAppBadge();
+  } catch {
+    // クリア失敗は無視
+  }
 }

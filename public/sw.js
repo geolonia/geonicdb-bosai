@@ -1,9 +1,10 @@
 /**
- * Push 受信専用 Service Worker（#35）。
+ * Push 受信専用 Service Worker（#35 / #41）。
  * fetch イベントは実装しない（オフラインキャッシュ禁止）。
  *
  * 通知文言は Cache `bosai-webpush-meta` の `/lang` から言語を読み、埋め込み辞書で表示する。
- * 文言の正本は `src/lib/web-push-sw-logic.ts`（変更時は両方更新）。
+ * バッジは Badging API（setAppBadge / clearAppBadge）。showNotification だけでは付かない。
+ * 文言・バッジの正本は `src/lib/web-push-sw-logic.ts`（変更時は両方更新）。
  */
 
 const META_CACHE = "bosai-webpush-meta";
@@ -128,6 +129,26 @@ function messageFor(entityType, lang) {
   return pack[entityType] || pack.default;
 }
 
+async function setAppBadgeSafely() {
+  const nav = self.navigator;
+  if (!nav || typeof nav.setAppBadge !== "function") return;
+  try {
+    await nav.setAppBadge();
+  } catch {
+    // Badging API 失敗は通知配信を阻害しない
+  }
+}
+
+async function clearAppBadgeSafely() {
+  const nav = self.navigator;
+  if (!nav || typeof nav.clearAppBadge !== "function") return;
+  try {
+    await nav.clearAppBadge();
+  } catch {
+    // クリア失敗は無視
+  }
+}
+
 async function readStoredLang() {
   try {
     const cache = await caches.open(META_CACHE);
@@ -176,6 +197,7 @@ self.addEventListener("push", (event) => {
         body: msg.body,
         data: { url: "./" },
       });
+      await setAppBadgeSafely();
     })(),
   );
 });
@@ -186,6 +208,7 @@ self.addEventListener("notificationclick", (event) => {
     (event.notification.data && event.notification.data.url) || "./";
   event.waitUntil(
     (async () => {
+      await clearAppBadgeSafely();
       const all = await self.clients.matchAll({
         type: "window",
         includeUncontrolled: true,

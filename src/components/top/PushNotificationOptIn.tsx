@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import type { SiteLanguage } from "@/config/site-language";
 import type { UiStrings } from "@/config/ui-strings";
+import { installAppBadgeClearOnForeground } from "@/lib/app-badge-client";
 import {
   disableWebPushNotifications,
   enableWebPushNotifications,
@@ -77,6 +78,12 @@ export function PushNotificationOptIn({ lang, strings }: Props) {
       }
     });
   }, [lang, stored, available]);
+
+  // 通知で立てたバッジを、アプリが前面になったときに消す（#41）
+  useEffect(() => {
+    if (!available || !stored) return;
+    return installAppBadgeClearOnForeground();
+  }, [available, stored]);
 
   const onEnable = useCallback(async () => {
     setPhase("busy");

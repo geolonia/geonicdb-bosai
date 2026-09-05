@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build && node scripts/externalize-inline-scripts.mjs",
+    "build": "next build && node scripts/externalize-inline-scripts.mjs && node scripts/assert-pwa-manifest.mjs",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

@@ -210,6 +210,21 @@ describe("public/sw.js push-only contract", () => {
     expect(sw).toMatch(/addEventListener\(\s*["']push["']/);
     expect(sw).not.toMatch(/addEventListener\(\s*["']fetch["']/);
   });
+
+  it("sets and clears app badge around notification (#41)", () => {
+    const pushHandler = sw.slice(
+      sw.indexOf('self.addEventListener("push"'),
+      sw.indexOf('self.addEventListener("notificationclick"'),
+    );
+    const clickHandler = sw.slice(
+      sw.indexOf('self.addEventListener("notificationclick"'),
+    );
+
+    expect(pushHandler).toContain("await setAppBadgeSafely()");
+    expect(clickHandler).toContain("await clearAppBadgeSafely()");
+    expect(sw).toMatch(/nav\.setAppBadge/);
+    expect(sw).toMatch(/nav\.clearAppBadge/);
+  });
 });
 
 describe("BOSAI_LIVE_ENTITY_TYPES single source", () => {
