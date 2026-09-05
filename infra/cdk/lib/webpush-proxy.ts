@@ -1,6 +1,6 @@
 /**
  * Web Push 登録プロキシ（Lambda Function URL + Secrets Manager）。
- * BosaiSiteStack から compose する。
+ * WebPushProxyStack から compose する。BosaiSiteStack には依存しない。
  */
 import * as cdk from "aws-cdk-lib";
 import * as lambda from "aws-cdk-lib/aws-lambda";
@@ -12,6 +12,7 @@ import {
   assertAbsoluteHttpOrigin,
   assertAbsoluteHttpUrl,
 } from "./assert-absolute-http-origin";
+import { WEBPUSH_LAMBDA_RESERVED_CONCURRENCY } from "./webpush-limits";
 
 export type WebPushProxyProps = {
   /** GeonicDB base URL（例: https://geonicdb.geolonia.com） */
@@ -92,6 +93,9 @@ export class WebPushProxy extends Construct {
       runtime: lambda.Runtime.NODEJS_22_X,
       timeout: cdk.Duration.seconds(15),
       memorySize: 256,
+      // #36: 粗いコスト上限。GitHub Pages + Function URL 単体運用では主たる防御。
+      // CloudFront フルデプロイ時の主防御は WAF。直叩きの完全分離はスコープ外。
+      reservedConcurrentExecutions: WEBPUSH_LAMBDA_RESERVED_CONCURRENCY,
       description: "geonicdb-bosai Web Push subscription proxy",
       environment: {
         GEONICDB_URL: geonicdbUrl,
@@ -124,12 +128,6 @@ export class WebPushProxy extends Construct {
         allowedHeaders: ["content-type"],
         maxAge: cdk.Duration.days(1),
       },
-    });
-
-    new cdk.CfnOutput(this, "WebPushRegisterUrl", {
-      value: this.functionUrl.url,
-      description:
-        "NEXT_PUBLIC_WEBPUSH_REGISTER_URL — browser POST/DELETE for PushSubscription",
     });
   }
 }

@@ -8,10 +8,10 @@ import * as cdk from "aws-cdk-lib";
 import * as acm from "aws-cdk-lib/aws-certificatemanager";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
+import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import { Construct } from "constructs";
 import { buildContentSecurityPolicy, type BuildCspOptions } from "./csp-policy";
-import { WebPushProxy, type WebPushProxyProps } from "./webpush-proxy";
 
 export type BosaiSiteStackProps = cdk.StackProps & {
   /** サイト用バケット名（未指定時は CDK 生成名） */
@@ -34,12 +34,17 @@ export type BosaiSiteStackProps = cdk.StackProps & {
   /** ビューワー証明書とセットで指定するドメイン（例: bosai.example.jp） */
   domainNames?: string[];
   /**
-   * Web Push 登録プロキシ（#35）。指定時のみ Lambda Function URL + Secrets Manager を追加。
-   * `geonicdbUrl` 必須。CSP connect-src / worker-src は呼び出し側で合成すること。
+   * Web Push プロキシ Function URL（#35 / #36）。指定時のみ CloudFront `/api/webpush`
+   * behavior を追加する（フル CDK デプロイ向けオプション）。
+   * Lambda 本体は WebPushProxyStack 側。GitHub Pages 運用では不要。
    */
-  webPush?: Omit<WebPushProxyProps, "geonicdbUrl"> & {
-    geonicdbUrl: string;
-  };
+  webPushFunctionUrl?: lambda.IFunctionUrl;
+  /**
+   * WAFv2 WebACL ARN（#36）。CLOUDFRONT scope のため us-east-1 の WebPushWebAclStack から渡し、
+   * Distribution の webAclId に設定する。`crossRegionReferences: true` が必要。
+   * CloudFront フルデプロイ時のみ意味がある。
+   */
+  webAclArn?: string;
 };
 
 const CUSTOM_SECURITY_HEADERS = [
@@ -88,7 +93,6 @@ export class BosaiSiteStack extends cdk.Stack {
   public readonly bucket: s3.Bucket;
   public readonly distribution: cloudfront.Distribution;
   public readonly responseHeadersPolicy: cloudfront.ResponseHeadersPolicy;
-  public readonly webPushProxy?: WebPushProxy;
 
   constructor(scope: Construct, id: string, props: BosaiSiteStackProps = {}) {
     super(scope, id, props);
@@ -205,6 +209,8 @@ export class BosaiSiteStack extends cdk.Stack {
               cloudfront.SecurityPolicyProtocol.TLS_V1_2_2021,
           }
         : {}),
+      // #36: WAFv2（us-east-1 WebPushWebAclStack）— /api/webpush* のみ rate-limit
+      ...(props.webAclArn ? { webAclId: props.webAclArn } : {}),
       defaultBehavior: {
         origin: origins.S3BucketOrigin.withOriginAccessIdentity(this.bucket, {
           originAccessIdentity,
@@ -242,12 +248,11 @@ export class BosaiSiteStack extends cdk.Stack {
         : "Content-Security-Policy value",
     });
 
-    if (props.webPush) {
-      this.webPushProxy = new WebPushProxy(this, "WebPushProxy", props.webPush);
-      // 同一オリジン /api/webpush 経由で登録（connect-src 'self' のまま）
+    if (props.webPushFunctionUrl) {
+      // フル CDK（CloudFront）向けオプション: 同一オリジン /api/webpush
       this.distribution.addBehavior(
         "/api/webpush",
-        new origins.FunctionUrlOrigin(this.webPushProxy.functionUrl),
+        new origins.FunctionUrlOrigin(props.webPushFunctionUrl),
         {
           viewerProtocolPolicy:
             cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
