@@ -43,7 +43,7 @@
     "prettier": "^3.6.2",
     "serve": "^14.2.6",
     "tsx": "^4.23.13",
-    "typescript": "^5",
+    "typescript": "^7",
     "vitest": "^3.2.4",
     "vitest-axe": "^0.1.0"
   }
