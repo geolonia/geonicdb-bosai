@@ -37,7 +37,8 @@ const webPushRegisterOrigin = assertAbsoluteHttpOrigin(
   "webPushRegisterUrl",
 );
 
-const enableWebPush = app.node.tryGetContext("enableWebPush") === "true";
+const enableWebPushCtx = app.node.tryGetContext("enableWebPush");
+const enableWebPush = enableWebPushCtx === true || enableWebPushCtx === "true";
 const geonicdbTenant =
   (app.node.tryGetContext("geonicdbTenant") as string | undefined) ??
   process.env.NEXT_PUBLIC_GEONICDB_TENANT ??

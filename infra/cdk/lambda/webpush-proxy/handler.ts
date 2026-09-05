@@ -54,7 +54,15 @@ function readEnv(env: NodeJS.ProcessEnv = process.env): Env {
     GEONICDB_TENANT: env.GEONICDB_TENANT?.trim() || undefined,
     BOSAI_CONTEXT_URL: env.BOSAI_CONTEXT_URL?.trim() || undefined,
     SITE_ORIGIN: env.SITE_ORIGIN?.trim() || undefined,
-    CORS_ALLOW_ORIGIN: env.CORS_ALLOW_ORIGIN?.trim() || "*",
+    CORS_ALLOW_ORIGIN: (() => {
+      const raw = env.CORS_ALLOW_ORIGIN?.trim();
+      if (!raw || raw === "*") {
+        throw new Error(
+          "CORS_ALLOW_ORIGIN must be an absolute http(s) origin (not *)",
+        );
+      }
+      return raw;
+    })(),
   };
 }
 
@@ -117,15 +125,15 @@ export async function handleWebPushProxy(
   let env: Env;
   try {
     env = readEnv(deps.env ?? process.env);
-  } catch (err) {
-    return jsonResult(
-      500,
-      { error: err instanceof Error ? err.message : "config error" },
-      "*",
-    );
+  } catch {
+    return {
+      statusCode: 500,
+      headers: { "Content-Type": "application/json; charset=utf-8" },
+      body: JSON.stringify({ error: "config error" }),
+    };
   }
 
-  const allowOrigin = env.CORS_ALLOW_ORIGIN ?? "*";
+  const allowOrigin = env.CORS_ALLOW_ORIGIN!;
   const method = methodOf(event);
 
   if (method === "OPTIONS") {
@@ -172,6 +180,7 @@ export async function handleWebPushProxy(
           method: "POST",
           headers,
           body: JSON.stringify(ngsiBody),
+          signal: AbortSignal.timeout(8_000),
         },
       );
 
@@ -228,7 +237,7 @@ export async function handleWebPushProxy(
 
       const response = await fetchFn(
         `${env.GEONICDB_URL}/ngsi-ld/v1/subscriptions/${encodeURIComponent(subscriptionId)}`,
-        { method: "DELETE", headers },
+        { method: "DELETE", headers, signal: AbortSignal.timeout(8_000) },
       );
 
       if (response.status !== 204 && response.status !== 200) {
@@ -254,11 +263,15 @@ export async function handleWebPushProxy(
     if (err instanceof ValidationError) {
       return jsonResult(400, { error: err.message }, allowOrigin);
     }
-    return jsonResult(
-      500,
-      { error: err instanceof Error ? err.message : "internal error" },
-      allowOrigin,
-    );
+    if (
+      err instanceof Error &&
+      (err.name === "TimeoutError" || err.name === "AbortError")
+    ) {
+      console.error("webpush proxy upstream timeout", err);
+      return jsonResult(504, { error: "upstream timeout" }, allowOrigin);
+    }
+    console.error("webpush proxy error", err);
+    return jsonResult(500, { error: "internal error" }, allowOrigin);
   }
 }
 

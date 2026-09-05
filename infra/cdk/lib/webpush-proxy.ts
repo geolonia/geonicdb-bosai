@@ -25,9 +25,9 @@ export type WebPushProxyProps = {
   apiKeySecretArn?: string;
   /** bosai-context.jsonld の絶対 URL（任意。型名解決用 Link ヘッダ） */
   bosaiContextUrl?: string;
-  /** サイト origin（CORS と description 用） */
+  /** サイト origin（CORS と description 用）。corsAllowOrigin 未指定時は必須 */
   siteOrigin?: string;
-  /** CORS Allow-Origin。未指定時は siteOrigin、それも無ければ * */
+  /** CORS Allow-Origin。未指定時は siteOrigin の origin。`*` は禁止 */
   corsAllowOrigin?: string;
 };
 
@@ -46,15 +46,26 @@ export class WebPushProxy extends Construct {
     if (!geonicdbUrl) {
       throw new Error("webPush.geonicdbUrl is required");
     }
-    if (props.siteOrigin) {
-      assertAbsoluteHttpOrigin(props.siteOrigin, "webPush.siteOrigin");
-    }
-    if (props.corsAllowOrigin && props.corsAllowOrigin !== "*") {
-      assertAbsoluteHttpOrigin(
-        props.corsAllowOrigin,
-        "webPush.corsAllowOrigin",
+
+    const corsSource = props.corsAllowOrigin ?? props.siteOrigin;
+    if (!corsSource || corsSource.trim() === "*") {
+      throw new Error(
+        "webPush.siteOrigin or webPush.corsAllowOrigin is required (absolute http(s) origin; * is not allowed)",
       );
     }
+    const corsOrigin = assertAbsoluteHttpOrigin(
+      corsSource,
+      "webPush.corsAllowOrigin",
+    );
+    if (!corsOrigin) {
+      throw new Error(
+        "webPush.siteOrigin or webPush.corsAllowOrigin is required",
+      );
+    }
+
+    const siteOrigin = props.siteOrigin
+      ? assertAbsoluteHttpOrigin(props.siteOrigin, "webPush.siteOrigin")
+      : corsOrigin;
 
     if (props.apiKeySecretArn) {
       this.apiKeySecret = secretsmanager.Secret.fromSecretCompleteArn(
@@ -75,9 +86,6 @@ export class WebPushProxy extends Construct {
       );
     }
 
-    const corsOrigin =
-      props.corsAllowOrigin ?? props.siteOrigin?.replace(/\/+$/, "") ?? "*";
-
     this.function = new NodejsFunction(this, "Fn", {
       entry: path.join(__dirname, "../lambda/webpush-proxy/index.ts"),
       handler: "handler",
@@ -94,16 +102,13 @@ export class WebPushProxy extends Construct {
         ...(props.bosaiContextUrl
           ? { BOSAI_CONTEXT_URL: props.bosaiContextUrl }
           : {}),
-        ...(props.siteOrigin
-          ? { SITE_ORIGIN: props.siteOrigin.replace(/\/+$/, "") }
-          : {}),
+        ...(siteOrigin ? { SITE_ORIGIN: siteOrigin } : {}),
         CORS_ALLOW_ORIGIN: corsOrigin,
       },
       bundling: {
         minify: true,
         sourceMap: true,
         target: "node22",
-        // aws-sdk v3 はバンドルに含める（Lambda Node に同梱されない）
         externalModules: [],
       },
     });

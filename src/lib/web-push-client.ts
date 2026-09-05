@@ -159,8 +159,43 @@ export async function syncServiceWorkerLang(
 }
 
 /**
+ * localStorage だけでなく permission + PushSubscription の実在を確認する。
+ * 不整合なら保存値を捨てて null（再登録 UI へ）。
+ */
+export async function resolveActiveWebPushState(
+  storage: Pick<Storage, "getItem" | "removeItem"> = localStorage,
+): Promise<StoredWebPushState | null> {
+  const stored = readStoredWebPushState(storage);
+  if (!stored) return null;
+  if (typeof window === "undefined" || !("Notification" in window)) {
+    clearStoredWebPushState(storage);
+    return null;
+  }
+  if (Notification.permission !== "granted") {
+    clearStoredWebPushState(storage);
+    return null;
+  }
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    clearStoredWebPushState(storage);
+    return null;
+  }
+  try {
+    const registration = await navigator.serviceWorker.getRegistration();
+    const subscription = await registration?.pushManager.getSubscription();
+    if (!subscription || subscription.endpoint !== stored.endpoint) {
+      clearStoredWebPushState(storage);
+      return null;
+    }
+    return stored;
+  } catch {
+    clearStoredWebPushState(storage);
+    return null;
+  }
+}
+
+/**
  * 通知許可 → SW 登録 → pushManager.subscribe → プロキシ登録。
- * 呼び出しは利用者の明示操作からのみ（仕様 MUST）。
+ * 同一 endpoint の既存購読 + 保存済み subscriptionId がある場合は再 POST しない。
  */
 export async function enableWebPushNotifications(options: {
   lang: SiteLanguage;
@@ -200,15 +235,29 @@ export async function enableWebPushNotifications(options: {
   await navigator.serviceWorker.ready;
   await syncServiceWorkerLang(registration, options.lang);
 
+  const existingSub = await registration.pushManager.getSubscription();
+  const stored = readStoredWebPushState();
+  if (
+    existingSub &&
+    stored &&
+    existingSub.endpoint === stored.endpoint &&
+    stored.subscriptionId
+  ) {
+    return stored;
+  }
+
   const vapidKey = await fetchVapidPublicKey(options.env, options.fetchFn);
-  const subscription = await registration.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(vapidKey) as BufferSource,
-  });
+  const subscription =
+    existingSub ??
+    (await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(vapidKey) as BufferSource,
+    }));
   const json = subscription.toJSON();
+  const endpoint = json.endpoint ?? subscription.endpoint;
   const subscriptionId = await registerPushWithProxy(
     {
-      endpoint: json.endpoint ?? subscription.endpoint,
+      endpoint,
       keys: json.keys,
     },
     registerUrl,
@@ -217,9 +266,38 @@ export async function enableWebPushNotifications(options: {
 
   const state: StoredWebPushState = {
     subscriptionId,
-    endpoint: json.endpoint ?? subscription.endpoint,
+    endpoint,
     enabledAt: new Date().toISOString(),
   };
   writeStoredWebPushState(state);
   return state;
+}
+
+/** プロキシ DELETE + PushSubscription.unsubscribe。両方成功後に localStorage を消す。 */
+export async function disableWebPushNotifications(options: {
+  env?: PublicWebPushEnv;
+  fetchFn?: typeof fetch;
+}): Promise<void> {
+  const registerUrl = resolveWebPushRegisterUrl(options.env);
+  if (!registerUrl) {
+    throw new Error("NEXT_PUBLIC_WEBPUSH_REGISTER_URL is not set");
+  }
+  const stored = readStoredWebPushState();
+  if (!stored) return;
+
+  await unregisterPushWithProxy(
+    stored.subscriptionId,
+    registerUrl,
+    options.fetchFn,
+  );
+
+  if ("serviceWorker" in navigator) {
+    const registration = await navigator.serviceWorker.getRegistration();
+    const subscription = await registration?.pushManager.getSubscription();
+    if (subscription) {
+      await subscription.unsubscribe();
+    }
+  }
+
+  clearStoredWebPushState();
 }

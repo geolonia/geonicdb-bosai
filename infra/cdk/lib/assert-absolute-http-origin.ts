@@ -47,7 +47,7 @@ export function assertAbsoluteHttpUrl(
   return trimmed.replace(/\/+$/, "");
 }
 
-/** 絶対 http(s) URL の origin（CSP connect-src 用） */
+/** 絶対 http(s) URL の origin（CSP connect-src / CORS 用） */
 export function assertAbsoluteHttpOrigin(
   raw: string | undefined,
   paramName: string,

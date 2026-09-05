@@ -225,15 +225,27 @@ describe("BosaiSiteStack Response Headers Policy", () => {
       synth({
         webPush: {
           geonicdbUrl: "/not-absolute",
+          siteOrigin: "https://bosai.example.example",
         },
       }),
     ).toThrow(/webPush\.geonicdbUrl.*relative path/);
+  });
+
+  it("rejects missing CORS origin on the WebPushProxy construct", () => {
+    expect(() =>
+      synth({
+        webPush: {
+          geonicdbUrl: "https://geonicdb.example.example",
+        },
+      }),
+    ).toThrow(/siteOrigin or webPush\.corsAllowOrigin is required/);
   });
 
   it("grants the Web Push Lambda only Secrets Manager read on its own secret (least privilege)", () => {
     const template = synth({
       webPush: {
         geonicdbUrl: "https://geonicdb.example.example",
+        siteOrigin: "https://bosai.example.example",
       },
     });
 

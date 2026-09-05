@@ -137,6 +137,18 @@ select:focus-visible {
   cursor: wait;
 }
 
+.push-opt-in__enabled {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.push-opt-in__button--secondary {
+  font-weight: 500;
+  border-style: dashed;
+}
+
 .push-opt-in__status {
   margin: 0;
   font-size: 0.875rem;

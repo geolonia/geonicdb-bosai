@@ -8,18 +8,28 @@ import { testStrings } from "@/test/fixtures";
 
 const enableWebPushNotifications =
   vi.fn<(options: { lang: string }) => Promise<StoredWebPushState>>();
-const readStoredWebPushState = vi.fn<() => StoredWebPushState | null>(
-  () => null,
-);
+const disableWebPushNotifications = vi.fn<() => Promise<void>>();
+const resolveActiveWebPushState = vi.fn<
+  () => Promise<StoredWebPushState | null>
+>(async () => null);
 const resolveWebPushRegisterUrl = vi.fn<() => string | null>(
   () => "/api/webpush",
+);
+const syncServiceWorkerLang = vi.fn(
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock arity
+  async (..._args: [ServiceWorkerRegistration, string]) => undefined,
 );
 
 vi.mock("@/lib/web-push-client", () => ({
   enableWebPushNotifications: (options: { lang: string }) =>
     enableWebPushNotifications(options),
-  readStoredWebPushState: () => readStoredWebPushState(),
+  disableWebPushNotifications: () => disableWebPushNotifications(),
+  resolveActiveWebPushState: () => resolveActiveWebPushState(),
   resolveWebPushRegisterUrl: () => resolveWebPushRegisterUrl(),
+  syncServiceWorkerLang: (
+    registration: ServiceWorkerRegistration,
+    lang: string,
+  ) => syncServiceWorkerLang(registration, lang),
 }));
 
 function stubPushApis() {
@@ -29,7 +39,11 @@ function stubPushApis() {
   });
   Object.defineProperty(navigator, "serviceWorker", {
     configurable: true,
-    value: {},
+    value: {
+      getRegistration: async () => ({
+        pushManager: { getSubscription: async () => null },
+      }),
+    },
   });
   Object.defineProperty(window, "PushManager", {
     configurable: true,
@@ -40,7 +54,7 @@ function stubPushApis() {
 describe("PushNotificationOptIn state transition", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    readStoredWebPushState.mockReturnValue(null);
+    resolveActiveWebPushState.mockResolvedValue(null);
     resolveWebPushRegisterUrl.mockReturnValue("/api/webpush");
     stubPushApis();
   });
@@ -67,8 +81,31 @@ describe("PushNotificationOptIn state transition", () => {
       );
     });
     expect(
-      screen.queryByRole("button", { name: testStrings.pushEnableLabel }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("button", { name: testStrings.pushDisableLabel }),
+    ).toBeInTheDocument();
+  });
+
+  it("disable clears enabled state", async () => {
+    const user = userEvent.setup();
+    resolveActiveWebPushState.mockResolvedValue({
+      subscriptionId: "urn:ngsi-ld:Subscription:test",
+      endpoint: "https://fcm.googleapis.com/fcm/send/x",
+      enabledAt: "2026-09-05T00:00:00.000Z",
+    });
+    disableWebPushNotifications.mockResolvedValue();
+
+    render(<PushNotificationOptIn lang="ja" strings={testStrings} />);
+    await user.click(
+      await screen.findByRole("button", {
+        name: testStrings.pushDisableLabel,
+      }),
+    );
+    expect(disableWebPushNotifications).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: testStrings.pushEnableLabel }),
+      ).toBeInTheDocument();
+    });
   });
 
   it("shows error when enable fails", async () => {

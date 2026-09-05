@@ -51,21 +51,21 @@ export async function getSecretString(
   // JSON secret `{"apiKey":"..."}` または平文キー文字列の両方を許容
   let apiKey = value.trim();
   if (apiKey.startsWith("{")) {
+    let parsed: Record<string, unknown>;
     try {
-      const parsed = JSON.parse(apiKey) as Record<string, unknown>;
-      const fromJson =
-        (typeof parsed.apiKey === "string" && parsed.apiKey) ||
-        (typeof parsed.GEONICDB_API_KEY === "string" &&
-          parsed.GEONICDB_API_KEY) ||
-        (typeof parsed.value === "string" && parsed.value);
-      if (!fromJson) {
-        throw new Error("Secret JSON missing apiKey");
-      }
-      apiKey = fromJson.trim();
-    } catch (err) {
-      if (err instanceof Error && err.message.includes("missing")) throw err;
+      parsed = JSON.parse(apiKey) as Record<string, unknown>;
+    } catch {
       throw new Error("Secret JSON is invalid");
     }
+    const fromJson =
+      (typeof parsed.apiKey === "string" && parsed.apiKey) ||
+      (typeof parsed.GEONICDB_API_KEY === "string" &&
+        parsed.GEONICDB_API_KEY) ||
+      (typeof parsed.value === "string" && parsed.value);
+    if (!fromJson) {
+      throw new Error("Secret JSON missing apiKey");
+    }
+    apiKey = fromJson.trim();
   }
 
   cache.set(secretId, { value: apiKey, expiresAt: Date.now() + ttlMs });

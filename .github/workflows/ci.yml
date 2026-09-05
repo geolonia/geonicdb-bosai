@@ -54,6 +54,10 @@ jobs:
       - name: CDK sample typecheck
         run: npm run build --prefix infra/cdk
 
+      - name: CDK sample test typecheck
+        working-directory: infra/cdk
+        run: npx tsc --noEmit -p tsconfig.test.json
+
       - name: Build (static export)
         env:
           # GeonicDB 無しの PR CI 用。本番 deploy-pages では立てない（N-10 fail-closed）。

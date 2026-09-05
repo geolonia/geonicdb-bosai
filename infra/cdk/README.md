@@ -33,6 +33,7 @@ npx cdk deploy \
   -c geonicdbUrl=https://geonicdb.geolonia.com \
   -c geonicdbTenant=miya \
   -c siteOrigin=https://bosai.example.jp
+# siteOrigin は CORS 用に必須（* は不可）
 # デプロイ後: Secrets Manager に GEONICDB_API_KEY を投入
 # フロント: NEXT_PUBLIC_WEBPUSH_REGISTER_URL=/api/webpush
 ```
