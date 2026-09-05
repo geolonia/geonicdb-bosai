@@ -1,6 +1,6 @@
 # GeonicDB セットアップ（APIキー・XACMLポリシー）
 
-作成日: 2026-09-01 / 改訂: 2026-09-06（#48: Web Push 通知対象を `bosai-AlertLevel` のみに絞る旨を追記）
+作成日: 2026-09-01 / 改訂: 2026-09-06（#51: Web Push ポリシーの path glob を個別リソースにもマッチする形へ修正）
 関連: [`data-model.md`](data-model.md)、[`REQUIREMENTS.md`](REQUIREMENTS.md) 2.1節、[`deployment.md`](deployment.md)
 
 `geonicdb-cli`（コマンド名 `geonic`）を使い、`bosai-` プレフィックスの命名規則で APIキー・XACMLポリシーをセットアップする。**全て実際のテナント（staging）に対して実行・動作確認済み。**
@@ -17,7 +17,7 @@
 |---|---|---|---|
 | XACMLポリシー | `bosai-public-read` | tenant（管理者作成） | `bosai-*` への匿名（住民ブラウザ）GET読み取りを許可。`role: anonymous` |
 | XACMLポリシー | `bosai-read` | personal | `bosai-*` への **GET + WS のみ**を許可（書き込み不可）。住民ブラウザのWebSocket購読向け |
-| XACMLポリシー | `bosai-webpush-proxy-write` | personal（既作成） | `/ngsi-ld/v1/subscriptions*` への POST/DELETE/GET **と** `bosai-*` への **GET**。エンティティ書き込み不可。Web Push 購読操作と配信時認可用（配信時認可のため GET 必須） |
+| XACMLポリシー | `bosai-webpush-proxy-write` | personal（既作成） | `/ngsi-ld/v1/subscriptions` と `/ngsi-ld/v1/subscriptions/**` への POST/DELETE/GET **と** `bosai-*` への **GET**。エンティティ書き込み不可。Web Push 購読操作と配信時認可用（配信時認可のため GET 必須） |
 | XACMLポリシー | `bosai-write` | personal | `bosai-*` への書き込み（POST/PATCH/PUT/DELETE/GET/WS）を許可。職員のGeonicDB直接操作（`geonic` CLI / Claude Desktop MCP）向け |
 | APIキー | `bosai-public-ws-read` | - | `bosai-read` ポリシーを付与。**クライアントバンドルに埋め込む**（`NEXT_PUBLIC_GEONICDB_WS_API_KEY`）。DPoP必須・オリジン限定 |
 | APIキー | `bosai-webpush-subscribe` | - | `bosai-webpush-proxy-write` を付与。**クライアントバンドルに埋め込む**（`NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY`）。DPoP必須・オリジン限定（`https://geolonia.github.io` + `http://localhost:3000`）・`rateLimit.perMinute=30`。エンティティ書き込み権限なし |
@@ -164,9 +164,11 @@ geonic admin api-keys create --name "bosai-public-ws-read" --policy bosai-read \
 **購読対象変更時の運用**: 既存購読は旧仕様のまま GeonicDB に残るため、対象を変えたあとは
 既存購読を削除して端末側で再オプトインさせる（自動移行なし。詳細は [`deployment.md`](deployment.md)）。
 
-**なぜ `bosai-*` への GET が必要か**: GeonicDB は通知配信時に購読所有者の認可を判定する。対象エンティティタイプを読めない principal のサブスクリプションは、**エラーも失敗カウントも残さず沈黙のうちにスキップされる**（`timesSent: 0` / `timesFailed: 0` / `lastFailure: null` のまま）。サブスクリプション作成だけできれば十分、ではない。
+**なぜ `bosai-*` への GET が必要か**: GeonicDB は通知配信時に購読所有者の認可を判定する。対象エンティティタイプを読めない principal のサブスクリプションは、**エラーも失敗カウントも残さず沈黙のうちにスキップされる**（`timesSent: 0` / `timesFailed: 0` / `lastFailure: null` のまま）。サブスクリプション作成だけできれば十分、ではない。（#44）
 
 **セキュリティ上の位置づけ**: `bosai-*` は `bosai-public-read` で既に匿名 GET が許可されている公開データなので、このキーに GET を与えても新たな露出は生じない。エンティティの**書き込み**権限は依然として持たない。
+
+**path glob の落とし穴（#51）**: GeonicDB の glob では `*` はスラッシュを跨がない（`[^/]*` に変換される）。`/ngsi-ld/v1/subscriptions*` はコレクション `POST /ngsi-ld/v1/subscriptions` にはマッチするが、個別リソース `DELETE /ngsi-ld/v1/subscriptions/{id}` にはマッチしない。結果として「作成はできるが削除できない」ように、**メソッドやパス形状によって非対称に失敗**する。個別リソースへの操作を許可するには `/ngsi-ld/v1/subscriptions/**` が必要（`/**` は `(/.*)?` になるためコレクション自身にもマッチするが、意図を明示するためコレクションの `string-equal` と並べて書く）。
 
 ステージング適用済みのポリシー定義（`first-applicable`・3ルール）:
 
@@ -186,7 +188,8 @@ geonic me policies create '{
       "effect": "Permit",
       "target": {
         "resources": [
-          { "attributeId": "path", "matchValue": "/ngsi-ld/v1/subscriptions*", "matchFunction": "glob" }
+          { "attributeId": "path", "matchValue": "/ngsi-ld/v1/subscriptions", "matchFunction": "string-equal" },
+          { "attributeId": "path", "matchValue": "/ngsi-ld/v1/subscriptions/**", "matchFunction": "glob" }
         ],
         "actions": [
           { "attributeId": "method", "matchValue": "POST" },

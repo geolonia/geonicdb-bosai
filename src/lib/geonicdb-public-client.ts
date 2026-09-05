@@ -19,8 +19,9 @@ export type GeonicdbPublicConfig = {
   wsApiKey?: string;
   /**
    * Web Push サブスクリプション操作用 API キー（任意）。
-   * ポリシー `bosai-webpush-proxy-write`: `/ngsi-ld/v1/subscriptions*` への
-   * POST/DELETE/GET と、配信時認可用の `bosai-*` への GET。エンティティ書き込み不可。
+   * ポリシー `bosai-webpush-proxy-write`: `/ngsi-ld/v1/subscriptions` と
+   * `/ngsi-ld/v1/subscriptions/**` への POST/DELETE/GET と、配信時認可用の
+   * `bosai-*` への GET。エンティティ書き込み不可。
    * 未設定時は Web Push オプトイン UI を出さない。
    */
   webpushApiKey?: string;
