@@ -74,7 +74,7 @@ const connectSrc = [
 
 // #35/#36: Web Push プロキシは BosaiSiteStack と独立（GitHub Pages でも単体デプロイ可）
 let webPushProxyStack: WebPushProxyStack | undefined;
-if (enableWebPush && geonicdbUrlRaw) {
+if (enableWebPush) {
   if (!siteOrigin) {
     throw new Error(
       "enableWebPush=true requires -c siteOrigin=https://… (CORS; GitHub Pages origin OK; * forbidden)",
@@ -82,7 +82,7 @@ if (enableWebPush && geonicdbUrlRaw) {
   }
   webPushProxyStack = new WebPushProxyStack(app, "GeonicdbBosaiWebPushProxy", {
     env: { account, region: siteRegion },
-    geonicdbUrl: geonicdbUrlRaw.trim().replace(/\/+$/, ""),
+    geonicdbUrl: geonicdbUrlRaw!.trim().replace(/\/+$/, ""),
     siteOrigin,
     corsAllowOrigin: siteOrigin,
     ...(geonicdbTenant?.trim()
