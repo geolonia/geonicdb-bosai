@@ -227,6 +227,7 @@ describe("BosaiSiteStack Response Headers Policy", () => {
     const template = synth({
       webPush: {
         geonicdbUrl: "https://geonicdb.example.example",
+        siteOrigin: "https://bosai.example.example",
       },
       webAclArn,
     });
@@ -242,6 +243,7 @@ describe("BosaiSiteStack Response Headers Policy", () => {
     const template = synth({
       webPush: {
         geonicdbUrl: "https://geonicdb.example.example",
+        siteOrigin: "https://bosai.example.example",
       },
     });
     const dist = template.findResources("AWS::CloudFront::Distribution");
