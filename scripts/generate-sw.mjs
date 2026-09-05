@@ -104,7 +104,29 @@ export function buildServiceWorkerSource() {
 
   // 生成結果は常に LF。末尾改行を 1 つに正規化。
   const body = transpiled.outputText.replace(/\r\n/g, "\n").replace(/\s*$/, "\n");
-  return `${BANNER}\n${body}`;
+  const source = `${BANNER}\n${body}`;
+  assertClassicScriptOutput(source);
+  return source;
+}
+
+/**
+ * classic script として配信する SW に module 構文が残っていないことを fail-closed で検査する。
+ * 静的 import 除去の正規表現漏れや dynamic `import()` → `require(...)` 変換の残留を黙殺しない。
+ * コメント内の言及は無視する（バナーや説明文の false positive 防止）。
+ */
+export function assertClassicScriptOutput(source) {
+  const withoutComments = source
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/.*$/gm, "");
+  const found = [];
+  if (/\brequire\s*\(/.test(withoutComments)) found.push("require(");
+  if (/\bimport\b/.test(withoutComments)) found.push("import");
+  if (/\bexport\b/.test(withoutComments)) found.push("export");
+  if (found.length > 0) {
+    throw new Error(
+      `generate-sw: output must be a classic script (no module syntax); found ${found.join(", ")}`,
+    );
+  }
 }
 
 function parseArgs(argv) {

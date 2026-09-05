@@ -306,6 +306,29 @@ describe("public/sw.js push-only contract", () => {
     const expected = buildServiceWorkerSource();
     expect(sw.replace(/\r\n/g, "\n")).toBe(expected);
   });
+
+  it("rejects module syntax left in generated output (#42 fail-closed)", async () => {
+    const { assertClassicScriptOutput } = await import(
+      pathToFileURL(
+        path.resolve(__dirname, "../../scripts/generate-sw.mjs"),
+      ).href
+    );
+    expect(() => assertClassicScriptOutput("const x = 1;\n")).not.toThrow();
+    // コメント内の import 言及は許容
+    expect(() =>
+      assertClassicScriptOutput("/* do not import */\nconst x = 1;\n"),
+    ).not.toThrow();
+    // near-miss: require( が残ると classic SW として壊れる
+    expect(() =>
+      assertClassicScriptOutput('const m = require("fs");\n'),
+    ).toThrow(/require\(/);
+    expect(() =>
+      assertClassicScriptOutput('const m = await import("./x.js");\n'),
+    ).toThrow(/import/);
+    expect(() => assertClassicScriptOutput("export const x = 1;\n")).toThrow(
+      /export/,
+    );
+  });
 });
 
 describe("BOSAI_LIVE / WEBPUSH entity types single source (#48)", () => {
