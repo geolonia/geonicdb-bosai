@@ -19,6 +19,8 @@
 
 html {
   font-size: 100%;
+  /* Linux 等でクラシックスクロールバーが出るとき、後からの幅収縮 CLS を防ぐ */
+  scrollbar-gutter: stable;
 }
 
 body {

@@ -31,6 +31,12 @@ const weighted = [
   "speed-index",
 ];
 
+const clsDetailAudits = [
+  "layout-shift-elements",
+  "layout-shifts",
+  "cls-culprits-insight",
+];
+
 for (const file of files) {
   const d = JSON.parse(readFileSync(file, "utf8"));
   const perf = d.categories?.performance?.score;
@@ -44,4 +50,16 @@ for (const file of files) {
       `  ${id}: score=${a.score} numeric=${a.numericValue} display=${a.displayValue}`,
     );
   }
+  for (const id of clsDetailAudits) {
+    const a = d.audits?.[id];
+    if (!a) continue;
+    const details = a.details ? JSON.stringify(a.details) : "";
+    console.log(
+      `  ${id}: score=${a.score} display=${a.displayValue} details=${details.slice(0, 4000)}`,
+    );
+  }
+  const raw = readFileSync(file, "utf8");
+  console.log(
+    `  markers: a2hs=${/a2hs-prompt|ホーム画面に追加/.test(raw)} push=${/push-opt-in/.test(raw)}`,
+  );
 }

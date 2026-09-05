@@ -48,9 +48,11 @@ export function injectA2hsBipBootScript(html, scriptSrc) {
     return { html, injected: false };
   }
   const tag = `<script ${MARKER} src="${scriptSrc}"></script>`;
-  const withHead = html.replace(/<head(\s[^>]*)?>/i, (open) => `${open}${tag}`);
+  // CSS より後（</head> 直前）へ入れる。先頭だと同期 script が CSS を遅らせ FOUC の温床になる。
+  // BIP はページ読込後に発火することが多く、</head> 直前で十分捕捉できる。
+  const withHead = html.replace(/<\/head>/i, `${tag}</head>`);
   if (withHead === html) {
-    throw new Error("inject-a2hs-bip-boot: <head> not found");
+    throw new Error("inject-a2hs-bip-boot: </head> not found");
   }
   return { html: withHead, injected: true };
 }

@@ -2,16 +2,16 @@ import { describe, expect, it } from "vitest";
 import { injectA2hsBipBootScript } from "../../scripts/inject-a2hs-bip-boot.mjs";
 
 describe("inject-a2hs-bip-boot (#60)", () => {
-  it("inserts sync script src at the start of head without async/defer", () => {
+  it("inserts sync script src before </head> without async/defer", () => {
     const input =
-      '<html><head><meta charset="utf-8"/></head><body></body></html>';
+      '<html><head><meta charset="utf-8"/><link rel="stylesheet" href="/x.css"/></head><body></body></html>';
     const { html, injected } = injectA2hsBipBootScript(
       input,
       "/a2hs-bip-boot.js",
     );
     expect(injected).toBe(true);
     expect(html).toMatch(
-      /<head><script data-bosai-a2hs-bip-boot src="\/a2hs-bip-boot\.js"><\/script>/,
+      /<link rel="stylesheet" href="\/x\.css"\/><script data-bosai-a2hs-bip-boot src="\/a2hs-bip-boot\.js"><\/script><\/head>/,
     );
     expect(html).not.toMatch(/a2hs-bip-boot\.js"[^>]*\basync\b/);
     expect(html).not.toMatch(/a2hs-bip-boot\.js"[^>]*\bdefer\b/);

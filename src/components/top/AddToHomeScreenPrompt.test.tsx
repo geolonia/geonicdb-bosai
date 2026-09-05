@@ -71,6 +71,11 @@ function fireBeforeInstallPrompt(
   return { prompt, event };
 }
 
+/** Chromium 導線は pointerdown 等まで遅延表示（CI LH の CLS 対策） */
+function enableChromiumA2hsUi() {
+  window.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+}
+
 describe("AddToHomeScreenPrompt (#55)", () => {
   beforeEach(() => {
     localStorage.clear();
@@ -124,11 +129,14 @@ describe("AddToHomeScreenPrompt (#55)", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows Chromium install button after beforeinstallprompt", async () => {
+  it("shows Chromium install button after beforeinstallprompt and user gesture (#60 CLS)", async () => {
     render(<AddToHomeScreenPrompt strings={testStrings} />);
     expect(screen.queryByTestId("a2hs-prompt")).not.toBeInTheDocument();
 
     const { prompt } = fireBeforeInstallPrompt();
+    // BIP だけでは出さない（ロード直後表示が CI で CLS 0.06 を起こす）
+    expect(screen.queryByTestId("a2hs-prompt")).not.toBeInTheDocument();
+    enableChromiumA2hsUi();
     expect(await screen.findByTestId("a2hs-prompt")).toBeInTheDocument();
     expect(screen.getByText(testStrings.a2hsDescription)).toBeInTheDocument();
 
@@ -141,25 +149,30 @@ describe("AddToHomeScreenPrompt (#55)", () => {
     expect(localStorage.getItem(A2HS_DISMISS_STORAGE_KEY)).toBe("1");
   });
 
-  it("captures beforeinstallprompt fired before mount (#60 CodeRabbit)", async () => {
+  it("captures beforeinstallprompt fired before mount, then shows after gesture (#60)", async () => {
     fireBeforeInstallPrompt();
     render(<AddToHomeScreenPrompt strings={testStrings} />);
+    expect(screen.queryByTestId("a2hs-prompt")).not.toBeInTheDocument();
+    enableChromiumA2hsUi();
     expect(await screen.findByTestId("a2hs-prompt")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: testStrings.a2hsInstallLabel }),
     ).toBeInTheDocument();
   });
 
-  it("shows install UI when BIP fires after mount (#60)", async () => {
+  it("shows install UI when BIP fires after mount and user gestures (#60)", async () => {
     render(<AddToHomeScreenPrompt strings={testStrings} />);
     expect(screen.queryByTestId("a2hs-prompt")).not.toBeInTheDocument();
     fireBeforeInstallPrompt();
+    expect(screen.queryByTestId("a2hs-prompt")).not.toBeInTheDocument();
+    enableChromiumA2hsUi();
     expect(await screen.findByTestId("a2hs-prompt")).toBeInTheDocument();
   });
 
   it("does not persist dismiss when native install UI is cancelled (#60)", async () => {
     render(<AddToHomeScreenPrompt strings={testStrings} />);
     const { prompt } = fireBeforeInstallPrompt("dismissed");
+    enableChromiumA2hsUi();
     expect(await screen.findByTestId("a2hs-prompt")).toBeInTheDocument();
 
     await userEvent.click(
@@ -239,9 +252,18 @@ describe("AddToHomeScreenPrompt (#55)", () => {
     }
   });
 
+  it("keeps Chromium prompt hidden until gesture even when BIP already fired", async () => {
+    fireBeforeInstallPrompt();
+    render(<AddToHomeScreenPrompt strings={testStrings} />);
+    await expect(
+      screen.findByTestId("a2hs-prompt", {}, { timeout: 200 }),
+    ).rejects.toThrow();
+  });
+
   // near-miss: BIP が無い非 iOS では導線を出さない（永久待ちしない）
   it("near-miss: non-iOS without beforeinstallprompt stays hidden", async () => {
     render(<AddToHomeScreenPrompt strings={testStrings} />);
+    enableChromiumA2hsUi();
     await expect(
       screen.findByTestId("a2hs-prompt", {}, { timeout: 200 }),
     ).rejects.toThrow();

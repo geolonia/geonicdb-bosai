@@ -46,6 +46,11 @@ describe("a2hs-prompt button hit target (#55 / WCAG 2.5.8)", () => {
     expect(reserve).toMatch(/padding-bottom:\s*var\(--a2hs-reserve\)/);
   });
 
+  it("reserves scrollbar gutter to avoid classic-scrollbar CLS (#60)", () => {
+    const rule = extractRuleBody("html");
+    expect(rule).toMatch(/scrollbar-gutter:\s*stable/);
+  });
+
   it("includes iOS safe-area inset in the fixed bar padding (#55)", () => {
     const rule = extractRuleBody(".a2hs-prompt");
     expect(rule).toMatch(/safe-area-inset-bottom/);

@@ -51,8 +51,14 @@ function clearA2hsViewportReserve(): void {
  * - 一度閉じたら再表示しない（※明示的な「閉じる」のみ。ネイティブキャンセルは別扱い）
  * - Android/Chrome: beforeinstallprompt → 独自ボタンで prompt()
  * - iOS: 共有メニュー手順の案内のみ（BIP は発火しない）
- * - fixed 帯の高さ分を body padding で確保（末尾が隠れない / CLS 回避）
+ * - fixed 帯の高さ分を body padding で確保（末尾が隠れない）
+ * - Chromium 帯は初回操作（または長めの idle）まで出さない
+ *   （BIP 直後の表示 + padding が CI Lighthouse で CLS 0.06 を起こす実測あり）
  */
+
+/** Chromium 導線を操作無しでも出すまでの待ち（LH 計測窓より十分長く） */
+export const A2HS_CHROMIUM_IDLE_MS = 30_000;
+
 export function AddToHomeScreenPrompt({ strings }: Props) {
   const titleId = useId();
   const bannerRef = useRef<HTMLElement>(null);
@@ -66,6 +72,7 @@ export function AddToHomeScreenPrompt({ strings }: Props) {
       getStashedBeforeInstallPrompt(),
     );
   const [dismissedLocal, setDismissedLocal] = useState(false);
+  const [chromiumUiReady, setChromiumUiReady] = useState(false);
 
   let standalone = false;
   let dismissedStored = false;
@@ -92,11 +99,28 @@ export function AddToHomeScreenPrompt({ strings }: Props) {
     });
   }, [isClient, standalone, dismissed]);
 
+  // Chromium: ロード直後の帯表示を避け、操作または長 idle 後に出す（CLS / LH）
+  useEffect(() => {
+    if (!isClient || standalone || dismissed || iosLike) return;
+
+    const enable = () => {
+      setChromiumUiReady(true);
+    };
+    window.addEventListener("pointerdown", enable, { once: true });
+    window.addEventListener("keydown", enable, { once: true });
+    const timer = window.setTimeout(enable, A2HS_CHROMIUM_IDLE_MS);
+    return () => {
+      window.removeEventListener("pointerdown", enable);
+      window.removeEventListener("keydown", enable);
+      window.clearTimeout(timer);
+    };
+  }, [isClient, standalone, dismissed, iosLike]);
+
   const visible =
     isClient &&
     !standalone &&
     !dismissed &&
-    (iosLike || deferredPrompt != null);
+    (iosLike || (deferredPrompt != null && chromiumUiReady));
 
   // fixed 帯の実高さを CSS 変数へ反映し、非表示時は余白クラスも外す
   useEffect(() => {
