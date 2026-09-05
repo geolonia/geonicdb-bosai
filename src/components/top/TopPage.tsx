@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo } from "react";
 import { useLdEntities } from "@geolonia/geonicdb-sdk/react";
+import { AddToHomeScreenPrompt } from "@/components/top/AddToHomeScreenPrompt";
 import {
   AlertLevelDisplay,
   AlertLevelError,
@@ -12,12 +13,12 @@ import {
   EmergencyBannerError,
   EmergencyBannerPlaceholder,
 } from "@/components/top/EmergencyBanner";
-import { AddToHomeScreenPrompt } from "@/components/top/AddToHomeScreenPrompt";
 import {
   NewsList,
   NewsListError,
   NewsListPlaceholder,
 } from "@/components/top/NewsList";
+import { OptionalFeatureBoundary } from "@/components/top/OptionalFeatureBoundary";
 import { PushNotificationOptIn } from "@/components/top/PushNotificationOptIn";
 import { QuickLinks } from "@/components/top/QuickLinks";
 import { SiteFooter } from "@/components/top/SiteFooter";
@@ -201,8 +202,6 @@ export function TopPage({ initialSnapshot }: TopPageProps = {}) {
   return (
     <>
       <SiteHeader strings={strings} lang={lang} onLangChange={setLang} />
-      <PushNotificationOptIn lang={lang} strings={strings} />
-      <AddToHomeScreenPrompt strings={strings} />
       {bannerView.kind === "ready" ? (
         <>
           <EmergencyBanner data={bannerView.data} strings={strings} />
@@ -244,6 +243,11 @@ export function TopPage({ initialSnapshot }: TopPageProps = {}) {
         ) : (
           <AlertLevelPlaceholder strings={strings} />
         )}
+        {/* 付加 UI は緊急バナー・警戒レベルより後（WCAG 1.3.2 / #55） */}
+        <PushNotificationOptIn lang={lang} strings={strings} />
+        <OptionalFeatureBoundary>
+          <AddToHomeScreenPrompt strings={strings} />
+        </OptionalFeatureBoundary>
         <QuickLinks heading={strings.quickLinksHeading} links={quickLinks} />
         {noticesView.kind === "ready" ? (
           <>

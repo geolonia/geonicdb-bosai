@@ -55,9 +55,21 @@ export function AddToHomeScreenPrompt({ strings }: Props) {
     useState<BeforeInstallPromptEvent | null>(null);
   const [dismissedLocal, setDismissedLocal] = useState(false);
 
-  const standalone = isClient && isRunningAsInstalledPwa();
-  const dismissedStored = isClient && isA2hsDismissed();
-  const iosLike = isClient && isIosLikeDevice();
+  let standalone = false;
+  let dismissedStored = false;
+  let iosLike = false;
+  if (isClient) {
+    try {
+      standalone = isRunningAsInstalledPwa();
+      dismissedStored = isA2hsDismissed();
+      iosLike = isIosLikeDevice();
+    } catch {
+      // 判定失敗時は導線を出さず主要情報の描画を優先
+      standalone = false;
+      dismissedStored = true;
+      iosLike = false;
+    }
+  }
   const dismissed = dismissedLocal || dismissedStored;
 
   useEffect(() => {

@@ -1,4 +1,7 @@
 // @vitest-environment jsdom
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   A2HS_DISMISS_STORAGE_KEY,
@@ -8,6 +11,11 @@ import {
   isRunningAsInstalledPwa,
   type NavigatorWithStandalone,
 } from "@/lib/a2hs";
+
+const a2hsSource = readFileSync(
+  resolve(dirname(fileURLToPath(import.meta.url)), "./a2hs.ts"),
+  "utf8",
+);
 
 function mockMatchMedia(matches: boolean): Pick<Window, "matchMedia"> {
   return {
@@ -69,6 +77,54 @@ describe("isRunningAsInstalledPwa (#55)", () => {
         standalone: false,
       } as NavigatorWithStandalone),
     ).toBe(false);
+  });
+
+  it("does not throw when matchMedia is missing (falls back to navigator.standalone)", () => {
+    expect(() =>
+      isRunningAsInstalledPwa(
+        {} as Pick<Window, "matchMedia">,
+        {
+          standalone: true,
+        } as NavigatorWithStandalone,
+      ),
+    ).not.toThrow();
+    expect(
+      isRunningAsInstalledPwa(
+        {} as Pick<Window, "matchMedia">,
+        {
+          standalone: true,
+        } as NavigatorWithStandalone,
+      ),
+    ).toBe(true);
+    expect(
+      isRunningAsInstalledPwa(
+        {} as Pick<Window, "matchMedia">,
+        {
+          standalone: false,
+        } as NavigatorWithStandalone,
+      ),
+    ).toBe(false);
+  });
+
+  it("does not throw when matchMedia is not a function", () => {
+    expect(
+      isRunningAsInstalledPwa(
+        { matchMedia: "nope" } as unknown as Pick<Window, "matchMedia">,
+        { standalone: false } as NavigatorWithStandalone,
+      ),
+    ).toBe(false);
+  });
+
+  // near-miss: matchMedia 無し + standalone 無し → false（両方無ければ非 PWA）
+  it("near-miss: without matchMedia and without standalone returns false", () => {
+    expect(isRunningAsInstalledPwa({}, {})).toBe(false);
+  });
+
+  it("feature-detects matchMedia with typeof === function before calling", () => {
+    // try/catch だけでは hollow になるため、呼び出し前の typeof ガードをソースで固定する
+    expect(a2hsSource).toMatch(
+      /typeof\s+win\.matchMedia\s*===\s*["']function["']/,
+    );
   });
 });
 
