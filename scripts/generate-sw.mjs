@@ -161,25 +161,78 @@ export function assertBadgeRenameConsistency(source) {
     }
   }
 
-  // ラッパーが WithNav を呼ぶこと（リネーム漏れで自己再帰や未定義参照にならない）
-  if (
-    !/async function setAppBadgeSafely\s*\(\s*count\s*\)[\s\S]*?setAppBadgeSafelyWithNav\s*\(/.test(
-      code,
-    )
-  ) {
+  // ラッパー本体だけを構造的に取得し、その中で WithNav 呼び出しを検査する
+  // （後続関数・文字列リテラル内の同名テキストは無視）
+  const setBody = extractTopLevelFunctionBody(code, "setAppBadgeSafely");
+  if (!setBody) {
+    throw new Error("generate-sw: missing setAppBadgeSafely wrapper");
+  }
+  if (!containsIdentifierCall(setBody, "setAppBadgeSafelyWithNav")) {
     throw new Error(
       "generate-sw: setAppBadgeSafely wrapper must call setAppBadgeSafelyWithNav",
     );
   }
-  if (
-    !/async function clearAppBadgeSafely\s*\(\s*\)[\s\S]*?clearAppBadgeSafelyWithNav\s*\(/.test(
-      code,
-    )
-  ) {
+
+  const clearBody = extractTopLevelFunctionBody(code, "clearAppBadgeSafely");
+  if (!clearBody) {
+    throw new Error("generate-sw: missing clearAppBadgeSafely wrapper");
+  }
+  if (!containsIdentifierCall(clearBody, "clearAppBadgeSafelyWithNav")) {
     throw new Error(
       "generate-sw: clearAppBadgeSafely wrapper must call clearAppBadgeSafelyWithNav",
     );
   }
+}
+
+/**
+ * トップレベル `function name(...) { ... }` の本体文字列を返す（ネスト {} / 文字列を考慮）。
+ * 見つからなければ null。
+ */
+export function extractTopLevelFunctionBody(source, name) {
+  const re = new RegExp(
+    String.raw`^(?:async\s+)?function\s+${name}\s*\([^)]*\)\s*\{`,
+    "m",
+  );
+  const match = re.exec(source);
+  if (!match) return null;
+  const openIdx = match.index + match[0].length - 1;
+  let depth = 0;
+  let inStr = null;
+  let escaped = false;
+  for (let i = openIdx; i < source.length; i++) {
+    const ch = source[i];
+    if (inStr) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (ch === "\\") {
+        escaped = true;
+        continue;
+      }
+      if (ch === inStr) inStr = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'" || ch === "`") {
+      inStr = ch;
+      continue;
+    }
+    if (ch === "{") depth += 1;
+    else if (ch === "}") {
+      depth -= 1;
+      if (depth === 0) return source.slice(openIdx + 1, i);
+    }
+  }
+  return null;
+}
+
+/** 文字列リテラルを除いたコードに `name(` 呼び出しがあるか。 */
+function containsIdentifierCall(code, name) {
+  const withoutStrings = code
+    .replace(/"(?:\\.|[^"\\])*"/g, '""')
+    .replace(/'(?:\\.|[^'\\])*'/g, "''")
+    .replace(/`(?:\\.|[^`\\])*`/g, "``");
+  return new RegExp(String.raw`\b${name}\s*\(`).test(withoutStrings);
 }
 
 function stripComments(source) {

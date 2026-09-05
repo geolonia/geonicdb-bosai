@@ -347,6 +347,40 @@ async function clearAppBadgeSafely() {
         good.replace(/setAppBadgeSafelyWithNav/g, "setAppBadgeSafely"),
       ),
     ).toThrow(/duplicate top-level function|missing renamed/);
+
+    // ラッパー本体から呼び出しを消し、後続関数に同名呼び出しを置くと赤（範囲外マッチ禁止）
+    const callMovedLater = `async function setAppBadgeSafelyWithNav(nav, count) {}
+async function clearAppBadgeSafelyWithNav(nav) {}
+async function setAppBadgeSafely(count) {
+  return;
+}
+async function clearAppBadgeSafely() {
+  return;
+}
+async function decoy() {
+  await setAppBadgeSafelyWithNav(self.navigator, 1);
+  await clearAppBadgeSafelyWithNav(self.navigator);
+}
+`;
+    expect(() => assertBadgeRenameConsistency(callMovedLater)).toThrow(
+      /wrapper must call/,
+    );
+
+    // 文字列リテラル中の呼び出し文言だけでは通さない
+    const callOnlyInString = `async function setAppBadgeSafelyWithNav(nav, count) {}
+async function clearAppBadgeSafelyWithNav(nav) {}
+async function setAppBadgeSafely(count) {
+  const s = "setAppBadgeSafelyWithNav(";
+  return s;
+}
+async function clearAppBadgeSafely() {
+  const s = "clearAppBadgeSafelyWithNav(";
+  return s;
+}
+`;
+    expect(() => assertBadgeRenameConsistency(callOnlyInString)).toThrow(
+      /wrapper must call/,
+    );
   });
 });
 
