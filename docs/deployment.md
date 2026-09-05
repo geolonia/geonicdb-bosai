@@ -137,8 +137,9 @@ CAA / DNSSEC は独自ドメイン接続後に DNS 側で設定する。
 | `GeonicdbBosaiWebAcl`（us-east-1） | WAFv2 rate-based | `enableWebPushCloudFront=true` のフル CDK のみ |
 | `GeonicdbBosaiSite` | S3 + CloudFront。任意で `/api/webpush` → プロキシ | フル CDK 配信時。Pages では未デプロイでよい |
 
-- **WAF** は CloudFront に関連付けるものなので、フル CDK デプロイ時のみ有効。
-- **Function URL 単体運用**では **`reservedConcurrentExecutions: 50` のみが防御**。
+- **WAF** は CloudFront に関連付けるものなので、フル CDK デプロイ時のみ有効（`/api/webpush*`）。
+- **`reservedConcurrentExecutions: 50` は常時有効**（プロキシ Lambda）。同時実行の粗い上限であり、時系列のリクエスト量そのものは制限しない。
+- **残存リスク（フル CDK でも）:** Function URL 自体は公開のまま残るため、直接叩きは **CloudFront WAF を迂回する**。推奨はフロントを `/api/webpush`（同一オリジン）に向け、Function URL をブラウザに埋め込まないこと。OAC / 共有シークレットによる直叩き拒否は **本 issue スコープ外（follow-up）**。
 - CORS は `-c siteOrigin=`（GitHub Pages の HTTPS origin 可。`*` 不可）。
 
 ### 単体デプロイ例（ステージング）

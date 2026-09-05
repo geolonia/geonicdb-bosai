@@ -85,8 +85,10 @@ npx cdk deploy GeonicdbBosaiWebPushProxy \
 
 ### フル CDK（CloudFront + WAF）デプロイ
 
-本番で S3+CloudFront も使う場合のみ。WAF は **CloudFront ありのときだけ**有効。
-Function URL 単体運用では **reserved concurrency（50）のみが防御**。
+本番で S3+CloudFront も使う場合のみ。WAF は **CloudFront 経由の `/api/webpush*` にだけ**効く追加防御。
+**`reservedConcurrentExecutions: 50` は常時有効。** フル CDK でも Function URL は公開のまま残るため、
+直接叩きは WAF を迂回する（推奨: `NEXT_PUBLIC_WEBPUSH_REGISTER_URL=/api/webpush` とし Function URL を埋め込まない）。
+直叩き拒否（OAC / 共有シークレット）や Function URL 側の持続的レート制限は **follow-up**。
 
 ```bash
 export CDK_DEFAULT_ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
@@ -100,14 +102,14 @@ npx cdk deploy --all \
   -c geonicdbUrl=https://geonicdb.geolonia.com \
   -c geonicdbTenant=miya \
   -c siteOrigin=https://bosai.example.jp
-# CloudFront 利用時の推奨: NEXT_PUBLIC_WEBPUSH_REGISTER_URL=/api/webpush
+# 推奨: NEXT_PUBLIC_WEBPUSH_REGISTER_URL=/api/webpush
 ```
 
 ### レート制限の層
 
-| 層                                        | いつ効くか                                        | 内容                                                   |
-| ----------------------------------------- | ------------------------------------------------- | ------------------------------------------------------ |
-| WAFv2 rate-based                          | `enableWebPushCloudFront=true` のフルデプロイのみ | `/api/webpush*` に IP あたり 5 分 120                  |
-| Lambda `reservedConcurrentExecutions: 50` | 常時（プロキシスタック）                          | Function URL 単体では主防御。CF 併用時は粗いコスト上限 |
+| 層                                        | いつ効くか                                        | 内容                                                                                  |
+| ----------------------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Lambda `reservedConcurrentExecutions: 50` | **常時**（プロキシスタック）                      | 同時実行の粗い上限。Function URL 直叩きにも効くが、時系列量産の主防御ではない         |
+| WAFv2 rate-based                          | `enableWebPushCloudFront=true` のフルデプロイのみ | CloudFront `/api/webpush*` に IP あたり 5 分 120。**Function URL 直叩きには効かない** |
 
 定数: `lib/webpush-limits.ts`。プロキシ: `lib/webpush-proxy-stack.ts`。WAF: `lib/webpush-web-acl-stack.ts`。
