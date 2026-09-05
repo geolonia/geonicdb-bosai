@@ -28,6 +28,57 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 };
 
+/**
+ * useEffect 登録前に BIP が発火しても取りこぼさないようモジュールで保持する。
+ * （CodeRabbit #60: mount 前発火の取りこぼし防止）
+ */
+let stashedBeforeInstallPrompt: BeforeInstallPromptEvent | null = null;
+const bipListeners = new Set<(event: BeforeInstallPromptEvent) => void>();
+
+function notifyBipListeners(event: BeforeInstallPromptEvent): void {
+  for (const listener of bipListeners) {
+    listener(event);
+  }
+}
+
+function onWindowBeforeInstallPrompt(event: Event): void {
+  event.preventDefault();
+  const bip = event as BeforeInstallPromptEvent;
+  stashedBeforeInstallPrompt = bip;
+  notifyBipListeners(bip);
+}
+
+function ensureBeforeInstallPromptBootstrap(): void {
+  if (typeof window === "undefined") return;
+  const flagged = window as Window & { __bosaiA2hsBipBootstrapped?: boolean };
+  if (flagged.__bosaiA2hsBipBootstrapped) return;
+  flagged.__bosaiA2hsBipBootstrapped = true;
+  window.addEventListener("beforeinstallprompt", onWindowBeforeInstallPrompt);
+}
+
+/** テスト用: モジュール保持と bootstrap フラグをリセットする */
+export function resetBeforeInstallPromptBootstrapForTests(): void {
+  stashedBeforeInstallPrompt = null;
+  bipListeners.clear();
+  if (typeof window !== "undefined") {
+    const flagged = window as Window & { __bosaiA2hsBipBootstrapped?: boolean };
+    if (flagged.__bosaiA2hsBipBootstrapped) {
+      window.removeEventListener(
+        "beforeinstallprompt",
+        onWindowBeforeInstallPrompt,
+      );
+      flagged.__bosaiA2hsBipBootstrapped = false;
+    }
+  }
+}
+
+/** テスト用: BIP 早期捕捉リスナーを再度張る */
+export function bootstrapBeforeInstallPromptForTests(): void {
+  ensureBeforeInstallPromptBootstrap();
+}
+
+ensureBeforeInstallPromptBootstrap();
+
 function subscribeNoop(): () => void {
   return () => undefined;
 }
@@ -62,7 +113,7 @@ export function AddToHomeScreenPrompt({ strings }: Props) {
     getServerSnapshot,
   );
   const [deferredPrompt, setDeferredPrompt] =
-    useState<BeforeInstallPromptEvent | null>(null);
+    useState<BeforeInstallPromptEvent | null>(() => stashedBeforeInstallPrompt);
   const [dismissedLocal, setDismissedLocal] = useState(false);
 
   let standalone = false;
@@ -85,14 +136,14 @@ export function AddToHomeScreenPrompt({ strings }: Props) {
   useEffect(() => {
     if (!isClient || standalone || dismissed) return;
 
-    const onBeforeInstallPrompt = (event: Event) => {
-      event.preventDefault();
-      setDeferredPrompt(event as BeforeInstallPromptEvent);
-    };
+    ensureBeforeInstallPromptBootstrap();
 
-    window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+    const onBip = (event: BeforeInstallPromptEvent) => {
+      setDeferredPrompt(event);
+    };
+    bipListeners.add(onBip);
     return () => {
-      window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+      bipListeners.delete(onBip);
     };
   }, [isClient, standalone, dismissed]);
 
@@ -145,18 +196,26 @@ export function AddToHomeScreenPrompt({ strings }: Props) {
     dismissA2hsPrompt();
     setDismissedLocal(true);
     setDeferredPrompt(null);
+    stashedBeforeInstallPrompt = null;
   }, []);
 
   const onInstall = useCallback(async () => {
     if (!deferredPrompt) return;
     try {
       await deferredPrompt.prompt();
-      await deferredPrompt.userChoice;
+      const { outcome } = await deferredPrompt.userChoice;
+      // ネイティブ UI でキャンセルした場合は永続 dismiss しない（再試行可）
+      if (outcome !== "accepted") {
+        setDeferredPrompt(null);
+        stashedBeforeInstallPrompt = null;
+        return;
+      }
     } catch {
       // ユーザーキャンセルやブラウザ拒否は黙って閉じない（再試行可）
       return;
     }
     setDeferredPrompt(null);
+    stashedBeforeInstallPrompt = null;
     dismissA2hsPrompt();
     setDismissedLocal(true);
   }, [deferredPrompt]);

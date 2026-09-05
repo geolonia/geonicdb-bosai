@@ -2,7 +2,11 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { AddToHomeScreenPrompt } from "@/components/top/AddToHomeScreenPrompt";
+import {
+  AddToHomeScreenPrompt,
+  bootstrapBeforeInstallPromptForTests,
+  resetBeforeInstallPromptBootstrapForTests,
+} from "@/components/top/AddToHomeScreenPrompt";
 import { SITE_LANGUAGES } from "@/config/site-language";
 import { UI_STRINGS } from "@/config/ui-strings";
 import { A2HS_DISMISS_STORAGE_KEY, A2HS_VISIBLE_HTML_CLASS } from "@/lib/a2hs";
@@ -50,11 +54,11 @@ function stubNavigator(options: {
   });
 }
 
-function fireBeforeInstallPrompt() {
+function fireBeforeInstallPrompt(
+  outcome: "accepted" | "dismissed" = "accepted",
+) {
   const prompt = vi.fn().mockResolvedValue(undefined);
-  const userChoice = Promise.resolve({
-    outcome: "accepted" as const,
-  });
+  const userChoice = Promise.resolve({ outcome });
   const event = new Event("beforeinstallprompt", {
     cancelable: true,
   }) as Event & {
@@ -70,6 +74,8 @@ function fireBeforeInstallPrompt() {
 describe("AddToHomeScreenPrompt (#55)", () => {
   beforeEach(() => {
     localStorage.clear();
+    resetBeforeInstallPromptBootstrapForTests();
+    bootstrapBeforeInstallPromptForTests();
     stubMatchMedia(false);
     stubNavigator({});
   });
@@ -77,6 +83,7 @@ describe("AddToHomeScreenPrompt (#55)", () => {
   afterEach(() => {
     cleanup();
     localStorage.clear();
+    resetBeforeInstallPromptBootstrapForTests();
     document.documentElement.classList.remove(A2HS_VISIBLE_HTML_CLASS);
     document.documentElement.style.removeProperty("--a2hs-reserve");
   });
@@ -131,6 +138,32 @@ describe("AddToHomeScreenPrompt (#55)", () => {
     await waitFor(() => {
       expect(prompt).toHaveBeenCalled();
     });
+    expect(localStorage.getItem(A2HS_DISMISS_STORAGE_KEY)).toBe("1");
+  });
+
+  it("captures beforeinstallprompt fired before mount (#60 CodeRabbit)", async () => {
+    fireBeforeInstallPrompt();
+    render(<AddToHomeScreenPrompt strings={testStrings} />);
+    expect(await screen.findByTestId("a2hs-prompt")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: testStrings.a2hsInstallLabel }),
+    ).toBeInTheDocument();
+  });
+
+  it("does not persist dismiss when native install UI is cancelled (#60)", async () => {
+    render(<AddToHomeScreenPrompt strings={testStrings} />);
+    const { prompt } = fireBeforeInstallPrompt("dismissed");
+    expect(await screen.findByTestId("a2hs-prompt")).toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: testStrings.a2hsInstallLabel }),
+    );
+    await waitFor(() => {
+      expect(prompt).toHaveBeenCalled();
+    });
+    expect(localStorage.getItem(A2HS_DISMISS_STORAGE_KEY)).toBeNull();
+    // 閉じるボタンで明示 dismiss するまでは再表示可能（install ボタンは消える）
+    expect(screen.queryByTestId("a2hs-prompt")).not.toBeInTheDocument();
   });
 
   it("does not reappear after dismiss", async () => {
