@@ -1,7 +1,8 @@
 /**
  * beforeinstallprompt の早期捕捉ブリッジ（#55 / #60）。
  *
- * 実リスナーは `public/a2hs-bip-boot.js`（layout の beforeInteractive）が張る。
+ * 実リスナーは layout の BIP boot インライン script（postbuild で
+ * `out/_next/csp-inline/*.js` に外部化）が張る。
  * 本モジュールは stash の読み出しと React 側購読を担当する。
  * テスト環境など boot 未ロード時はフォールバックで自分で登録する。
  */
