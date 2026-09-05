@@ -236,6 +236,81 @@ input:focus-visible {
   color: #8b0000;
 }
 
+/* #55 A2HS — 通知トグルと同列の控えめな導線（主要情報を覆わない） */
+.a2hs-prompt {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0.75rem 1rem 0;
+}
+
+.a2hs-prompt__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 2.75rem;
+}
+
+.a2hs-prompt__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.a2hs-prompt__title {
+  margin: 0;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.a2hs-prompt__hint {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--color-muted);
+  line-height: 1.4;
+}
+
+.a2hs-prompt__actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.a2hs-prompt__install {
+  box-sizing: border-box;
+  margin: 0;
+  border: 1px solid var(--color-text);
+  border-radius: 0.25rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  /* 当たり判定はボタン自体（親余白に頼らない / WCAG 2.5.8） */
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.a2hs-prompt__dismiss {
+  box-sizing: border-box;
+  margin: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 0.25rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  line-height: 1.2;
+  cursor: pointer;
+  /* 当たり判定はボタン自体（親余白に頼らない / WCAG 2.5.8） */
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0.5rem 0.75rem;
+}
+
 .emergency-banner {
   min-height: var(--banner-min-height);
   border-bottom: 3px solid;

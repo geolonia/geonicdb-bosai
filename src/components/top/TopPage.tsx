@@ -12,6 +12,7 @@ import {
   EmergencyBannerError,
   EmergencyBannerPlaceholder,
 } from "@/components/top/EmergencyBanner";
+import { AddToHomeScreenPrompt } from "@/components/top/AddToHomeScreenPrompt";
 import {
   NewsList,
   NewsListError,
@@ -201,6 +202,7 @@ export function TopPage({ initialSnapshot }: TopPageProps = {}) {
     <>
       <SiteHeader strings={strings} lang={lang} onLangChange={setLang} />
       <PushNotificationOptIn lang={lang} strings={strings} />
+      <AddToHomeScreenPrompt strings={strings} />
       {bannerView.kind === "ready" ? (
         <>
           <EmergencyBanner data={bannerView.data} strings={strings} />
