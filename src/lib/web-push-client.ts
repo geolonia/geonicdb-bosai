@@ -178,7 +178,10 @@ export async function registerWebPushSubscription(
   return assertSubscriptionId(subscriptionId);
 }
 
-/** GeonicDB 上のサブスクリプションを DELETE する。 */
+/**
+ * GeonicDB 上のサブスクリプションを DELETE する。
+ * 404 / 410 は「既に存在しない = 削除の目的達成」として成功扱いする（冪等）。
+ */
 export async function unregisterWebPushSubscription(
   subscriptionId: string,
   options: {
@@ -198,6 +201,10 @@ export async function unregisterWebPushSubscription(
     "DELETE",
     `/ngsi-ld/v1/subscriptions/${encodeURIComponent(id)}`,
   );
+  // Already gone: caller still proceeds to clear local state / unsubscribe.
+  if (response.status === 404 || response.status === 410) {
+    return;
+  }
   if (!response.ok && response.status !== 204) {
     throw new Error(`Web Push unregister failed: ${response.status}`);
   }
@@ -329,7 +336,16 @@ export async function enableWebPushNotifications(options: {
   return state;
 }
 
-/** GeonicDB DELETE 成功後に PushSubscription.unsubscribe。localStorage は DELETE 成功後に必ず消す。 */
+/**
+ * GeonicDB DELETE（404/410 含む成功）の後に PushSubscription.unsubscribe。
+ * localStorage はサーバ削除が成功したときだけ消す。
+ *
+ * 意図的な非対称（#45 / #52）:
+ * - ブラウザ unsubscribe 失敗 → ローカルはクリア（サーバは既に無し。残すと再登録不能）
+ * - サーバ 5xx / ネットワーク / 403 等 → ローカルは残す（再試行可能にする）
+ *   403 をクリアしない理由: キー修正後に再試行できる一方、ローカルだけ消すと
+ *   サーバ購読が残り通知が止まらないまま UI は「オフ」になり止められなくなる。
+ */
 export async function disableWebPushNotifications(options: {
   env?: PublicWebPushEnv;
   client?: WebPushGeonicdbClient;
@@ -340,6 +356,7 @@ export async function disableWebPushNotifications(options: {
   const stored = readStoredWebPushState();
   if (!stored) return;
 
+  // 404/410 は unregister 内で成功扱い。それ以外の失敗ではここより下に進まない。
   await unregisterWebPushSubscription(stored.subscriptionId, {
     env: options.env,
     client: options.client,
@@ -354,7 +371,7 @@ export async function disableWebPushNotifications(options: {
       }
     }
   } finally {
-    // GeonicDB 側は既に消えている。unsubscribe が失敗しても残すと再登録不能になる。
+    // GeonicDB 側は既に消えている（または元から無い）。unsubscribe 失敗でも残すとデッドロック。
     clearStoredWebPushState();
   }
 }
