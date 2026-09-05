@@ -65,5 +65,20 @@ jobs:
         run: npm run build
 
       # ページ重量予算（lighthouserc.js）。閾値の厳格化は issue #6 と共有。
+      # build 済みの out/ を使うため lhci を直接呼ぶ。bash -e でも dump が走るようにする。
       - name: Lighthouse budget
-        run: npx lhci autorun
+        run: |
+          set +e
+          npx lhci autorun
+          status=$?
+          node scripts/dump-lhr-metrics.mjs
+          exit $status
+
+      - name: Upload Lighthouse reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-reports
+          path: .lighthouseci/
+          if-no-files-found: ignore
+          include-hidden-files: true

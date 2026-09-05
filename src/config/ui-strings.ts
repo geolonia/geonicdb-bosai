@@ -34,6 +34,14 @@ export type UiStrings = {
   pushBusyLabel: string;
   /** OS / ブラウザが通知を拒否済みのときの復旧案内 */
   pushPermissionDeniedLabel: string;
+  /** #55 ホーム画面への追加（A2HS） */
+  a2hsTitle: string;
+  /** Chromium 系: 追加すると通知を受け取れる旨（強制しない） */
+  a2hsDescription: string;
+  /** iOS: 共有メニューからの手順案内 */
+  a2hsIosHint: string;
+  a2hsInstallLabel: string;
+  a2hsDismissLabel: string;
   quickLinks: {
     shelters: string;
     hazard: string;
@@ -85,6 +93,13 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
     pushBusyLabel: "通知を設定しています…",
     pushPermissionDeniedLabel:
       "通知が許可されていません。ブラウザまたは端末の設定から通知を許可してください。",
+    a2hsTitle: "ホーム画面に追加",
+    a2hsDescription:
+      "ホーム画面に追加すると、このサイトから通知を受け取れるようになります（任意です）。",
+    a2hsIosHint:
+      "画面下の共有ボタンから「ホーム画面に追加」を選ぶと、通知を受け取れるようになります（任意です）。",
+    a2hsInstallLabel: "追加する",
+    a2hsDismissLabel: "閉じる",
     quickLinks: {
       shelters: "避難所を探す",
       hazard: "ハザードマップ",
@@ -144,6 +159,13 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
     pushBusyLabel: "Updating notification settings…",
     pushPermissionDeniedLabel:
       "Notifications are blocked. Allow them in your browser or device settings.",
+    a2hsTitle: "Add to Home Screen",
+    a2hsDescription:
+      "Add this site to your Home Screen to receive notifications (optional).",
+    a2hsIosHint:
+      "Tap the Share button, then choose “Add to Home Screen” to receive notifications (optional).",
+    a2hsInstallLabel: "Add",
+    a2hsDismissLabel: "Dismiss",
     quickLinks: {
       shelters: "Find Shelters",
       hazard: "Hazard Map",
@@ -200,6 +222,11 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
     pushErrorLabel: "无法更新通知设置。请稍后再试。",
     pushBusyLabel: "正在设置通知…",
     pushPermissionDeniedLabel: "通知未被允许。请在浏览器或设备设置中允许通知。",
+    a2hsTitle: "添加到主屏幕",
+    a2hsDescription: "添加到主屏幕后即可接收通知（可选）。",
+    a2hsIosHint: "点击分享按钮，然后选择“添加到主屏幕”，即可接收通知（可选）。",
+    a2hsInstallLabel: "添加",
+    a2hsDismissLabel: "关闭",
     quickLinks: {
       shelters: "查找避难所",
       hazard: "灾害风险地图",
@@ -258,6 +285,13 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
     pushBusyLabel: "Đang thiết lập thông báo…",
     pushPermissionDeniedLabel:
       "Thông báo chưa được cho phép. Hãy cho phép trong cài đặt trình duyệt hoặc thiết bị.",
+    a2hsTitle: "Thêm vào Màn hình chính",
+    a2hsDescription:
+      "Thêm trang này vào Màn hình chính để nhận thông báo (tùy chọn).",
+    a2hsIosHint:
+      "Nhấn nút Chia sẻ, rồi chọn “Thêm vào Màn hình chính” để nhận thông báo (tùy chọn).",
+    a2hsInstallLabel: "Thêm",
+    a2hsDismissLabel: "Đóng",
     quickLinks: {
       shelters: "Tìm nơi sơ tán",
       hazard: "Bản đồ rủi ro",
@@ -317,6 +351,12 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
     pushBusyLabel: "알림을 설정하는 중…",
     pushPermissionDeniedLabel:
       "알림이 허용되지 않았습니다. 브라우저 또는 기기 설정에서 알림을 허용해 주세요.",
+    a2hsTitle: "홈 화면에 추가",
+    a2hsDescription: "홈 화면에 추가하면 알림을 받을 수 있습니다(선택 사항).",
+    a2hsIosHint:
+      "공유 버튼을 누른 뒤 “홈 화면에 추가”를 선택하면 알림을 받을 수 있습니다(선택 사항).",
+    a2hsInstallLabel: "추가",
+    a2hsDismissLabel: "닫기",
     quickLinks: {
       shelters: "대피소 찾기",
       hazard: "위험 지도",

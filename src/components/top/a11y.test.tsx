@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
-import { render } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { configureAxe } from "jest-axe";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { AddToHomeScreenPrompt } from "@/components/top/AddToHomeScreenPrompt";
 import { AlertLevelDisplay } from "@/components/top/AlertLevelDisplay";
 import { EmergencyBanner } from "@/components/top/EmergencyBanner";
 import { NewsList } from "@/components/top/NewsList";
@@ -22,6 +23,14 @@ import {
 const runAxe = configureAxe({
   rules: {
     region: { enabled: false },
+    "landmark-one-main": { enabled: false },
+    "landmark-no-duplicate-main": { enabled: false },
+  },
+});
+
+/** A2HS は region landmark を意図的に使うので region 規則を有効にする */
+const runAxeWithRegion = configureAxe({
+  rules: {
     "landmark-one-main": { enabled: false },
     "landmark-no-duplicate-main": { enabled: false },
   },
@@ -133,5 +142,53 @@ describe("a11y: PushNotificationOptIn", () => {
     );
     await findByRole("switch", { name: testStrings.pushToggleLabel });
     expect(await runAxe(container)).toHaveNoViolations();
+  });
+});
+
+describe("a11y: AddToHomeScreenPrompt", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    window.matchMedia = vi.fn((query: string) => ({
+      matches: false,
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })) as unknown as typeof window.matchMedia;
+    Object.defineProperty(navigator, "standalone", {
+      configurable: true,
+      value: false,
+    });
+    Object.defineProperty(navigator, "userAgent", {
+      configurable: true,
+      value: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+    });
+    Object.defineProperty(navigator, "platform", {
+      configurable: true,
+      value: "iPhone",
+    });
+    Object.defineProperty(navigator, "maxTouchPoints", {
+      configurable: true,
+      value: 5,
+    });
+  });
+
+  afterEach(() => {
+    cleanup();
+    localStorage.clear();
+  });
+
+  it("region prompt has no axe violations", async () => {
+    const { container } = render(
+      <AddToHomeScreenPrompt strings={testStrings} />,
+    );
+    await screen.findByTestId("a2hs-prompt");
+    expect(
+      screen.getByRole("button", { name: testStrings.a2hsDismissLabel }),
+    ).toBeInTheDocument();
+    expect(await runAxeWithRegion(container)).toHaveNoViolations();
   });
 });
