@@ -47,8 +47,10 @@ describe("a2hs-prompt button hit target (#55 / WCAG 2.5.8)", () => {
   });
 
   it("reserves scrollbar gutter to avoid classic-scrollbar CLS (#60)", () => {
-    const rule = extractRuleBody("html");
-    expect(rule).toMatch(/scrollbar-gutter:\s*stable/);
+    // `html {` のみ（`html.a2hs-...` に誤マッチしない）
+    const match = globalsCss.match(/^html\s*\{([^}]*)\}/m);
+    expect(match, "rule for html").toBeTruthy();
+    expect(match![1]).toMatch(/scrollbar-gutter:\s*stable/);
   });
 
   it("includes iOS safe-area inset in the fixed bar padding (#55)", () => {
