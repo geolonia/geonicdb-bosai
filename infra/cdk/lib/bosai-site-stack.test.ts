@@ -3,6 +3,7 @@ import { Match, Template } from "aws-cdk-lib/assertions";
 import { describe, expect, it } from "vitest";
 import { BosaiSiteStack } from "./bosai-site-stack";
 import { DEFAULT_CSP } from "./csp-policy";
+import { WebPushProxyStack } from "./webpush-proxy-stack";
 
 function synth(props: ConstructorParameters<typeof BosaiSiteStack>[2] = {}) {
   const app = new cdk.App();
@@ -175,33 +176,24 @@ describe("BosaiSiteStack Response Headers Policy", () => {
     });
   });
 
-  it("adds Web Push proxy Lambda, Function URL, Secret, and /api/webpush behavior", () => {
-    const template = synth({
-      webPush: {
-        geonicdbUrl: "https://geonicdb.example.example",
-        geonicdbTenant: "miya",
-        siteOrigin: "https://bosai.example.example",
-        corsAllowOrigin: "https://bosai.example.example",
-      },
+  it("adds /api/webpush CloudFront behavior when webPushFunctionUrl is provided", () => {
+    const app = new cdk.App();
+    const proxy = new WebPushProxyStack(app, "Proxy", {
+      env: { account: "111111111111", region: "ap-northeast-1" },
+      geonicdbUrl: "https://geonicdb.example.example",
+      siteOrigin: "https://bosai.example.example",
+    });
+    const site = new BosaiSiteStack(app, "Site", {
+      env: { account: "111111111111", region: "ap-northeast-1" },
+      webPushFunctionUrl: proxy.functionUrl,
       cspExtras: { workerSrc: ["'self'"] },
     });
+    const template = Template.fromStack(site);
 
-    template.resourceCountIs("AWS::Lambda::Function", 1);
-    template.resourceCountIs("AWS::Lambda::Url", 1);
-    template.resourceCountIs("AWS::SecretsManager::Secret", 1);
-
-    template.hasResourceProperties("AWS::Lambda::Function", {
-      Runtime: "nodejs22.x",
-      Timeout: 15,
-      ReservedConcurrentExecutions: 50,
-      Environment: {
-        Variables: Match.objectLike({
-          GEONICDB_URL: "https://geonicdb.example.example",
-          GEONICDB_TENANT: "miya",
-          CORS_ALLOW_ORIGIN: "https://bosai.example.example",
-        }),
-      },
-    });
+    // Lambda はサイトスタックに置かない（独立スタック側）
+    template.resourceCountIs("AWS::Lambda::Function", 0);
+    template.resourceCountIs("AWS::Lambda::Url", 0);
+    template.resourceCountIs("AWS::SecretsManager::Secret", 0);
 
     const dist = template.findResources("AWS::CloudFront::Distribution");
     const config = Object.values(dist)[0].Properties.DistributionConfig;
@@ -224,13 +216,7 @@ describe("BosaiSiteStack Response Headers Policy", () => {
   it("attaches WAFv2 WebACL ARN to the CloudFront Distribution when webAclArn is set (#36)", () => {
     const webAclArn =
       "arn:aws:wafv2:us-east-1:111111111111:global/webacl/geonicdb-bosai-webpush/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
-    const template = synth({
-      webPush: {
-        geonicdbUrl: "https://geonicdb.example.example",
-        siteOrigin: "https://bosai.example.example",
-      },
-      webAclArn,
-    });
+    const template = synth({ webAclArn });
 
     template.hasResourceProperties("AWS::CloudFront::Distribution", {
       DistributionConfig: {
@@ -240,105 +226,9 @@ describe("BosaiSiteStack Response Headers Policy", () => {
   });
 
   it("does not attach WebACL when webAclArn is omitted", () => {
-    const template = synth({
-      webPush: {
-        geonicdbUrl: "https://geonicdb.example.example",
-        siteOrigin: "https://bosai.example.example",
-      },
-    });
+    const template = synth();
     const dist = template.findResources("AWS::CloudFront::Distribution");
     const config = Object.values(dist)[0].Properties.DistributionConfig;
     expect(config.WebACLId).toBeUndefined();
-  });
-
-  it("rejects relative geonicdbUrl on the WebPushProxy construct", () => {
-    expect(() =>
-      synth({
-        webPush: {
-          geonicdbUrl: "/not-absolute",
-          siteOrigin: "https://bosai.example.example",
-        },
-      }),
-    ).toThrow(/webPush\.geonicdbUrl.*relative path/);
-  });
-
-  it("rejects missing CORS origin on the WebPushProxy construct", () => {
-    expect(() =>
-      synth({
-        webPush: {
-          geonicdbUrl: "https://geonicdb.example.example",
-        },
-      }),
-    ).toThrow(/siteOrigin or webPush\.corsAllowOrigin is required/);
-  });
-
-  it("grants the Web Push Lambda only Secrets Manager read on its own secret (least privilege)", () => {
-    const template = synth({
-      webPush: {
-        geonicdbUrl: "https://geonicdb.example.example",
-        siteOrigin: "https://bosai.example.example",
-      },
-    });
-
-    const secrets = template.findResources("AWS::SecretsManager::Secret");
-    expect(Object.keys(secrets)).toHaveLength(1);
-    const secretLogicalId = Object.keys(secrets)[0];
-
-    const iamPolicies = template.findResources("AWS::IAM::Policy");
-    const statements: Array<{
-      Action?: string | string[];
-      Resource?: string | string[] | Record<string, unknown>;
-      Effect?: string;
-    }> = [];
-    for (const policy of Object.values(iamPolicies)) {
-      const doc = policy.Properties.PolicyDocument;
-      for (const stmt of doc.Statement ?? []) {
-        statements.push(stmt);
-      }
-    }
-
-    const secretActions = statements.filter((s) => {
-      const actions = Array.isArray(s.Action)
-        ? s.Action
-        : s.Action
-          ? [s.Action]
-          : [];
-      return actions.some(
-        (a) => typeof a === "string" && a.startsWith("secretsmanager:"),
-      );
-    });
-    expect(secretActions.length).toBeGreaterThan(0);
-
-    for (const stmt of secretActions) {
-      expect(stmt.Effect).toBe("Allow");
-      const actions = (
-        Array.isArray(stmt.Action) ? stmt.Action : [stmt.Action]
-      ).filter((a): a is string => typeof a === "string");
-      for (const action of actions) {
-        expect(action).toMatch(
-          /^secretsmanager:(GetSecretValue|DescribeSecret)$/,
-        );
-      }
-
-      const resources = Array.isArray(stmt.Resource)
-        ? stmt.Resource
-        : [stmt.Resource];
-      for (const resource of resources) {
-        expect(resource).not.toBe("*");
-        const serialized = JSON.stringify(resource);
-        expect(serialized).toContain(secretLogicalId);
-        expect(serialized).not.toMatch(/"\*"/);
-      }
-    }
-
-    for (const stmt of statements) {
-      const actions = (
-        Array.isArray(stmt.Action) ? stmt.Action : [stmt.Action]
-      ).filter((a): a is string => typeof a === "string");
-      for (const action of actions) {
-        expect(action).not.toMatch(/^(s3|dynamodb|sns|sqs|kms):\*/);
-        expect(action).not.toBe("secretsmanager:*");
-      }
-    }
   });
 });

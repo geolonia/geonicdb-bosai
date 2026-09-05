@@ -1,4 +1,4 @@
-# geonicdb-bosai CDK（S3 + CloudFront）
+# geonicdb-bosai CDK（S3 + CloudFront + Web Push プロキシ）
 
 本番想定の配信基盤サンプル。Response Headers Policy で仕様 5.8.2 のセキュリティヘッダを送出する。
 
@@ -25,32 +25,77 @@ npx cdk deploy -c geonicdbUrl=https://geonicdb.example.jp
 # または NEXT_PUBLIC_GEONICDB_URL を export してから cdk deploy
 ```
 
-Web Push 登録プロキシ（#35）を有効にする（#36: WAFv2 レート制限付き）:
+## Web Push プロキシ（#35 / #36）— GitHub Pages 向け単体デプロイ
+
+**本リポジトリのプレビューは GitHub Pages**（`.github/workflows/deploy-pages.yml`）。
+S3+CloudFront（`GeonicdbBosaiSite`）は必須ではない。
+
+`GeonicdbBosaiWebPushProxy` だけをデプロイし、出力の Function URL を
+`NEXT_PUBLIC_WEBPUSH_REGISTER_URL` に設定すれば、ブラウザから直接購読登録できる。
+CORS は `-c siteOrigin=` に GitHub Pages の origin（例: `https://<org>.github.io`）を渡す。
+
+### ステージング単体デプロイ例（アカウント `705008887115` / `ap-northeast-1`）
 
 ```bash
-# 事前: crossRegionReferences 用にサイトリージョンと us-east-1 の両方で bootstrap
-npx cdk bootstrap aws://$CDK_DEFAULT_ACCOUNT/ap-northeast-1
-npx cdk bootstrap aws://$CDK_DEFAULT_ACCOUNT/us-east-1
+cd infra/cdk
+npm install
 
-# enableWebPush=true のとき GeonicdbBosaiWebAcl（us-east-1）と
-# GeonicdbBosaiSite（サイトリージョン）の 2 スタックが合成される。
-# CLOUDFRONT-scoped WAFv2 は us-east-1 でのみ作成可能なため分離している（ACM と同型）。
-npx cdk deploy --all \
+# サイトリージョンのみ bootstrap（WAF/us-east-1 は不要）
+npx cdk bootstrap aws://705008887115/ap-northeast-1
+
+npx cdk deploy GeonicdbBosaiWebPushProxy \
   -c enableWebPush=true \
   -c geonicdbUrl=https://geonicdb.geolonia.com \
   -c geonicdbTenant=miya \
-  -c siteOrigin=https://bosai.example.jp
-# siteOrigin は CORS 用に必須（* は不可）
-# デプロイ後: Secrets Manager に GEONICDB_API_KEY を投入
-# フロント: NEXT_PUBLIC_WEBPUSH_REGISTER_URL=/api/webpush （CloudFront 同一オリジン必須。
-#           Function URL 直叩きは WAF 対象外）
+  -c siteOrigin=https://geolonia.github.io \
+  # 任意: 既存 Secrets Manager の ARN（未指定時は空シークレットを新規作成）
+  # -c geonicdbApiKeySecretArn=arn:aws:secretsmanager:ap-northeast-1:705008887115:secret:... \
+  # 任意: bosai-context.jsonld の絶対 URL
+  # -c bosaiContextUrl=https://geolonia.github.io/geonicdb-bosai/ngsi-ld/bosai-context.jsonld
+
+# デプロイ後:
+# 1. Secrets Manager に GEONICDB_API_KEY（平文 or JSON { "apiKey": "..." }）を投入
+# 2. スタック出力 WebPushRegisterUrl を控える
+# 3. GitHub Actions / ローカル build で:
+#      NEXT_PUBLIC_WEBPUSH_REGISTER_URL=<Function URL>
+#      NEXT_PUBLIC_GEONICDB_URL=https://geonicdb.geolonia.com
+#    （CSP connect-src 用に -c webPushRegisterUrl=<同 URL> をサイト synth に渡してもよい）
 ```
 
-### Web Push レート制限（#36）
+| context / 環境変数                               | 必須                | 説明                                                         |
+| ------------------------------------------------ | ------------------- | ------------------------------------------------------------ |
+| `enableWebPush`                                  | はい                | `true` で `GeonicdbBosaiWebPushProxy` を合成                 |
+| `geonicdbUrl` / `NEXT_PUBLIC_GEONICDB_URL`       | はい                | GeonicDB base URL                                            |
+| `siteOrigin` / `NEXT_PUBLIC_SITE_ORIGIN`         | はい（Web Push 時） | CORS Allow-Origin（GitHub Pages origin 可。`*` 不可）        |
+| `geonicdbTenant` / `NEXT_PUBLIC_GEONICDB_TENANT` | 任意                | Fiware-Service                                               |
+| `geonicdbApiKeySecretArn`                        | 任意                | 既存シークレット ARN。未指定時は新規作成                     |
+| `bosaiContextUrl`                                | 任意                | NGSI-LD Link ヘッダ用 context URL                            |
+| `webPushRegisterUrl`                             | 任意                | サイト側 CSP `connect-src` に Function URL origin を足すとき |
+| `enableWebPushCloudFront`                        | 任意                | `true` で CloudFront `/api/webpush` + WAFv2（フル CDK 向け） |
 
-| 層                                    | 内容                                                                                                                     | 根拠                                                                                                                               |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
-| WAFv2 rate-based（CloudFront）        | `/api/webpush*` に ScopeDown。**IP あたり 5 分（evaluationWindowSec=300）で 120 req** 超で Block。他パスは Default Allow | **主たる防御**。正当な購読/解除の再試行を通しつつ量産を抑える                                                                      |
-| Lambda `reservedConcurrentExecutions` | **50**                                                                                                                   | 粗いコスト上限の backstop。CF 経由と Function URL 直叩きは同一プール。直叩きの完全分離・遮断は本 PR スコープ外（future follow-up） |
+### フル CDK（CloudFront + WAF）デプロイ
 
-定数: `lib/webpush-limits.ts`。WebACL スタック: `lib/webpush-web-acl-stack.ts`。
+本番で S3+CloudFront も使う場合のみ。WAF は **CloudFront ありのときだけ**有効。
+Function URL 単体運用では **reserved concurrency（50）のみが防御**。
+
+```bash
+npx cdk bootstrap aws://$CDK_DEFAULT_ACCOUNT/ap-northeast-1
+npx cdk bootstrap aws://$CDK_DEFAULT_ACCOUNT/us-east-1   # WAF / crossRegionReferences 用
+
+npx cdk deploy --all \
+  -c enableWebPush=true \
+  -c enableWebPushCloudFront=true \
+  -c geonicdbUrl=https://geonicdb.geolonia.com \
+  -c geonicdbTenant=miya \
+  -c siteOrigin=https://bosai.example.jp
+# CloudFront 利用時の推奨: NEXT_PUBLIC_WEBPUSH_REGISTER_URL=/api/webpush
+```
+
+### レート制限の層
+
+| 層                                        | いつ効くか                                        | 内容                                                   |
+| ----------------------------------------- | ------------------------------------------------- | ------------------------------------------------------ |
+| WAFv2 rate-based                          | `enableWebPushCloudFront=true` のフルデプロイのみ | `/api/webpush*` に IP あたり 5 分 120                  |
+| Lambda `reservedConcurrentExecutions: 50` | 常時（プロキシスタック）                          | Function URL 単体では主防御。CF 併用時は粗いコスト上限 |
+
+定数: `lib/webpush-limits.ts`。プロキシ: `lib/webpush-proxy-stack.ts`。WAF: `lib/webpush-web-acl-stack.ts`。

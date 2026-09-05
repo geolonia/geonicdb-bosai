@@ -127,24 +127,48 @@ CAA / DNSSEC は独自ドメイン接続後に DNS 側で設定する。
 
 ## Web Push 購読プロキシとレート制限（#35 / #36）
 
-`enableWebPush=true` のとき:
+**GitHub Pages 運用が既定。** Web Push は `GeonicdbBosaiWebPushProxy`（Lambda Function URL）を
+**単体デプロイ**し、ブラウザから Function URL を直接呼べば動作する。CloudFront / WAF は
+本番向けの追加ハードニングであり **必須ではない**。
 
-1. **`GeonicdbBosaiWebAcl`（us-east-1）** — CLOUDFRONT-scoped WAFv2。`/api/webpush*` のみ IP あたり **5 分（`evaluationWindowSec=300` 明示）120 req** で Block（他パスは Allow）。**CloudFront 経由トラフィックに対する主たる防御**。CloudFront 用 WebACL は us-east-1 でのみ作成可能なため、サイトスタック（既定 `ap-northeast-1`）と分離し `crossRegionReferences` で ARN を渡す（ACM 証明書と同型）。
-2. **`GeonicdbBosaiSite`** — Lambda Function URL + Secrets Manager + CloudFront `/api/webpush` behavior。Distribution に上記 WebACL を関連付け。Lambda には `reservedConcurrentExecutions: 50`（粗いコスト上限の backstop。CloudFront 経由と Function URL 直叩きは同一プールのため、災害時の正規急増を締め出さないよう緩めている。Function URL 直叩きの完全な分離・遮断は本 PR スコープ外 / future follow-up）。
+| スタック | 役割 | いつ使うか |
+|---|---|---|
+| `GeonicdbBosaiWebPushProxy` | Lambda + Function URL + Secrets | `enableWebPush=true`（GitHub Pages でも必須） |
+| `GeonicdbBosaiWebAcl`（us-east-1） | WAFv2 rate-based | `enableWebPushCloudFront=true` のフル CDK のみ |
+| `GeonicdbBosaiSite` | S3 + CloudFront。任意で `/api/webpush` → プロキシ | フル CDK 配信時。Pages では未デプロイでよい |
 
-**事前 bootstrap（必須）:** `crossRegionReferences` を使うため、サイトリージョン（例: `ap-northeast-1`）に加え **`us-east-1` でも** `cdk bootstrap` が必要。
+- **WAF** は CloudFront に関連付けるものなので、フル CDK デプロイ時のみ有効。
+- **Function URL 単体運用**では **`reservedConcurrentExecutions: 50` のみが防御**。
+- CORS は `-c siteOrigin=`（GitHub Pages の HTTPS origin 可。`*` 不可）。
+
+### 単体デプロイ例（ステージング）
+
+詳細な context 一覧・コマンドは [`infra/cdk/README.md`](../infra/cdk/README.md) を参照。
 
 ```bash
 cd infra/cdk
+npx cdk bootstrap aws://705008887115/ap-northeast-1
+npx cdk deploy GeonicdbBosaiWebPushProxy \
+  -c enableWebPush=true \
+  -c geonicdbUrl=https://geonicdb.geolonia.com \
+  -c geonicdbTenant=miya \
+  -c siteOrigin=https://geolonia.github.io
+# 出力 WebPushRegisterUrl → NEXT_PUBLIC_WEBPUSH_REGISTER_URL
+# Secrets Manager に GEONICDB_API_KEY を投入
+```
+
+### フル CDK（CloudFront + WAF）
+
+```bash
 npx cdk bootstrap aws://$CDK_DEFAULT_ACCOUNT/ap-northeast-1
 npx cdk bootstrap aws://$CDK_DEFAULT_ACCOUNT/us-east-1
 npx cdk deploy --all \
   -c enableWebPush=true \
+  -c enableWebPushCloudFront=true \
   -c geonicdbUrl=https://geonicdb.geolonia.com \
   -c siteOrigin=https://bosai.example.jp
+# 推奨: NEXT_PUBLIC_WEBPUSH_REGISTER_URL=/api/webpush
 ```
-
-フロントの登録 URL は **`NEXT_PUBLIC_WEBPUSH_REGISTER_URL=/api/webpush`**（CloudFront 同一オリジン）を使うこと。Function URL をブラウザから直接叩くと WAF を迂回する。
 
 ## CDK の使い方（要約）
 
