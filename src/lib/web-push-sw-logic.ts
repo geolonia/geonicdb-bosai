@@ -229,3 +229,36 @@ export async function resetUnreadBadgeState(deps: {
   }
   await deps.clearBadge();
 }
+
+/**
+ * Promise 連鎖による直列キュー。
+ * 並行 push の read-modify-write が件数を取りこぼさないようにする（#45 CodeRabbit）。
+ */
+export function createSerialQueue(): <T>(task: () => Promise<T>) => Promise<T> {
+  let tail: Promise<unknown> = Promise.resolve();
+  return function runExclusive<T>(task: () => Promise<T>): Promise<T> {
+    const result = tail.then(task, task);
+    tail = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
+  };
+}
+
+/**
+ * 未読件数の読み取り→加算→書き込みを 1 トランザクションとして実行する。
+ * `yieldBeforeWrite` は競合再現用（本番は渡さない）。
+ */
+export async function bumpUnreadCountState(deps: {
+  readUnreadCount: () => Promise<number>;
+  writeUnreadCount: (count: number) => Promise<void>;
+  setBadge: (count: number) => Promise<void>;
+  yieldBeforeWrite?: () => Promise<void>;
+}): Promise<number> {
+  const count = incrementUnreadCount(await deps.readUnreadCount());
+  if (deps.yieldBeforeWrite) await deps.yieldBeforeWrite();
+  await deps.writeUnreadCount(count);
+  await deps.setBadge(count);
+  return count;
+}

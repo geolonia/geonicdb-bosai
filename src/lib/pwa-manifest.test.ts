@@ -157,4 +157,54 @@ describe("setAppBadgeSafely / clearAppBadgeSafely", () => {
     ).resolves.toBeUndefined();
     expect(clearAppBadge).toHaveBeenCalledTimes(1);
   });
+
+  it("serializes concurrent unread bumps to final count 2 (#45 CodeRabbit)", async () => {
+    const { bumpUnreadCountState, createSerialQueue, setAppBadgeSafely } =
+      await import("@/lib/web-push-sw-logic");
+    let stored = 0;
+    const setAppBadge = vi.fn(async () => undefined);
+    const queue = createSerialQueue();
+
+    const bump = () =>
+      queue(() =>
+        bumpUnreadCountState({
+          readUnreadCount: async () => stored,
+          writeUnreadCount: async (count) => {
+            stored = count;
+          },
+          setBadge: (count) => setAppBadgeSafely({ setAppBadge }, count),
+          // キュー無しだと両方が 0 を読んで 1 になるギャップを再現
+          yieldBeforeWrite: async () => {
+            await Promise.resolve();
+          },
+        }),
+      );
+
+    await Promise.all([bump(), bump()]);
+    expect(stored).toBe(2);
+    expect(setAppBadge).toHaveBeenLastCalledWith(2);
+    expect(setAppBadge).toHaveBeenCalledTimes(2);
+  });
+
+  it("near-miss: without serial queue concurrent bumps lose a count", async () => {
+    const { bumpUnreadCountState, setAppBadgeSafely } =
+      await import("@/lib/web-push-sw-logic");
+    let stored = 0;
+    const setAppBadge = vi.fn(async () => undefined);
+    const bump = () =>
+      bumpUnreadCountState({
+        readUnreadCount: async () => stored,
+        writeUnreadCount: async (count) => {
+          stored = count;
+        },
+        setBadge: (count) => setAppBadgeSafely({ setAppBadge }, count),
+        yieldBeforeWrite: async () => {
+          await Promise.resolve();
+        },
+      });
+
+    await Promise.all([bump(), bump()]);
+    // 直列化なしでは両方 0→1 になり最終 1（取りこぼし）
+    expect(stored).toBe(1);
+  });
 });

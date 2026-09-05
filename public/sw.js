@@ -205,14 +205,27 @@ async function writeUnreadCount(count) {
   }
 }
 
+/** 並行 push / reset の未読 RMW を直列化する */
+let unreadOpChain = Promise.resolve();
+function runUnreadExclusive(task) {
+  const result = unreadOpChain.then(task, task);
+  unreadOpChain = result.then(
+    () => undefined,
+    () => undefined,
+  );
+  return result;
+}
+
 async function resetUnreadBadge() {
-  // write が throw しても clear に到達する（writeUnreadCount 内でも握りつぶすが二重化）
-  try {
-    await writeUnreadCount(0);
-  } catch {
-    // ignore
-  }
-  await clearAppBadgeSafely();
+  await runUnreadExclusive(async () => {
+    // write が throw しても clear に到達する（writeUnreadCount 内でも握りつぶすが二重化）
+    try {
+      await writeUnreadCount(0);
+    } catch {
+      // ignore
+    }
+    await clearAppBadgeSafely();
+  });
 }
 
 self.addEventListener("install", (event) => {
@@ -256,9 +269,11 @@ self.addEventListener("push", (event) => {
         body: msg.body,
         data: { url: "./" },
       });
-      const count = incrementUnreadCount(await readUnreadCount());
-      await writeUnreadCount(count);
-      await setAppBadgeSafely(count);
+      await runUnreadExclusive(async () => {
+        const count = incrementUnreadCount(await readUnreadCount());
+        await writeUnreadCount(count);
+        await setAppBadgeSafely(count);
+      });
     })(),
   );
 });
