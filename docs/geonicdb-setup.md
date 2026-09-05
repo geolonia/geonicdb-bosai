@@ -1,6 +1,6 @@
 # GeonicDB セットアップ（APIキー・XACMLポリシー）
 
-作成日: 2026-09-01 / 改訂: 2026-09-05（#44: Web Push 購読キーに対象エンティティ GET が必須である旨を追記）
+作成日: 2026-09-01 / 改訂: 2026-09-06（#48: Web Push 通知対象を `bosai-AlertLevel` のみに絞る旨を追記）
 関連: [`data-model.md`](data-model.md)、[`REQUIREMENTS.md`](REQUIREMENTS.md) 2.1節、[`deployment.md`](deployment.md)
 
 `geonicdb-cli`（コマンド名 `geonic`）を使い、`bosai-` プレフィックスの命名規則で APIキー・XACMLポリシーをセットアップする。**全て実際のテナント（staging）に対して実行・動作確認済み。**
@@ -156,6 +156,13 @@ geonic admin api-keys create --name "bosai-public-ws-read" --policy bosai-read \
 | allowedOrigins | `https://geolonia.github.io`, `http://localhost:3000` |
 | dpopRequired | `true` |
 | rateLimit.perMinute | `30` |
+
+**通知対象エンティティ**: 新規購読は **`bosai-AlertLevel` のみ**（#48）。
+画面の WebSocket ライブ更新は 3 タイプすべてが対象のまま。定数は `shared/bosai-live-entity-types.ts` の
+`BOSAI_WEBPUSH_ENTITY_TYPES` / `BOSAI_LIVE_ENTITY_TYPES` を参照。
+
+**購読対象変更時の運用**: 既存購読は旧仕様のまま GeonicDB に残るため、対象を変えたあとは
+既存購読を削除して端末側で再オプトインさせる（自動移行なし。詳細は [`deployment.md`](deployment.md)）。
 
 **なぜ `bosai-*` への GET が必要か**: GeonicDB は通知配信時に購読所有者の認可を判定する。対象エンティティタイプを読めない principal のサブスクリプションは、**エラーも失敗カウントも残さず沈黙のうちにスキップされる**（`timesSent: 0` / `timesFailed: 0` / `lastFailure: null` のまま）。サブスクリプション作成だけできれば十分、ではない。
 

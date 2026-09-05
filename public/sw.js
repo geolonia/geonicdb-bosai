@@ -12,19 +12,12 @@ const DEFAULT_LANG = "ja";
 const UNREAD_COUNT_PATH = "/unread-count";
 const RESET_UNREAD_MESSAGE = "RESET_UNREAD_COUNT";
 
+// 新規購読は bosai-AlertLevel のみ（#48）。旧購読の他タイプは default へフォールバック。
 const MESSAGES = {
   ja: {
-    "bosai-EmergencyBanner": {
-      title: "緊急情報",
-      body: "緊急バナーが更新されました。サイトで確認してください。",
-    },
     "bosai-AlertLevel": {
       title: "警戒レベル",
       body: "警戒レベルが更新されました。サイトで確認してください。",
-    },
-    "bosai-Notice": {
-      title: "お知らせ",
-      body: "新しいお知らせがあります。サイトで確認してください。",
     },
     default: {
       title: "防災情報",
@@ -32,17 +25,9 @@ const MESSAGES = {
     },
   },
   en: {
-    "bosai-EmergencyBanner": {
-      title: "Emergency alert",
-      body: "The emergency banner was updated. Open the site for details.",
-    },
     "bosai-AlertLevel": {
       title: "Alert level",
       body: "The alert level was updated. Open the site for details.",
-    },
-    "bosai-Notice": {
-      title: "Notice",
-      body: "There is a new notice. Open the site for details.",
     },
     default: {
       title: "Disaster information",
@@ -50,17 +35,9 @@ const MESSAGES = {
     },
   },
   "zh-CN": {
-    "bosai-EmergencyBanner": {
-      title: "紧急信息",
-      body: "紧急横幅已更新。请打开网站查看。",
-    },
     "bosai-AlertLevel": {
       title: "警戒级别",
       body: "警戒级别已更新。请打开网站查看。",
-    },
-    "bosai-Notice": {
-      title: "通知",
-      body: "有新通知。请打开网站查看。",
     },
     default: {
       title: "防灾信息",
@@ -68,17 +45,9 @@ const MESSAGES = {
     },
   },
   vi: {
-    "bosai-EmergencyBanner": {
-      title: "Thông tin khẩn cấp",
-      body: "Biểu ngữ khẩn cấp đã cập nhật. Hãy mở trang để xem.",
-    },
     "bosai-AlertLevel": {
       title: "Mức cảnh báo",
       body: "Mức cảnh báo đã cập nhật. Hãy mở trang để xem.",
-    },
-    "bosai-Notice": {
-      title: "Thông báo",
-      body: "Có thông báo mới. Hãy mở trang để xem.",
     },
     default: {
       title: "Thông tin phòng chống thiên tai",
@@ -86,17 +55,9 @@ const MESSAGES = {
     },
   },
   ko: {
-    "bosai-EmergencyBanner": {
-      title: "긴급 정보",
-      body: "긴급 배너가 업데이트되었습니다. 사이트에서 확인하세요.",
-    },
     "bosai-AlertLevel": {
       title: "경계 수준",
       body: "경계 수준이 업데이트되었습니다. 사이트에서 확인하세요.",
-    },
-    "bosai-Notice": {
-      title: "알림",
-      body: "새 알림이 있습니다. 사이트에서 확인하세요.",
     },
     default: {
       title: "방재 정보",

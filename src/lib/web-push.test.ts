@@ -35,6 +35,14 @@ describe("web-push-sw-logic", () => {
     expect(msg.body).not.toMatch(/level 5 action|本文/);
   });
 
+  it("falls back to default for legacy entity types (#48 near-miss)", () => {
+    // 旧購読から bosai-Notice / bosai-EmergencyBanner が来ても壊れない
+    const notice = pushMessageFor("bosai-Notice", "ja");
+    expect(notice.title).toBe("防災情報");
+    const banner = pushMessageFor("bosai-EmergencyBanner", "en");
+    expect(banner.title).toBe("Disaster information");
+  });
+
   it("near-miss: unknown lang prefix falls back to ja", () => {
     expect(normalizePushLang("fr-FR")).toBe("ja");
   });
@@ -270,17 +278,23 @@ describe("public/sw.js push-only contract", () => {
   });
 });
 
-describe("BOSAI_LIVE_ENTITY_TYPES single source", () => {
+describe("BOSAI_LIVE / WEBPUSH entity types single source (#48)", () => {
   it("frontend re-export matches shared module", async () => {
-    const { BOSAI_LIVE_ENTITY_TYPES: fromSrc } =
-      await import("@/lib/bosai-live-entity-types");
-    const { BOSAI_LIVE_ENTITY_TYPES: fromShared } =
-      await import("../../shared/bosai-live-entity-types");
-    expect(fromSrc).toBe(fromShared);
-    expect([...fromShared]).toEqual([
+    const {
+      BOSAI_LIVE_ENTITY_TYPES: liveFromSrc,
+      BOSAI_WEBPUSH_ENTITY_TYPES: pushFromSrc,
+    } = await import("@/lib/bosai-live-entity-types");
+    const {
+      BOSAI_LIVE_ENTITY_TYPES: liveFromShared,
+      BOSAI_WEBPUSH_ENTITY_TYPES: pushFromShared,
+    } = await import("../../shared/bosai-live-entity-types");
+    expect(liveFromSrc).toBe(liveFromShared);
+    expect(pushFromSrc).toBe(pushFromShared);
+    expect([...liveFromShared]).toEqual([
       "bosai-Notice",
       "bosai-EmergencyBanner",
       "bosai-AlertLevel",
     ]);
+    expect([...pushFromShared]).toEqual(["bosai-AlertLevel"]);
   });
 });
