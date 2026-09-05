@@ -25,6 +25,7 @@ export type BuildSubscriptionOptions = {
 /**
  * Push Service の endpoint URL と VAPID keys を検証する。
  * near-miss: http:// や "https://" のみ（hostname 無し）は拒否。
+ * SSRF: localhost / プライベート IP / リンクローカル / 内部 DNS 名は拒否（拒否リスト方式）。
  */
 export function parsePushSubscription(body: unknown): PushSubscriptionInput {
   if (body === null || typeof body !== "object" || Array.isArray(body)) {
@@ -45,6 +46,7 @@ export function parsePushSubscription(body: unknown): PushSubscriptionInput {
   if (parsed.protocol !== "https:" || !parsed.hostname) {
     throw new ValidationError("endpoint must be a valid https:// URL");
   }
+  assertPublicPushEndpointHost(parsed.hostname);
   const keys = record.keys;
   if (keys === null || typeof keys !== "object" || Array.isArray(keys)) {
     throw new ValidationError("keys is required");
@@ -62,6 +64,90 @@ export function parsePushSubscription(body: unknown): PushSubscriptionInput {
     endpoint: trimmedEndpoint,
     keys: { p256dh: p256dh.trim(), auth: auth.trim() },
   };
+}
+
+/** URL.hostname は IPv6 を括弧なしで返す。 */
+const INTERNAL_DNS_SUFFIXES = [
+  ".local",
+  ".localhost",
+  ".internal",
+  ".intranet",
+  ".corp",
+  ".home",
+  ".lan",
+] as const;
+
+/**
+ * Push Service 向けホストの拒否リスト検証（SSRF 緩和）。
+ * 公開ホスト名は許可し、localhost・RFC1918・リンクローカル・内部 DNS を拒否する。
+ */
+export function assertPublicPushEndpointHost(hostname: string): void {
+  const host = hostname
+    .trim()
+    .toLowerCase()
+    .replace(/^\[|\]$/g, "");
+  if (!host) {
+    throw new ValidationError("endpoint host is not allowed");
+  }
+  if (host === "localhost" || host === "0.0.0.0") {
+    throw new ValidationError("endpoint host is not allowed");
+  }
+  for (const suffix of INTERNAL_DNS_SUFFIXES) {
+    if (host.endsWith(suffix)) {
+      throw new ValidationError("endpoint host is not allowed");
+    }
+  }
+
+  if (isIpv4Literal(host)) {
+    if (isBlockedIpv4(host)) {
+      throw new ValidationError("endpoint host is not allowed");
+    }
+    return;
+  }
+
+  if (host.includes(":")) {
+    if (isBlockedIpv6(host)) {
+      throw new ValidationError("endpoint host is not allowed");
+    }
+  }
+}
+
+function isIpv4Literal(host: string): boolean {
+  return /^(?:\d{1,3}\.){3}\d{1,3}$/.test(host);
+}
+
+function isBlockedIpv4(host: string): boolean {
+  const parts = host.split(".").map((p) => Number(p));
+  if (
+    parts.length !== 4 ||
+    parts.some((n) => !Number.isInteger(n) || n < 0 || n > 255)
+  ) {
+    return true;
+  }
+  const [a, b] = parts;
+  // loopback 127.0.0.0/8
+  if (a === 127) return true;
+  // RFC1918
+  if (a === 10) return true;
+  if (a === 172 && b >= 16 && b <= 31) return true;
+  if (a === 192 && b === 168) return true;
+  // link-local 169.254.0.0/16
+  if (a === 169 && b === 254) return true;
+  // unspecified
+  if (a === 0) return true;
+  return false;
+}
+
+function isBlockedIpv6(host: string): boolean {
+  // 圧縮表記を含む簡易判定（完全パーサは不要な範囲で拒否寄り）
+  const normalized = host.toLowerCase();
+  if (normalized === "::" || normalized === "::1") return true;
+  if (normalized.startsWith("fe80:")) return true; // link-local
+  if (normalized.startsWith("fc") || normalized.startsWith("fd")) return true; // ULA
+  // IPv4-mapped ::ffff:a.b.c.d
+  const mapped = normalized.match(/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/);
+  if (mapped && isBlockedIpv4(mapped[1])) return true;
+  return false;
 }
 
 export class ValidationError extends Error {

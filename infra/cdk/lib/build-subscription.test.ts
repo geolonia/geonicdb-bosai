@@ -49,6 +49,53 @@ describe("parsePushSubscription", () => {
     ).toThrow(/https:\/\//);
   });
 
+  it("rejects localhost and loopback (SSRF denylist)", () => {
+    for (const endpoint of [
+      "https://localhost/push",
+      "https://127.0.0.1/push",
+      "https://127.0.0.2/v1",
+    ]) {
+      expect(() => parsePushSubscription({ ...VALID, endpoint })).toThrow(
+        /host is not allowed/,
+      );
+    }
+  });
+
+  it("rejects RFC1918 and link-local IPv4 (SSRF denylist)", () => {
+    for (const endpoint of [
+      "https://10.0.0.1/push",
+      "https://172.16.5.1/push",
+      "https://172.31.255.255/push",
+      "https://192.168.1.1/push",
+      "https://169.254.10.20/push",
+    ]) {
+      expect(() => parsePushSubscription({ ...VALID, endpoint })).toThrow(
+        /host is not allowed/,
+      );
+    }
+  });
+
+  it("rejects internal DNS names (SSRF denylist)", () => {
+    for (const endpoint of [
+      "https://push.internal/v1",
+      "https://meta.corp/push",
+      "https://device.local/push",
+    ]) {
+      expect(() => parsePushSubscription({ ...VALID, endpoint })).toThrow(
+        /host is not allowed/,
+      );
+    }
+  });
+
+  it("still accepts public Push Service hosts under denylist", () => {
+    expect(
+      parsePushSubscription({
+        ...VALID,
+        endpoint: "https://updates.push.services.mozilla.com/wpush/v2/abc",
+      }).endpoint,
+    ).toBe("https://updates.push.services.mozilla.com/wpush/v2/abc");
+  });
+
   it("rejects missing keys.auth", () => {
     expect(() =>
       parsePushSubscription({
