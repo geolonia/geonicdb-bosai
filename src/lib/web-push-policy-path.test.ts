@@ -83,17 +83,20 @@ describe("Web Push policy path glob (#51)", () => {
     );
     const docs = readFileSync(docsPath, "utf8");
 
-    expect(docs).toContain(
+    const blockStart = docs.indexOf('"ruleId": "permit-subscription-write"');
+    const blockEnd = docs.indexOf(
+      '"ruleId": "permit-bosai-read-for-notification-authz"',
+    );
+    expect(blockStart).toBeGreaterThanOrEqual(0);
+    expect(blockEnd).toBeGreaterThan(blockStart);
+    const policyJsonBlock = docs.slice(blockStart, blockEnd);
+    expect(policyJsonBlock).toContain(
       '"matchValue": "/ngsi-ld/v1/subscriptions", "matchFunction": "string-equal"',
     );
-    expect(docs).toContain(
+    expect(policyJsonBlock).toContain(
       '"matchValue": "/ngsi-ld/v1/subscriptions/**", "matchFunction": "glob"',
     );
     // 誤った matchValue をポリシー JSON 例に再混入させない（説明文の BUG_PATTERN 言及は可）
-    const policyJsonBlock = docs.slice(
-      docs.indexOf('"ruleId": "permit-subscription-write"'),
-      docs.indexOf('"ruleId": "permit-bosai-read-for-notification-authz"'),
-    );
     expect(policyJsonBlock).not.toContain(`"matchValue": "${BUG_PATTERN}"`);
     expect(docs).toMatch(/スラッシュを跨がない/);
   });
