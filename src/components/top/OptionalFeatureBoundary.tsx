@@ -1,6 +1,6 @@
 "use client";
 
-import { Component, type ErrorInfo, type ReactNode } from "react";
+import { Component, type ReactNode } from "react";
 
 type Props = {
   children: ReactNode;
@@ -21,7 +21,7 @@ export class OptionalFeatureBoundary extends Component<Props, State> {
     return { failed: true };
   }
 
-  componentDidCatch(_error: Error, _info: ErrorInfo): void {
+  componentDidCatch(): void {
     // 防災主要情報を優先するため、付加機能の失敗は握りつぶす
   }
 
