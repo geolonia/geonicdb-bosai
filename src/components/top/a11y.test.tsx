@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { AlertLevelDisplay } from "@/components/top/AlertLevelDisplay";
 import { EmergencyBanner } from "@/components/top/EmergencyBanner";
 import { NewsList } from "@/components/top/NewsList";
+import { PushNotificationOptIn } from "@/components/top/PushNotificationOptIn";
 import { QuickLinks } from "@/components/top/QuickLinks";
 import { SiteHeader } from "@/components/top/SiteHeader";
 import { BANNER_VARIANT_COLORS } from "@/config/alert-colors";
@@ -104,6 +105,30 @@ describe("a11y: SiteHeader / QuickLinks / NewsList", () => {
         lang="ja"
       />,
     );
+    expect(await runAxe(container)).toHaveNoViolations();
+  });
+});
+
+describe("a11y: PushNotificationOptIn", () => {
+  it("enable button has no axe violations", async () => {
+    process.env.NEXT_PUBLIC_WEBPUSH_REGISTER_URL = "/api/webpush";
+    Object.defineProperty(window, "Notification", {
+      configurable: true,
+      value: { permission: "default" },
+    });
+    Object.defineProperty(navigator, "serviceWorker", {
+      configurable: true,
+      value: {},
+    });
+    Object.defineProperty(window, "PushManager", {
+      configurable: true,
+      value: function PushManager() {},
+    });
+
+    const { container, findByRole } = render(
+      <PushNotificationOptIn lang="ja" strings={testStrings} />,
+    );
+    await findByRole("button", { name: testStrings.pushEnableLabel });
     expect(await runAxe(container)).toHaveNoViolations();
   });
 });

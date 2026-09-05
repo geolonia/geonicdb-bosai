@@ -1,13 +1,11 @@
+import {
+  BOSAI_LIVE_ENTITY_TYPES,
+  type BosaiLiveEntityType,
+} from "@/lib/bosai-live-entity-types";
 import { useEffect } from "react";
 import { getGeonicdbWsClient } from "@/lib/geonicdb-public-client";
 
-export const BOSAI_LIVE_ENTITY_TYPES = [
-  "bosai-Notice",
-  "bosai-EmergencyBanner",
-  "bosai-AlertLevel",
-] as const;
-
-export type BosaiLiveEntityType = (typeof BOSAI_LIVE_ENTITY_TYPES)[number];
+export { BOSAI_LIVE_ENTITY_TYPES, type BosaiLiveEntityType };
 
 export type BosaiLiveUpdateHandlers = {
   "bosai-Notice": () => void;

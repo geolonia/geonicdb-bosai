@@ -24,3 +24,16 @@ GeonicDB が別オリジンのとき（`connect-src` に追加）:
 npx cdk deploy -c geonicdbUrl=https://geonicdb.example.jp
 # または NEXT_PUBLIC_GEONICDB_URL を export してから cdk deploy
 ```
+
+Web Push 登録プロキシ（#35）を有効にする:
+
+```bash
+npx cdk deploy \
+  -c enableWebPush=true \
+  -c geonicdbUrl=https://geonicdb.geolonia.com \
+  -c geonicdbTenant=miya \
+  -c siteOrigin=https://bosai.example.jp
+# siteOrigin は CORS 用に必須（* は不可）
+# デプロイ後: Secrets Manager に GEONICDB_API_KEY を投入
+# フロント: NEXT_PUBLIC_WEBPUSH_REGISTER_URL=/api/webpush
+```

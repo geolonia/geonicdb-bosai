@@ -4,7 +4,7 @@ import { ContentPageChrome } from "@/components/content/ContentPageChrome";
 export const metadata: Metadata = {
   title: "プライバシーポリシー | 防災情報",
   description:
-    "位置情報・個人情報の取扱い方針の雛形（端末側処理を優先しサーバに保存しない）",
+    "位置情報は端末側処理を優先しサーバに保存しない。Web Push 購読情報（PushSubscription）は利用者の同意時のみ登録用プロキシ経由で GeonicDB に保存する。個人情報・プライバシー方針の雛形",
 };
 
 /**
@@ -36,6 +36,17 @@ export default function PrivacyPage() {
           <p>
             住民向け公開ページは静的ファイルと公開防災データの閲覧を主とし、利用者の氏名・住所・連絡先等の個人情報を収集・保存しません。
             問い合わせ等で個人情報を受け取る場合は、各団体の個人情報保護条例および関連法令に従い取り扱います。
+          </p>
+        </section>
+
+        <section aria-labelledby="privacy-push">
+          <h2 id="privacy-push">ブラウザ通知（Web Push）</h2>
+          <p>
+            利用者が「通知を受け取る」を選択した場合に限り、ブラウザの通知許可を求めます。
+            許可後、端末の PushSubscription（endpoint
+            と暗号化鍵）を登録用プロキシへ送信し、 GeonicDB 上の Web Push
+            サブスクリプション作成に利用します。
+            氏名・住所などの個人情報は含みません。通知の許可要求はページ読み込み時に自動では行いません。
           </p>
         </section>
 

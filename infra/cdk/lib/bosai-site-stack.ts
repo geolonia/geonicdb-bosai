@@ -11,6 +11,7 @@ import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import { Construct } from "constructs";
 import { buildContentSecurityPolicy, type BuildCspOptions } from "./csp-policy";
+import { WebPushProxy, type WebPushProxyProps } from "./webpush-proxy";
 
 export type BosaiSiteStackProps = cdk.StackProps & {
   /** サイト用バケット名（未指定時は CDK 生成名） */
@@ -32,6 +33,13 @@ export type BosaiSiteStackProps = cdk.StackProps & {
   certificateArn?: string;
   /** ビューワー証明書とセットで指定するドメイン（例: bosai.example.jp） */
   domainNames?: string[];
+  /**
+   * Web Push 登録プロキシ（#35）。指定時のみ Lambda Function URL + Secrets Manager を追加。
+   * `geonicdbUrl` 必須。CSP connect-src / worker-src は呼び出し側で合成すること。
+   */
+  webPush?: Omit<WebPushProxyProps, "geonicdbUrl"> & {
+    geonicdbUrl: string;
+  };
 };
 
 const CUSTOM_SECURITY_HEADERS = [
@@ -80,6 +88,7 @@ export class BosaiSiteStack extends cdk.Stack {
   public readonly bucket: s3.Bucket;
   public readonly distribution: cloudfront.Distribution;
   public readonly responseHeadersPolicy: cloudfront.ResponseHeadersPolicy;
+  public readonly webPushProxy?: WebPushProxy;
 
   constructor(scope: Construct, id: string, props: BosaiSiteStackProps = {}) {
     super(scope, id, props);
@@ -232,5 +241,28 @@ export class BosaiSiteStack extends cdk.Stack {
         ? "Content-Security-Policy-Report-Only value"
         : "Content-Security-Policy value",
     });
+
+    if (props.webPush) {
+      this.webPushProxy = new WebPushProxy(this, "WebPushProxy", props.webPush);
+      // 同一オリジン /api/webpush 経由で登録（connect-src 'self' のまま）
+      this.distribution.addBehavior(
+        "/api/webpush",
+        new origins.FunctionUrlOrigin(this.webPushProxy.functionUrl),
+        {
+          viewerProtocolPolicy:
+            cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+          cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+          originRequestPolicy:
+            cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+          responseHeadersPolicy: this.responseHeadersPolicy,
+        },
+      );
+      new cdk.CfnOutput(this, "WebPushSameOriginPath", {
+        value: "/api/webpush",
+        description:
+          "Prefer NEXT_PUBLIC_WEBPUSH_REGISTER_URL=/api/webpush on CloudFront",
+      });
+    }
   }
 }
