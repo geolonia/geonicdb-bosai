@@ -56,18 +56,69 @@ describe("buildWebManifest", () => {
   });
 });
 
+describe("unread count helpers (#45)", () => {
+  it("parseUnreadCount accepts non-negative integers", async () => {
+    const { parseUnreadCount } = await import("@/lib/web-push-sw-logic");
+    expect(parseUnreadCount("0")).toBe(0);
+    expect(parseUnreadCount("1")).toBe(1);
+    expect(parseUnreadCount("42")).toBe(42);
+  });
+
+  it("parseUnreadCount near-miss: rejects non-integer / negative / empty", async () => {
+    const { parseUnreadCount } = await import("@/lib/web-push-sw-logic");
+    expect(parseUnreadCount(undefined)).toBe(0);
+    expect(parseUnreadCount(null)).toBe(0);
+    expect(parseUnreadCount("")).toBe(0);
+    expect(parseUnreadCount("abc")).toBe(0);
+    expect(parseUnreadCount("-1")).toBe(0);
+    expect(parseUnreadCount("1.9")).toBe(1); // parseInt truncates toward zero
+    expect(parseUnreadCount("01")).toBe(1);
+  });
+
+  it("incrementUnreadCount adds one from zero or positive", async () => {
+    const { incrementUnreadCount, resetUnreadCount } =
+      await import("@/lib/web-push-sw-logic");
+    expect(incrementUnreadCount(0)).toBe(1);
+    expect(incrementUnreadCount(2)).toBe(3);
+    expect(incrementUnreadCount(Number.NaN)).toBe(1);
+    expect(incrementUnreadCount(-5)).toBe(1);
+    expect(resetUnreadCount()).toBe(0);
+  });
+});
+
 describe("setAppBadgeSafely / clearAppBadgeSafely", () => {
-  it("calls setAppBadge when available", async () => {
+  it("passes a positive numeric count to setAppBadge (#45 regression)", async () => {
+    const { setAppBadgeSafely } = await import("@/lib/web-push-sw-logic");
+    const setAppBadge = vi.fn<(contents?: number) => Promise<void>>(
+      async () => undefined,
+    );
+    await setAppBadgeSafely({ setAppBadge }, 3);
+    expect(setAppBadge).toHaveBeenCalledTimes(1);
+    expect(setAppBadge).toHaveBeenCalledWith(3);
+    // 引数なし呼び出しは iOS で描画されないため禁止
+    const firstCall = setAppBadge.mock.calls[0];
+    expect(firstCall).toBeDefined();
+    expect(firstCall).toHaveLength(1);
+    expect(firstCall![0]).toEqual(expect.any(Number));
+  });
+
+  it("floors fractional counts and skips non-positive via clear", async () => {
     const { setAppBadgeSafely } = await import("@/lib/web-push-sw-logic");
     const setAppBadge = vi.fn(async () => undefined);
-    await setAppBadgeSafely({ setAppBadge });
-    expect(setAppBadge).toHaveBeenCalledTimes(1);
+    const clearAppBadge = vi.fn(async () => undefined);
+    await setAppBadgeSafely({ setAppBadge, clearAppBadge }, 2.9);
+    expect(setAppBadge).toHaveBeenCalledWith(2);
+    setAppBadge.mockClear();
+    clearAppBadge.mockClear();
+    await setAppBadgeSafely({ setAppBadge, clearAppBadge }, 0);
+    expect(setAppBadge).not.toHaveBeenCalled();
+    expect(clearAppBadge).toHaveBeenCalledTimes(1);
   });
 
   it("no-ops when setAppBadge is missing (unsupported browser)", async () => {
     const { setAppBadgeSafely } = await import("@/lib/web-push-sw-logic");
-    await expect(setAppBadgeSafely({})).resolves.toBeUndefined();
-    await expect(setAppBadgeSafely(null)).resolves.toBeUndefined();
+    await expect(setAppBadgeSafely({}, 1)).resolves.toBeUndefined();
+    await expect(setAppBadgeSafely(null, 1)).resolves.toBeUndefined();
   });
 
   it("swallows setAppBadge rejection so push handler stays healthy", async () => {
@@ -75,7 +126,9 @@ describe("setAppBadgeSafely / clearAppBadgeSafely", () => {
     const setAppBadge = vi.fn(async () => {
       throw new Error("badge denied");
     });
-    await expect(setAppBadgeSafely({ setAppBadge })).resolves.toBeUndefined();
+    await expect(
+      setAppBadgeSafely({ setAppBadge }, 1),
+    ).resolves.toBeUndefined();
   });
 
   it("clears badge when clearAppBadge is available", async () => {
@@ -88,5 +141,70 @@ describe("setAppBadgeSafely / clearAppBadgeSafely", () => {
   it("no-ops when clearAppBadge is missing", async () => {
     const { clearAppBadgeSafely } = await import("@/lib/web-push-sw-logic");
     await expect(clearAppBadgeSafely({})).resolves.toBeUndefined();
+  });
+
+  it("clears badge even when unread count write fails (#45 audit)", async () => {
+    const { resetUnreadBadgeState, clearAppBadgeSafely } =
+      await import("@/lib/web-push-sw-logic");
+    const clearAppBadge = vi.fn(async () => undefined);
+    await expect(
+      resetUnreadBadgeState({
+        writeUnreadCount: async () => {
+          throw new Error("cache.put failed");
+        },
+        clearBadge: () => clearAppBadgeSafely({ clearAppBadge }),
+      }),
+    ).resolves.toBeUndefined();
+    expect(clearAppBadge).toHaveBeenCalledTimes(1);
+  });
+
+  it("serializes concurrent unread bumps to final count 2 (#45 CodeRabbit)", async () => {
+    const { bumpUnreadCountState, createSerialQueue, setAppBadgeSafely } =
+      await import("@/lib/web-push-sw-logic");
+    let stored = 0;
+    const setAppBadge = vi.fn(async () => undefined);
+    const queue = createSerialQueue();
+
+    const bump = () =>
+      queue(() =>
+        bumpUnreadCountState({
+          readUnreadCount: async () => stored,
+          writeUnreadCount: async (count) => {
+            stored = count;
+          },
+          setBadge: (count) => setAppBadgeSafely({ setAppBadge }, count),
+          // キュー無しだと両方が 0 を読んで 1 になるギャップを再現
+          yieldBeforeWrite: async () => {
+            await Promise.resolve();
+          },
+        }),
+      );
+
+    await Promise.all([bump(), bump()]);
+    expect(stored).toBe(2);
+    expect(setAppBadge).toHaveBeenLastCalledWith(2);
+    expect(setAppBadge).toHaveBeenCalledTimes(2);
+  });
+
+  it("near-miss: without serial queue concurrent bumps lose a count", async () => {
+    const { bumpUnreadCountState, setAppBadgeSafely } =
+      await import("@/lib/web-push-sw-logic");
+    let stored = 0;
+    const setAppBadge = vi.fn(async () => undefined);
+    const bump = () =>
+      bumpUnreadCountState({
+        readUnreadCount: async () => stored,
+        writeUnreadCount: async (count) => {
+          stored = count;
+        },
+        setBadge: (count) => setAppBadgeSafely({ setAppBadge }, count),
+        yieldBeforeWrite: async () => {
+          await Promise.resolve();
+        },
+      });
+
+    await Promise.all([bump(), bump()]);
+    // 直列化なしでは両方 0→1 になり最終 1（取りこぼし）
+    expect(stored).toBe(1);
   });
 });

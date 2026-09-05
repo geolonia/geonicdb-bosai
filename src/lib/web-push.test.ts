@@ -220,10 +220,53 @@ describe("public/sw.js push-only contract", () => {
       sw.indexOf('self.addEventListener("notificationclick"'),
     );
 
-    expect(pushHandler).toContain("await setAppBadgeSafely()");
-    expect(clickHandler).toContain("await clearAppBadgeSafely()");
+    expect(pushHandler).toMatch(/await setAppBadgeSafely\(/);
+    expect(clickHandler).toMatch(/await resetUnreadBadge\(\)/);
     expect(sw).toMatch(/nav\.setAppBadge/);
     expect(sw).toMatch(/nav\.clearAppBadge/);
+  });
+
+  it("passes numeric unread count to setAppBadge (#45 regression)", () => {
+    // 引数なし setAppBadge() は iOS でバッジが描画されない
+    expect(sw).not.toMatch(/nav\.setAppBadge\(\s*\)/);
+    expect(sw).toMatch(/nav\.setAppBadge\(\s*[a-zA-Z_]\w*\s*\)/);
+    expect(sw).toMatch(/await setAppBadgeSafely\(\s*count\s*\)/);
+    expect(sw).toMatch(/["']\/unread-count["']/);
+    expect(sw).toMatch(/RESET_UNREAD_COUNT/);
+    const pushHandler = sw.slice(
+      sw.indexOf('self.addEventListener("push"'),
+      sw.indexOf('self.addEventListener("notificationclick"'),
+    );
+    expect(pushHandler).toMatch(/incrementUnreadCount/);
+  });
+
+  it("writeUnreadCount failures do not block clearAppBadge (#45 audit)", () => {
+    const writeFn = sw.slice(
+      sw.indexOf("async function writeUnreadCount"),
+      sw.indexOf("/** 並行 push"),
+    );
+    const resetFn = sw.slice(
+      sw.indexOf("async function resetUnreadBadge"),
+      sw.indexOf('self.addEventListener("install"'),
+    );
+    expect(writeFn).toMatch(/try\s*\{/);
+    expect(writeFn).toMatch(/catch\s*\{/);
+    expect(resetFn).toMatch(/clearAppBadgeSafely/);
+    expect(resetFn).toMatch(/runUnreadExclusive/);
+    // clear が write の後にあり、write の try 外でも呼ばれる
+    const clearIdx = resetFn.indexOf("clearAppBadgeSafely");
+    const writeCallIdx = resetFn.indexOf("writeUnreadCount");
+    expect(writeCallIdx).toBeGreaterThanOrEqual(0);
+    expect(clearIdx).toBeGreaterThan(writeCallIdx);
+  });
+
+  it("serializes unread RMW via runUnreadExclusive (#45 CodeRabbit)", () => {
+    expect(sw).toMatch(/function runUnreadExclusive/);
+    const pushHandler = sw.slice(
+      sw.indexOf('self.addEventListener("push"'),
+      sw.indexOf('self.addEventListener("notificationclick"'),
+    );
+    expect(pushHandler).toMatch(/runUnreadExclusive/);
   });
 });
 

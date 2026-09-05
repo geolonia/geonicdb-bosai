@@ -1,14 +1,41 @@
-import { clearAppBadgeSafely } from "@/lib/web-push-sw-logic";
+import {
+  WEB_PUSH_RESET_UNREAD_MESSAGE,
+  clearAppBadgeSafely,
+} from "@/lib/web-push-sw-logic";
+
+type BadgeClearTarget = Pick<
+  Window,
+  "addEventListener" | "removeEventListener" | "navigator"
+>;
+
+async function notifyServiceWorkerUnreadReset(
+  nav: BadgeClearTarget["navigator"],
+): Promise<void> {
+  const serviceWorker = (
+    nav as Navigator & {
+      serviceWorker?: {
+        getRegistration?: () => Promise<ServiceWorkerRegistration | undefined>;
+      };
+    }
+  ).serviceWorker;
+  if (!serviceWorker?.getRegistration) return;
+  try {
+    const registration = await serviceWorker.getRegistration();
+    if (!registration) return;
+    const worker =
+      registration.active ?? registration.waiting ?? registration.installing;
+    worker?.postMessage({ type: WEB_PUSH_RESET_UNREAD_MESSAGE });
+  } catch {
+    // SW 未登録・postMessage 失敗は無視（バッジ clear 自体は完了している）
+  }
+}
 
 /**
- * アプリがフォアグラウンドになったときにバッジを消す。
+ * アプリがフォアグラウンドになったときにバッジを消し、SW の未読件数も 0 にする。
  * Badging API 未対応なら何もしない。
  */
 export function installAppBadgeClearOnForeground(
-  target: Pick<
-    Window,
-    "addEventListener" | "removeEventListener" | "navigator"
-  > = window,
+  target: BadgeClearTarget = window,
 ): () => void {
   const clear = () => {
     if (
@@ -18,6 +45,7 @@ export function installAppBadgeClearOnForeground(
       return;
     }
     void clearAppBadgeSafely(target.navigator);
+    void notifyServiceWorkerUnreadReset(target.navigator);
   };
 
   target.addEventListener("visibilitychange", clear);
