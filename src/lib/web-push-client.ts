@@ -329,7 +329,7 @@ export async function enableWebPushNotifications(options: {
   return state;
 }
 
-/** GeonicDB DELETE + PushSubscription.unsubscribe。両方成功後に localStorage を消す。 */
+/** GeonicDB DELETE 成功後に PushSubscription.unsubscribe。localStorage は DELETE 成功後に必ず消す。 */
 export async function disableWebPushNotifications(options: {
   env?: PublicWebPushEnv;
   client?: WebPushGeonicdbClient;
@@ -345,13 +345,16 @@ export async function disableWebPushNotifications(options: {
     client: options.client,
   });
 
-  if ("serviceWorker" in navigator) {
-    const registration = await navigator.serviceWorker.getRegistration();
-    const subscription = await registration?.pushManager.getSubscription();
-    if (subscription) {
-      await subscription.unsubscribe();
+  try {
+    if ("serviceWorker" in navigator) {
+      const registration = await navigator.serviceWorker.getRegistration();
+      const subscription = await registration?.pushManager.getSubscription();
+      if (subscription) {
+        await subscription.unsubscribe();
+      }
     }
+  } finally {
+    // GeonicDB 側は既に消えている。unsubscribe が失敗しても残すと再登録不能になる。
+    clearStoredWebPushState();
   }
-
-  clearStoredWebPushState();
 }

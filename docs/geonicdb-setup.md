@@ -149,13 +149,19 @@ geonic admin api-keys create --name "bosai-public-ws-read" --policy bosai-read \
 
 #### Web Push 購読登録用（サブスクリプション専用）
 
-ポリシー `bosai-webpush-proxy-write` は既に作成済み（`/ngsi-ld/v1/subscriptions*` の POST/DELETE/GET のみ）。
-発行済みキー名は `bosai-webpush-subscribe`（`allowedOrigins`: `https://geolonia.github.io` + `http://localhost:3000`、`dpopRequired=true`、`rateLimit.perMinute=30`。GitHub Secret `NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY` に投入済み）。
-再発行例:
+| 項目 | 値 |
+|---|---|
+| ポリシー名 | `bosai-webpush-proxy-write`（`/ngsi-ld/v1/subscriptions*` の POST/DELETE/GET のみ。既作成） |
+| APIキー名 | `bosai-webpush-subscribe`（このキーの**値**を `NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY` に設定） |
+| allowedOrigins | `https://geolonia.github.io`, `http://localhost:3000` |
+| dpopRequired | `true` |
+| rateLimit.perMinute | `30` |
+
+GitHub Secret `NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY` には発行済みキー値を投入済み。再発行例:
 
 ```bash
 geonic admin api-keys create --name "bosai-webpush-subscribe" --policy bosai-webpush-proxy-write \
-  --origins 'https://geolonia.github.io,http://localhost:3000' --dpop-required
+  --origins 'https://geolonia.github.io,http://localhost:3000' --dpop-required --rate-limit 30
 ```
 
 発行したキー値を `.env.local` / GitHub Secrets の `NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY` に設定する。
