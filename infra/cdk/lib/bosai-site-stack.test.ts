@@ -3,7 +3,6 @@ import { Match, Template } from "aws-cdk-lib/assertions";
 import { describe, expect, it } from "vitest";
 import { BosaiSiteStack } from "./bosai-site-stack";
 import { DEFAULT_CSP } from "./csp-policy";
-import { WebPushProxyStack } from "./webpush-proxy-stack";
 
 function synth(props: ConstructorParameters<typeof BosaiSiteStack>[2] = {}) {
   const app = new cdk.App();
@@ -174,61 +173,5 @@ describe("BosaiSiteStack Response Headers Policy", () => {
         },
       },
     });
-  });
-
-  it("adds /api/webpush CloudFront behavior when webPushFunctionUrl is provided", () => {
-    const app = new cdk.App();
-    const proxy = new WebPushProxyStack(app, "Proxy", {
-      env: { account: "111111111111", region: "ap-northeast-1" },
-      geonicdbUrl: "https://geonicdb.example.example",
-      siteOrigin: "https://bosai.example.example",
-    });
-    const site = new BosaiSiteStack(app, "Site", {
-      env: { account: "111111111111", region: "ap-northeast-1" },
-      webPushFunctionUrl: proxy.functionUrl,
-      cspExtras: { workerSrc: ["'self'"] },
-    });
-    const template = Template.fromStack(site);
-
-    // Lambda はサイトスタックに置かない（独立スタック側）
-    template.resourceCountIs("AWS::Lambda::Function", 0);
-    template.resourceCountIs("AWS::Lambda::Url", 0);
-    template.resourceCountIs("AWS::SecretsManager::Secret", 0);
-
-    const dist = template.findResources("AWS::CloudFront::Distribution");
-    const config = Object.values(dist)[0].Properties.DistributionConfig;
-    const behaviors = config.CacheBehaviors ?? [];
-    expect(
-      behaviors.some(
-        (b: { PathPattern?: string }) => b.PathPattern === "/api/webpush",
-      ),
-    ).toBe(true);
-
-    const policies = template.findResources(
-      "AWS::CloudFront::ResponseHeadersPolicy",
-    );
-    const csp =
-      Object.values(policies)[0].Properties.ResponseHeadersPolicyConfig
-        .SecurityHeadersConfig.ContentSecurityPolicy.ContentSecurityPolicy;
-    expect(csp).toContain("worker-src 'self'");
-  });
-
-  it("attaches WAFv2 WebACL ARN to the CloudFront Distribution when webAclArn is set (#36)", () => {
-    const webAclArn =
-      "arn:aws:wafv2:us-east-1:111111111111:global/webacl/geonicdb-bosai-webpush/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
-    const template = synth({ webAclArn });
-
-    template.hasResourceProperties("AWS::CloudFront::Distribution", {
-      DistributionConfig: {
-        WebACLId: webAclArn,
-      },
-    });
-  });
-
-  it("does not attach WebACL when webAclArn is omitted", () => {
-    const template = synth();
-    const dist = template.findResources("AWS::CloudFront::Distribution");
-    const config = Object.values(dist)[0].Properties.DistributionConfig;
-    expect(config.WebACLId).toBeUndefined();
   });
 });

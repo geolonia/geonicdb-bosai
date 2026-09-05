@@ -12,9 +12,7 @@ const disableWebPushNotifications = vi.fn<() => Promise<void>>();
 const resolveActiveWebPushState = vi.fn<
   () => Promise<StoredWebPushState | null>
 >(async () => null);
-const resolveWebPushRegisterUrl = vi.fn<() => string | null>(
-  () => "/api/webpush",
-);
+const isWebPushConfigured = vi.fn<() => boolean>(() => true);
 const syncServiceWorkerLang = vi.fn(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock arity
   async (..._args: [ServiceWorkerRegistration, string]) => undefined,
@@ -25,7 +23,7 @@ vi.mock("@/lib/web-push-client", () => ({
     enableWebPushNotifications(options),
   disableWebPushNotifications: () => disableWebPushNotifications(),
   resolveActiveWebPushState: () => resolveActiveWebPushState(),
-  resolveWebPushRegisterUrl: () => resolveWebPushRegisterUrl(),
+  isWebPushConfigured: () => isWebPushConfigured(),
   syncServiceWorkerLang: (
     registration: ServiceWorkerRegistration,
     lang: string,
@@ -55,7 +53,7 @@ describe("PushNotificationOptIn state transition", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     resolveActiveWebPushState.mockResolvedValue(null);
-    resolveWebPushRegisterUrl.mockReturnValue("/api/webpush");
+    isWebPushConfigured.mockReturnValue(true);
     stubPushApis();
   });
 

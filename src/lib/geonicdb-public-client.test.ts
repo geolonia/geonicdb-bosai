@@ -32,6 +32,19 @@ describe("resolveGeonicdbPublicConfig", () => {
     expect(withKey.wsApiKey).toBe("gdb_test_key");
   });
 
+  it("includes webpushApiKey only when NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY is set", () => {
+    const withoutKey = resolveGeonicdbPublicConfig({
+      NEXT_PUBLIC_GEONICDB_URL: "https://geonicdb.geolonia.com",
+    });
+    expect(withoutKey.webpushApiKey).toBeUndefined();
+
+    const withKey = resolveGeonicdbPublicConfig({
+      NEXT_PUBLIC_GEONICDB_URL: "https://geonicdb.geolonia.com",
+      NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY: "gdb_webpush_key",
+    });
+    expect(withKey.webpushApiKey).toBe("gdb_webpush_key");
+  });
+
   it("rejects missing NEXT_PUBLIC_GEONICDB_URL", () => {
     expect(() => resolveGeonicdbPublicConfig({})).toThrow(
       /NEXT_PUBLIC_GEONICDB_URL is not set/,

@@ -6,8 +6,8 @@ import type { UiStrings } from "@/config/ui-strings";
 import {
   disableWebPushNotifications,
   enableWebPushNotifications,
+  isWebPushConfigured,
   resolveActiveWebPushState,
-  resolveWebPushRegisterUrl,
   syncServiceWorkerLang,
   type StoredWebPushState,
 } from "@/lib/web-push-client";
@@ -47,7 +47,7 @@ export function PushNotificationOptIn({ lang, strings }: Props) {
   const [stored, setStored] = useState<StoredWebPushState | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
-  const registerConfigured = isClient && resolveWebPushRegisterUrl() != null;
+  const registerConfigured = isClient && isWebPushConfigured();
   const pushSupported = isClient && isPushSupported();
   const available = registerConfigured && pushSupported;
 
@@ -100,7 +100,7 @@ export function PushNotificationOptIn({ lang, strings }: Props) {
     }
   }, []);
 
-  // 機能オフ（URL 未設定）または SSR: 何も出さない
+  // 機能オフ（API キー未設定）または SSR: 何も出さない
   if (!registerConfigured) {
     return null;
   }

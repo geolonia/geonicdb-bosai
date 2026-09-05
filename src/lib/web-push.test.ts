@@ -7,10 +7,13 @@ import {
 import {
   clearStoredWebPushState,
   fetchVapidPublicKey,
+  isWebPushConfigured,
   readStoredWebPushState,
-  resolveWebPushRegisterUrl,
+  registerWebPushSubscription,
+  unregisterWebPushSubscription,
   urlBase64ToUint8Array,
   writeStoredWebPushState,
+  type WebPushGeonicdbClient,
 } from "@/lib/web-push-client";
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -112,13 +115,88 @@ describe("web-push-client helpers", () => {
     expect(readStoredWebPushState(storage)).toBeNull();
   });
 
-  it("resolveWebPushRegisterUrl returns null when unset", () => {
-    expect(resolveWebPushRegisterUrl({})).toBeNull();
+  it("isWebPushConfigured requires WEBPUSH API key (not a register proxy URL)", () => {
     expect(
-      resolveWebPushRegisterUrl({
-        NEXT_PUBLIC_WEBPUSH_REGISTER_URL: "/api/webpush/",
+      isWebPushConfigured({
+        NEXT_PUBLIC_GEONICDB_URL: "https://geonicdb.example.example",
       }),
-    ).toBe("/api/webpush");
+    ).toBe(false);
+    expect(
+      isWebPushConfigured({
+        NEXT_PUBLIC_GEONICDB_URL: "https://geonicdb.example.example",
+        NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY: "gdb_webpush",
+      }),
+    ).toBe(true);
+  });
+});
+
+describe("registerWebPushSubscription (direct GeonicDB)", () => {
+  const pushJson = {
+    endpoint: "https://fcm.googleapis.com/fcm/send/abc",
+    keys: {
+      p256dh:
+        "BPj1o6nm3Nh8fG7cdgKishjBD2PZTi7uGEEWlDB0bx6EecwtEw_jChwtibONK47AfA_0Z7nNF70DTI9v1pEMVrc",
+      auth: "GbDpg-0-pZScFyrjK6ibEw",
+    },
+  };
+
+  it("POSTs NGSI-LD webpush subscription to /ngsi-ld/v1/subscriptions", async () => {
+    let postedBody: unknown;
+    const requestRaw = vi.fn(
+      async (method: string, path: string, body?: unknown) => {
+        expect(method).toBe("POST");
+        expect(path).toBe("/ngsi-ld/v1/subscriptions");
+        postedBody = body;
+        return new Response(null, {
+          status: 201,
+          headers: {
+            Location: "/ngsi-ld/v1/subscriptions/urn:ngsi-ld:Subscription:42",
+          },
+        });
+      },
+    );
+    const client: WebPushGeonicdbClient = { requestRaw };
+
+    await expect(
+      registerWebPushSubscription(pushJson, {
+        client,
+        siteOrigin: "https://geolonia.github.io",
+      }),
+    ).resolves.toBe("urn:ngsi-ld:Subscription:42");
+
+    expect(requestRaw).toHaveBeenCalledTimes(1);
+    const body = postedBody as {
+      type: string;
+      notification: { endpoint: { protocol: string }; attributes: string[] };
+    };
+    expect(body.type).toBe("Subscription");
+    expect(body.notification.endpoint.protocol).toBe("webpush");
+    expect(body.notification.attributes).toEqual(["language"]);
+  });
+
+  it("rejects private push endpoints before calling GeonicDB (near-miss)", async () => {
+    const requestRaw = vi.fn();
+    await expect(
+      registerWebPushSubscription(
+        {
+          ...pushJson,
+          endpoint: "https://127.0.0.1/push",
+        },
+        { client: { requestRaw } },
+      ),
+    ).rejects.toThrow(/host is not allowed/);
+    expect(requestRaw).not.toHaveBeenCalled();
+  });
+
+  it("DELETEs subscription by id", async () => {
+    const requestRaw = vi.fn(async () => new Response(null, { status: 204 }));
+    await unregisterWebPushSubscription("urn:ngsi-ld:Subscription:42", {
+      client: { requestRaw },
+    });
+    expect(requestRaw).toHaveBeenCalledWith(
+      "DELETE",
+      "/ngsi-ld/v1/subscriptions/urn%3Angsi-ld%3ASubscription%3A42",
+    );
   });
 });
 
@@ -135,7 +213,7 @@ describe("public/sw.js push-only contract", () => {
 });
 
 describe("BOSAI_LIVE_ENTITY_TYPES single source", () => {
-  it("frontend re-export matches shared module (Lambda imports the same file)", async () => {
+  it("frontend re-export matches shared module", async () => {
     const { BOSAI_LIVE_ENTITY_TYPES: fromSrc } =
       await import("@/lib/bosai-live-entity-types");
     const { BOSAI_LIVE_ENTITY_TYPES: fromShared } =

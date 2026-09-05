@@ -8,28 +8,28 @@ describe("assertAbsoluteHttpOrigin / assertAbsoluteHttpUrl", () => {
   it("returns origin for absolute https URL", () => {
     expect(
       assertAbsoluteHttpOrigin(
-        "https://xxx.lambda-url.ap-northeast-1.on.aws/",
-        "webPushRegisterUrl",
+        "https://geonicdb.example.example/",
+        "geonicdbUrl",
       ),
-    ).toBe("https://xxx.lambda-url.ap-northeast-1.on.aws");
+    ).toBe("https://geonicdb.example.example");
   });
 
   it("keeps path on assertAbsoluteHttpUrl", () => {
     expect(
       assertAbsoluteHttpUrl(
         "https://geonicdb.example.jp/prefix/",
-        "webPush.geonicdbUrl",
+        "geonicdbUrl",
       ),
     ).toBe("https://geonicdb.example.jp/prefix");
   });
 
   it("rejects relative path with a clear message (near-miss DX trap)", () => {
     expect(() =>
-      assertAbsoluteHttpOrigin("/api/webpush", "webPushRegisterUrl"),
-    ).toThrow(/absolute http\(s\) URL.*relative path: \/api\/webpush/);
+      assertAbsoluteHttpOrigin("/relative/path", "geonicdbUrl"),
+    ).toThrow(/absolute http\(s\) URL.*relative path: \/relative\/path/);
     expect(() =>
-      assertAbsoluteHttpUrl("/api/webpush", "webPush.geonicdbUrl"),
-    ).toThrow(/relative path: \/api\/webpush/);
+      assertAbsoluteHttpUrl("/relative/path", "geonicdbUrl"),
+    ).toThrow(/relative path: \/relative\/path/);
   });
 
   it("rejects bare hostname without scheme", () => {

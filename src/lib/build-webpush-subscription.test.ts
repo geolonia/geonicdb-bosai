@@ -6,7 +6,7 @@ import {
   extractSubscriptionId,
   parsePushSubscription,
   ValidationError,
-} from "../lambda/webpush-proxy/build-subscription";
+} from "@/lib/build-webpush-subscription";
 
 const VALID = {
   endpoint: "https://fcm.googleapis.com/fcm/send/abc",

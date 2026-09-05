@@ -17,8 +17,10 @@
 |---|---|---|---|
 | XACMLポリシー | `bosai-public-read` | tenant（管理者作成） | `bosai-*` への匿名（住民ブラウザ）GET読み取りを許可。`role: anonymous` |
 | XACMLポリシー | `bosai-read` | personal | `bosai-*` への **GET + WS のみ**を許可（書き込み不可）。住民ブラウザのWebSocket購読向け |
+| XACMLポリシー | `bosai-webpush-proxy-write` | personal（既作成） | `/ngsi-ld/v1/subscriptions*` への **POST / DELETE / GET のみ**。エンティティ読み書き不可。Web Push 購読登録向け |
 | XACMLポリシー | `bosai-write` | personal | `bosai-*` への書き込み（POST/PATCH/PUT/DELETE/GET/WS）を許可。職員のGeonicDB直接操作（`geonic` CLI / Claude Desktop MCP）向け |
 | APIキー | `bosai-public-ws-read` | - | `bosai-read` ポリシーを付与。**クライアントバンドルに埋め込む**（`NEXT_PUBLIC_GEONICDB_WS_API_KEY`）。DPoP必須・オリジン限定 |
+| APIキー | `bosai-webpush-subscribe` | - | `bosai-webpush-proxy-write` を付与。**クライアントバンドルに埋め込む**（`NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY`）。DPoP必須・オリジン限定（`https://geolonia.github.io` + `http://localhost:3000`）・`rateLimit.perMinute=30`。エンティティ書き込み権限なし |
 | APIキー | `bosai-staff-write` | - | `bosai-write` ポリシーを付与。職員が使う。**クライアントには絶対に埋め込まない** |
 
 XACMLポリシーの `policyId`・APIキーの `name` は文字種の制約が無く（長さ制限のみ）、`bosai-` プレフィックスをそのまま使える。エンティティタイプのスコープは `resources` に `{"attributeId": "entityType", "matchValue": "bosai-*", "matchFunction": "glob"}` で3タイプ一括指定する。
@@ -144,6 +146,26 @@ geonic admin api-keys create --name "bosai-public-ws-read" --policy bosai-read \
 発行したキー値を `.env.local` の `NEXT_PUBLIC_GEONICDB_WS_API_KEY` に設定する。**本番環境では自治体の実ドメインを `--origins` に指定した別キーを発行し直すこと。**
 
 > **APIキーの上限（実測）**: `geonic me api-keys create`（セルフサービス）はユーザーあたり5個の上限があり、超えると `Maximum number of API keys (5) reached` で失敗する。`geonic admin api-keys create`（tenant_admin権限）はこの上限の対象外だった。
+
+#### Web Push 購読登録用（サブスクリプション専用）
+
+| 項目 | 値 |
+|---|---|
+| ポリシー名 | `bosai-webpush-proxy-write`（`/ngsi-ld/v1/subscriptions*` の POST/DELETE/GET のみ。既作成） |
+| APIキー名 | `bosai-webpush-subscribe`（このキーの**値**を `NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY` に設定） |
+| allowedOrigins | `https://geolonia.github.io`, `http://localhost:3000` |
+| dpopRequired | `true` |
+| rateLimit.perMinute | `30` |
+
+GitHub Secret `NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY` には発行済みキー値を投入済み。再発行例:
+
+```bash
+geonic admin api-keys create --name "bosai-webpush-subscribe" --policy bosai-webpush-proxy-write \
+  --origins 'https://geolonia.github.io,http://localhost:3000' --dpop-required --rate-limit 30
+```
+
+発行したキー値を `.env.local` / GitHub Secrets の `NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY` に設定する。
+**`bosai-write`（エンティティ書き込み可）は絶対に埋め込まないこと。**
 
 #### 職員書き込み用
 
