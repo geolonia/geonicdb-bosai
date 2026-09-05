@@ -187,26 +187,6 @@ describe("PushNotificationOptIn state transition", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows error when disable fails", async () => {
-    const user = userEvent.setup();
-    resolveActiveWebPushState.mockResolvedValue({
-      subscriptionId: "urn:ngsi-ld:Subscription:test",
-      endpoint: "https://fcm.googleapis.com/fcm/send/x",
-      enabledAt: "2026-09-05T00:00:00.000Z",
-    });
-    disableWebPushNotifications.mockRejectedValue(new Error("server error"));
-
-    render(<PushNotificationOptIn lang="ja" strings={testStrings} />);
-    await user.click(await findSwitch());
-
-    await waitFor(() => {
-      expect(screen.getByRole("alert")).toHaveTextContent(
-        testStrings.pushErrorLabel,
-      );
-    });
-    expect(await findSwitch()).toHaveAttribute("aria-checked", "true");
-  });
-
   it("shows error when disable fails (policy deny / DELETE non-2xx) (#51)", async () => {
     const user = userEvent.setup();
     resolveActiveWebPushState.mockResolvedValue({
@@ -219,11 +199,7 @@ describe("PushNotificationOptIn state transition", () => {
     );
 
     render(<PushNotificationOptIn lang="ja" strings={testStrings} />);
-    await user.click(
-      await screen.findByRole("button", {
-        name: testStrings.pushDisableLabel,
-      }),
-    );
+    await user.click(await findSwitch());
 
     await waitFor(() => {
       expect(screen.getByRole("alert")).toHaveTextContent(
@@ -231,9 +207,7 @@ describe("PushNotificationOptIn state transition", () => {
       );
     });
     // 失敗時はオン状態のまま（ローカルを消さない）
-    expect(
-      screen.getByRole("button", { name: testStrings.pushDisableLabel }),
-    ).toBeInTheDocument();
+    expect(await findSwitch()).toHaveAttribute("aria-checked", "true");
   });
 
   it("shows unsupported status when Push APIs are missing", async () => {
