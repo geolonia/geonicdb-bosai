@@ -49,7 +49,9 @@ describe("PrivacyPage (N-26)", () => {
   it("metadata description scopes device-only claim to location and notes Web Push exception", async () => {
     const mod = await import("@/app/privacy/page");
     const description = (mod.metadata as { description?: string }).description;
-    expect(description).toMatch(/位置情報は端末側処理を優先しサーバに保存しない/);
+    expect(description).toMatch(
+      /位置情報は端末側処理を優先しサーバに保存しない/,
+    );
     expect(description).toMatch(/Web Push/);
     expect(description).toMatch(/GeonicDB/);
     // 旧メタ（広い「サーバに保存しない」だけ）への回帰を防ぐ
