@@ -52,6 +52,7 @@ describe("parsePushSubscription", () => {
   it("rejects localhost and loopback (SSRF denylist)", () => {
     for (const endpoint of [
       "https://localhost/push",
+      "https://localhost./push",
       "https://127.0.0.1/push",
       "https://127.0.0.2/v1",
     ]) {

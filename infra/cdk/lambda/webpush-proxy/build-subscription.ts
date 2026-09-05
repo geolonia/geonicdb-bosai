@@ -82,10 +82,12 @@ const INTERNAL_DNS_SUFFIXES = [
  * 公開ホスト名は許可し、localhost・RFC1918・リンクローカル・内部 DNS を拒否する。
  */
 export function assertPublicPushEndpointHost(hostname: string): void {
+  // FQDN 末尾ドット（localhost.）を除去してから拒否リスト照合
   const host = hostname
     .trim()
     .toLowerCase()
-    .replace(/^\[|\]$/g, "");
+    .replace(/^\[|\]$/g, "")
+    .replace(/\.+$/, "");
   if (!host) {
     throw new ValidationError("endpoint host is not allowed");
   }
