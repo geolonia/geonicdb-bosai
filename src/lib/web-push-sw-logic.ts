@@ -1,18 +1,24 @@
 /**
  * Service Worker の push 通知文言・バッジロジック（unit test / ページ側と共有可能な純粋関数）。
- * `public/sw.js` は静的配信のため同内容を埋め込んでいる — 変更時は両方更新。
+ * `public/sw.js` は `scripts/generate-sw.mjs` が本ファイル + `src/sw/service-worker-handlers.ts`
+ * から生成する（#42）。手編集しない。言語配列は `SITE_LANGUAGES` と二重定義のため、
+ * 一致テストでガードする。
  *
  * 新規購読の通知対象は `bosai-AlertLevel` のみ（#48）。
  * 旧サブスクリプションから他タイプが届いても壊れないよう `default` は維持する。
+ *
+ * 外部ランタイム依存なし（SW へ tsc transpile だけで載せるため）。
  */
 
-import type { SiteLanguage } from "@/config/site-language";
-import { SITE_LANGUAGES } from "@/config/site-language";
+/** `SITE_LANGUAGES` と同値。SW バンドル依存ゼロ化のためのローカル定義（#42）。 */
+export const WEB_PUSH_SITE_LANGUAGES = ["ja", "en", "zh-CN", "vi", "ko"] as const;
+
+export type WebPushSiteLanguage = (typeof WEB_PUSH_SITE_LANGUAGES)[number];
 
 export type PushCopy = { title: string; body: string };
 
 export const WEB_PUSH_MESSAGES: Record<
-  SiteLanguage,
+  WebPushSiteLanguage,
   Record<string, PushCopy>
 > = {
   ja: {
@@ -67,10 +73,12 @@ export const WEB_PUSH_MESSAGES: Record<
   },
 };
 
-export function normalizePushLang(lang: string | undefined): SiteLanguage {
+export function normalizePushLang(
+  lang: string | undefined,
+): WebPushSiteLanguage {
   if (!lang) return "ja";
-  if ((SITE_LANGUAGES as readonly string[]).includes(lang)) {
-    return lang as SiteLanguage;
+  if ((WEB_PUSH_SITE_LANGUAGES as readonly string[]).includes(lang)) {
+    return lang as WebPushSiteLanguage;
   }
   if (lang.startsWith("zh")) return "zh-CN";
   if (lang.startsWith("en")) return "en";
@@ -96,17 +104,17 @@ export function extractEntityTypeFromPushPayload(
 
 export function pushMessageFor(
   entityType: string | null,
-  lang: SiteLanguage,
+  lang: WebPushSiteLanguage,
 ): PushCopy {
   const pack = WEB_PUSH_MESSAGES[lang];
   if (entityType && pack[entityType]) return pack[entityType];
   return pack.default;
 }
 
-/** Cache `bosai-webpush-meta` 内の未読件数キー（`public/sw.js` と同期）。 */
+/** Cache `bosai-webpush-meta` 内の未読件数キー。 */
 export const WEB_PUSH_UNREAD_COUNT_CACHE_PATH = "/unread-count";
 
-/** ページ → SW の未読リセット message.type（`public/sw.js` と同期）。 */
+/** ページ → SW の未読リセット message.type。 */
 export const WEB_PUSH_RESET_UNREAD_MESSAGE = "RESET_UNREAD_COUNT";
 
 /**

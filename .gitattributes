@@ -1,0 +1,8 @@
+# 生成物・ソースとも LF で統一（#42: assert-sw-fresh の改行差による誤検知防止）
+* text=auto eol=lf
+*.js text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.mjs text eol=lf
+*.json text eol=lf
+*.md text eol=lf

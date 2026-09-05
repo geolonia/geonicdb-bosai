@@ -17,6 +17,7 @@ import {
 } from "@/lib/web-push-client";
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 describe("web-push-sw-logic", () => {
   it("extracts entity type from NGSI-LD notification payload", () => {
@@ -45,6 +46,20 @@ describe("web-push-sw-logic", () => {
 
   it("near-miss: unknown lang prefix falls back to ja", () => {
     expect(normalizePushLang("fr-FR")).toBe("ja");
+  });
+
+  it("WEB_PUSH_SITE_LANGUAGES matches SITE_LANGUAGES (#42)", async () => {
+    const { SITE_LANGUAGES } = await import("@/config/site-language");
+    const { WEB_PUSH_SITE_LANGUAGES } = await import("@/lib/web-push-sw-logic");
+    expect([...WEB_PUSH_SITE_LANGUAGES]).toEqual([...SITE_LANGUAGES]);
+  });
+
+  it("near-miss: reordered language list must not match SITE_LANGUAGES (#42)", async () => {
+    const { SITE_LANGUAGES } = await import("@/config/site-language");
+    // 要素は同じでも順序が違えばサイト言語の優先順位とズレる（通ってはいけない）
+    const reordered = ["en", "ja", "zh-CN", "vi", "ko"];
+    expect(reordered).not.toEqual([...SITE_LANGUAGES]);
+    expect(reordered.slice().sort()).toEqual([...SITE_LANGUAGES].slice().sort());
   });
 });
 
@@ -228,7 +243,7 @@ describe("public/sw.js push-only contract", () => {
       sw.indexOf('self.addEventListener("notificationclick"'),
     );
 
-    expect(pushHandler).toMatch(/await setAppBadgeSafely\(/);
+    expect(pushHandler).toMatch(/setAppBadgeSafely/);
     expect(clickHandler).toMatch(/await resetUnreadBadge\(\)/);
     expect(sw).toMatch(/nav\.setAppBadge/);
     expect(sw).toMatch(/nav\.clearAppBadge/);
@@ -238,14 +253,15 @@ describe("public/sw.js push-only contract", () => {
     // 引数なし setAppBadge() は iOS でバッジが描画されない
     expect(sw).not.toMatch(/nav\.setAppBadge\(\s*\)/);
     expect(sw).toMatch(/nav\.setAppBadge\(\s*[a-zA-Z_]\w*\s*\)/);
-    expect(sw).toMatch(/await setAppBadgeSafely\(\s*count\s*\)/);
+    // 1 引数ラッパ経由（生成後は WithNav 正本 + count ラッパ）
+    expect(sw).toMatch(/async function setAppBadgeSafely\(\s*count\s*\)/);
     expect(sw).toMatch(/["']\/unread-count["']/);
     expect(sw).toMatch(/RESET_UNREAD_COUNT/);
     const pushHandler = sw.slice(
       sw.indexOf('self.addEventListener("push"'),
       sw.indexOf('self.addEventListener("notificationclick"'),
     );
-    expect(pushHandler).toMatch(/incrementUnreadCount/);
+    expect(pushHandler).toMatch(/bumpUnreadCountState|incrementUnreadCount/);
   });
 
   it("writeUnreadCount failures do not block clearAppBadge (#45 audit)", () => {
@@ -258,23 +274,37 @@ describe("public/sw.js push-only contract", () => {
       sw.indexOf('self.addEventListener("install"'),
     );
     expect(writeFn).toMatch(/try\s*\{/);
-    expect(writeFn).toMatch(/catch\s*\{/);
-    expect(resetFn).toMatch(/clearAppBadgeSafely/);
+    // tsc は catch { を catch (_a) { に下げうる
+    expect(writeFn).toMatch(/catch\s*(\(\w*\)\s*)?\{/);
+    expect(resetFn).toMatch(/clearAppBadgeSafely|clearBadge/);
     expect(resetFn).toMatch(/runUnreadExclusive/);
     // clear が write の後にあり、write の try 外でも呼ばれる
-    const clearIdx = resetFn.indexOf("clearAppBadgeSafely");
+    const clearIdx = Math.max(
+      resetFn.indexOf("clearBadge"),
+      resetFn.indexOf("clearAppBadgeSafely"),
+    );
     const writeCallIdx = resetFn.indexOf("writeUnreadCount");
     expect(writeCallIdx).toBeGreaterThanOrEqual(0);
     expect(clearIdx).toBeGreaterThan(writeCallIdx);
   });
 
   it("serializes unread RMW via runUnreadExclusive (#45 CodeRabbit)", () => {
-    expect(sw).toMatch(/function runUnreadExclusive/);
+    expect(sw).toMatch(/runUnreadExclusive/);
     const pushHandler = sw.slice(
       sw.indexOf('self.addEventListener("push"'),
       sw.indexOf('self.addEventListener("notificationclick"'),
     );
     expect(pushHandler).toMatch(/runUnreadExclusive/);
+  });
+
+  it("is generated from web-push-sw-logic (#42 freshness)", async () => {
+    const { buildServiceWorkerSource } = await import(
+      pathToFileURL(
+        path.resolve(__dirname, "../../scripts/generate-sw.mjs"),
+      ).href
+    );
+    const expected = buildServiceWorkerSource();
+    expect(sw.replace(/\r\n/g, "\n")).toBe(expected);
   });
 });
 

@@ -15,6 +15,8 @@ const eslintConfig = defineConfig([
     "infra/cdk/dist/**",
     "infra/cdk/cdk.out/**",
     "next-env.d.ts",
+    // #42: tsc transpile 生成物（未使用シンボル・catch (_a) は正本側で管理）
+    "public/sw.js",
   ]),
 ]);
 
