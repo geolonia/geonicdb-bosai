@@ -1,0 +1,52 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+#
+# CodeRabbit 設定 — 自動レビューを有効化（geonicdb-bosai）。
+#
+# PR 作成時 + 毎 push (増分レビュー) で自動発火する。手動で `@coderabbitai review` を
+# 打たなくても、PR を開けば/push すればレビューが走る。
+#
+# 留意: 修正ラウンドを何度も回すと Fair Usage Limits の適応的スロットリング (直近 7 日の
+# レビュー数で段階的に絞られる) に近づきうる。cursor / fable / 自己レビューで収束させて
+# から push する運用でラウンド数を抑えると良い。増分レビューのため、既にレビュー済みの
+# commit は再レビューされない。
+#
+# 適用タイミング: CodeRabbit はレビュー対象ブランチ (PR の head) の .coderabbit.yaml を
+# 検出して、その PR のレビューに適用する。main へのマージを待つ必要はない。
+# 実測 (2026-08-18): main に .coderabbit.yaml が無い geonicdb-livedeck で、この設定を
+# 追加した PR 自身のレビューが language: ja-JP と request_changes_workflow に従って
+# 日本語 + APPROVED で返った (geolonia/geonicdb-livedeck#57)。
+# 本ファイル追加の経緯: geonicdb-bosai では未設定のため既定 request_changes_workflow=false
+# のまま COMMENTED のみとなり、main ruleset の required_approving_review_count:1 を満たせず
+# --admin バイパスが常態化していた（issue #36 / PR #38 で恒久対応）。
+language: ja-JP
+reviews:
+  # PR 作成時・push 時の自動レビューを有効化
+  auto_review:
+    enabled: true
+  # 変更サマリの自動生成は残す (レビュー本体より軽く、PR の把握に有用)
+  high_level_summary: true
+  # レビュー結果を GitHub の review state に反映する (既定 false = 常に COMMENTED)。
+  #
+  #   true  → 指摘がある間は REQUEST_CHANGES、全指摘が resolve され pre-merge チェックが
+  #           緑になったら自動で APPROVE。
+  #   false → APPROVE も REQUEST_CHANGES も出さず、COMMENTED のみ。
+  #
+  # 有効化の主目的は「承認をもらう」ことではなく **`reviewDecision` を機能させる** こと。
+  # CLAUDE.md "PR Review Handling" の判定 (b) は `reviewDecision != CHANGES_REQUESTED` を
+  # クリーン条件に使うが、false のままだと CodeRabbit が指摘を出しても `reviewDecision` に
+  # 一切反映されず、未解決スレッドの有無だけが頼りになる (取りこぼしやすい)。
+  #
+  # main の ruleset (geolonia org 共通の branch-rules: main-protection) との関係:
+  #   - `required_approving_review_count: 1`      … CodeRabbit の APPROVE がカウントされる
+  #                                                 (App の承認も承認数に数えられる。実測済み)
+  #   - `require_last_push_approval: true`        … 承認者は最後の push 者以外であればよく、
+  #                                                 push しない CodeRabbit は抵触しない
+  #   - `require_code_owner_review: true`         … このリポジトリに CODEOWNERS が無いため
+  #                                                 code owner は存在せず、実質無効
+  #   - `required_review_thread_resolution: true` … CodeRabbit のスレッドも解決が必要
+  #   - `dismiss_stale_reviews_on_push: true`     … 承認後に push すると失効する
+  # つまり **CodeRabbit の APPROVE だけでマージ可能になりうる** (mergeStateStatus=CLEAN)。
+  # --admin が要るのは「承認後に push した」「未解決スレッドが残っている」場合など。
+  # 将来 CODEOWNERS を置く場合は注意 — GitHub App は CODEOWNERS に指定できないため、
+  # そのとき CodeRabbit は承認要件を満たせなくなる。
+  request_changes_workflow: true
