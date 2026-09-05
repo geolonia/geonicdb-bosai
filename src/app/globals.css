@@ -52,23 +52,29 @@ select:focus-visible {
   max-width: var(--max-width);
   margin: 0 auto;
   padding: 1rem;
-  display: flex;
-  flex-wrap: wrap;
+  /* タイトル幅が言語で変わっても言語選択の列位置を固定する（#54） */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 1rem;
   align-items: center;
-  justify-content: space-between;
 }
 
 .site-header__brand {
   display: flex;
   gap: 0.75rem;
   align-items: center;
+  min-width: 0;
+}
+
+.site-header__brand > div {
+  min-width: 0;
 }
 
 .site-header__logo {
   width: 2.5rem;
   height: 2.5rem;
   margin: 0;
+  flex-shrink: 0;
   border: 2px solid var(--color-border);
   border-radius: 50%;
   display: grid;
@@ -93,6 +99,7 @@ select:focus-visible {
   gap: 0.25rem;
   min-width: 0;
   max-width: 100%;
+  justify-self: end;
 }
 
 .site-header__lang-label {
