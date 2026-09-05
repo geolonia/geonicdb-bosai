@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo } from "react";
+import dynamic from "next/dynamic";
 import { useLdEntities } from "@geolonia/geonicdb-sdk/react";
-import { AddToHomeScreenPrompt } from "@/components/top/AddToHomeScreenPrompt";
 import {
   AlertLevelDisplay,
   AlertLevelError,
@@ -47,6 +47,15 @@ import type {
   BosaiEmergencyBanner,
   BosaiNotice,
 } from "@/types/top-page";
+
+/** A2HS は初期バンドルから外し、表示時も fixed で CLS を避ける（#55 / Lighthouse） */
+const AddToHomeScreenPrompt = dynamic(
+  () =>
+    import("@/components/top/AddToHomeScreenPrompt").then(
+      (m) => m.AddToHomeScreenPrompt,
+    ),
+  { ssr: false },
+);
 
 /** useLdEntities 第1引数（react エントリの GeonicDB とコアの型が分かれている）。 */
 type LdClient = Parameters<typeof useLdEntities>[0];

@@ -33,4 +33,10 @@ describe("a2hs-prompt button hit target (#55 / WCAG 2.5.8)", () => {
     expect(install).toMatch(/min-height:\s*2\.75rem\b/);
     expect(install).not.toMatch(/height:\s*1\.75rem\b/);
   });
+
+  it("keeps the prompt out of document flow to avoid CLS (#55)", () => {
+    const rule = extractRuleBody(".a2hs-prompt");
+    expect(rule).toMatch(/position:\s*fixed\b/);
+    expect(rule).toMatch(/bottom:\s*0\b/);
+  });
 });

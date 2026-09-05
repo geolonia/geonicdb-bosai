@@ -236,14 +236,23 @@ input:focus-visible {
   color: #8b0000;
 }
 
-/* #55 A2HS — 通知トグルと同列の控えめな導線（主要情報を覆わない） */
+/* #55 A2HS — ページ下部の fixed 帯（文書フローに載せると BIP 後出しで CLS になる） */
 .a2hs-prompt {
-  max-width: var(--max-width);
-  margin: 0 auto;
-  padding: 0.75rem 1rem 0;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  margin: 0;
+  padding: 0.75rem 1rem;
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  /* 緊急バナーは画面上部のため覆わない。中央モーダルにもしない */
 }
 
 .a2hs-prompt__row {
+  max-width: var(--max-width);
+  margin: 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
