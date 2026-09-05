@@ -220,10 +220,24 @@ describe("public/sw.js push-only contract", () => {
       sw.indexOf('self.addEventListener("notificationclick"'),
     );
 
-    expect(pushHandler).toContain("await setAppBadgeSafely()");
-    expect(clickHandler).toContain("await clearAppBadgeSafely()");
+    expect(pushHandler).toMatch(/await setAppBadgeSafely\(/);
+    expect(clickHandler).toMatch(/await resetUnreadBadge\(\)/);
     expect(sw).toMatch(/nav\.setAppBadge/);
     expect(sw).toMatch(/nav\.clearAppBadge/);
+  });
+
+  it("passes numeric unread count to setAppBadge (#45 regression)", () => {
+    // 引数なし setAppBadge() は iOS でバッジが描画されない
+    expect(sw).not.toMatch(/nav\.setAppBadge\(\s*\)/);
+    expect(sw).toMatch(/nav\.setAppBadge\(\s*[a-zA-Z_]\w*\s*\)/);
+    expect(sw).toMatch(/await setAppBadgeSafely\(\s*count\s*\)/);
+    expect(sw).toMatch(/["']\/unread-count["']/);
+    expect(sw).toMatch(/RESET_UNREAD_COUNT/);
+    const pushHandler = sw.slice(
+      sw.indexOf('self.addEventListener("push"'),
+      sw.indexOf('self.addEventListener("notificationclick"'),
+    );
+    expect(pushHandler).toMatch(/incrementUnreadCount/);
   });
 });
 

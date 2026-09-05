@@ -144,12 +144,16 @@ GeonicDB の `/ngsi-ld/v1/subscriptions` へ直接 POST / DELETE する。
 - `timesSent > 0` で `lastFailureReason` が HTTP ステータス → Push Service 到達済み。`404`/`410` は購読失効
 - iOS で届かない → 下の「iOS PWA とバッジ」を参照（ホーム画面追加必須）
 
-### iOS PWA とバッジ（#41）
+### iOS PWA とバッジ（#41 / #45）
 
 - **iOS（16.4+）では、ホーム画面に追加した PWA として開いたときだけ Web Push が動作する。**
   Safari のタブ表示のままでは通知を受け取れない。運用で「iPhone で通知が来ない」と問い合わせがあったら、まずホーム画面追加の有無を確認する。
 - デモ／プレビュー先 `https://geolonia.github.io/geonicdb-bosai/` はプロジェクトサイトのため、`manifest` の `start_url` / `scope` / `icons` と `apple-touch-icon` は **`/geonicdb-bosai` basePath 付き**で出力される（`NEXT_PUBLIC_BASE_PATH`）。
 - アプリアイコンの赤い点／件数は通知 API とは別の **Badging API**（`navigator.setAppBadge` / `clearAppBadge`）で制御する。`showNotification` だけではバッジは付かない。
+- **バッジが出ないときの切り分け（#45）:**
+  - `setAppBadge()` は**数値引数**を渡すこと。引数なしのフラグ形式は iOS では表示されない（[WebKit のドキュメント](https://webkit.org/blog/14112/badging-for-home-screen-web-apps/)は数値形式のみを記載）
+  - バッジは**ホーム画面に追加した PWA でのみ**表示され、**通知許可が必要**
+  - 通知許可済みでも「設定 → 通知 → \<アプリ名\> → バッジ」を OFF にされていると表示されない。この設定は Web アプリ側から検知できない
 
 ## CDK の使い方（要約）
 

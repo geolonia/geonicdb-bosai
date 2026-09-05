@@ -1,14 +1,16 @@
 /**
- * Push 受信専用 Service Worker（#35 / #41）。
+ * Push 受信専用 Service Worker（#35 / #41 / #45）。
  * fetch イベントは実装しない（オフラインキャッシュ禁止）。
  *
  * 通知文言は Cache `bosai-webpush-meta` の `/lang` から言語を読み、埋め込み辞書で表示する。
- * バッジは Badging API（setAppBadge / clearAppBadge）。showNotification だけでは付かない。
+ * バッジは Badging API（setAppBadge(count) / clearAppBadge）。件数は `/unread-count` に保持。
  * 文言・バッジの正本は `src/lib/web-push-sw-logic.ts`（変更時は両方更新）。
  */
 
 const META_CACHE = "bosai-webpush-meta";
 const DEFAULT_LANG = "ja";
+const UNREAD_COUNT_PATH = "/unread-count";
+const RESET_UNREAD_MESSAGE = "RESET_UNREAD_COUNT";
 
 const MESSAGES = {
   ja: {
@@ -129,11 +131,34 @@ function messageFor(entityType, lang) {
   return pack[entityType] || pack.default;
 }
 
-async function setAppBadgeSafely() {
+function parseUnreadCount(raw) {
+  if (raw == null || raw === "") return 0;
+  const n = Number.parseInt(raw, 10);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return n;
+}
+
+function incrementUnreadCount(current) {
+  const base =
+    Number.isFinite(current) && current > 0 ? Math.floor(current) : 0;
+  return base + 1;
+}
+
+async function setAppBadgeSafely(count) {
   const nav = self.navigator;
   if (!nav || typeof nav.setAppBadge !== "function") return;
+  const n = Number.isFinite(count) && count > 0 ? Math.floor(count) : 0;
   try {
-    await nav.setAppBadge();
+    // iOS WebKit は数値引数が必要（引数なしは描画されない — #45）
+    if (n < 1) {
+      if (typeof nav.clearAppBadge === "function") {
+        await nav.clearAppBadge();
+      } else {
+        await nav.setAppBadge(0);
+      }
+      return;
+    }
+    await nav.setAppBadge(n);
   } catch {
     // Badging API 失敗は通知配信を阻害しない
   }
@@ -160,6 +185,27 @@ async function readStoredLang() {
   }
 }
 
+async function readUnreadCount() {
+  try {
+    const cache = await caches.open(META_CACHE);
+    const res = await cache.match(UNREAD_COUNT_PATH);
+    if (!res) return 0;
+    return parseUnreadCount(await res.text());
+  } catch {
+    return 0;
+  }
+}
+
+async function writeUnreadCount(count) {
+  const cache = await caches.open(META_CACHE);
+  await cache.put(UNREAD_COUNT_PATH, new Response(String(count)));
+}
+
+async function resetUnreadBadge() {
+  await writeUnreadCount(0);
+  await clearAppBadgeSafely();
+}
+
 self.addEventListener("install", (event) => {
   event.waitUntil(self.skipWaiting());
 });
@@ -178,6 +224,10 @@ self.addEventListener("message", (event) => {
         await cache.put("/lang", new Response(normalizeLang(data.lang)));
       })(),
     );
+    return;
+  }
+  if (data.type === RESET_UNREAD_MESSAGE) {
+    event.waitUntil(resetUnreadBadge());
   }
 });
 
@@ -197,7 +247,9 @@ self.addEventListener("push", (event) => {
         body: msg.body,
         data: { url: "./" },
       });
-      await setAppBadgeSafely();
+      const count = incrementUnreadCount(await readUnreadCount());
+      await writeUnreadCount(count);
+      await setAppBadgeSafely(count);
     })(),
   );
 });
@@ -208,7 +260,7 @@ self.addEventListener("notificationclick", (event) => {
     (event.notification.data && event.notification.data.url) || "./";
   event.waitUntil(
     (async () => {
-      await clearAppBadgeSafely();
+      await resetUnreadBadge();
       const all = await self.clients.matchAll({
         type: "window",
         includeUncontrolled: true,

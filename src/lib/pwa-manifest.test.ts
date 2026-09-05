@@ -56,18 +56,67 @@ describe("buildWebManifest", () => {
   });
 });
 
+describe("unread count helpers (#45)", () => {
+  it("parseUnreadCount accepts non-negative integers", async () => {
+    const { parseUnreadCount } = await import("@/lib/web-push-sw-logic");
+    expect(parseUnreadCount("0")).toBe(0);
+    expect(parseUnreadCount("1")).toBe(1);
+    expect(parseUnreadCount("42")).toBe(42);
+  });
+
+  it("parseUnreadCount near-miss: rejects non-integer / negative / empty", async () => {
+    const { parseUnreadCount } = await import("@/lib/web-push-sw-logic");
+    expect(parseUnreadCount(undefined)).toBe(0);
+    expect(parseUnreadCount(null)).toBe(0);
+    expect(parseUnreadCount("")).toBe(0);
+    expect(parseUnreadCount("abc")).toBe(0);
+    expect(parseUnreadCount("-1")).toBe(0);
+    expect(parseUnreadCount("1.9")).toBe(1); // parseInt truncates toward zero
+    expect(parseUnreadCount("01")).toBe(1);
+  });
+
+  it("incrementUnreadCount adds one from zero or positive", async () => {
+    const { incrementUnreadCount, resetUnreadCount } =
+      await import("@/lib/web-push-sw-logic");
+    expect(incrementUnreadCount(0)).toBe(1);
+    expect(incrementUnreadCount(2)).toBe(3);
+    expect(incrementUnreadCount(Number.NaN)).toBe(1);
+    expect(incrementUnreadCount(-5)).toBe(1);
+    expect(resetUnreadCount()).toBe(0);
+  });
+});
+
 describe("setAppBadgeSafely / clearAppBadgeSafely", () => {
-  it("calls setAppBadge when available", async () => {
+  it("passes a positive numeric count to setAppBadge (#45 regression)", async () => {
+    const { setAppBadgeSafely } = await import("@/lib/web-push-sw-logic");
+    const setAppBadge = vi.fn(async (_contents?: number) => undefined);
+    await setAppBadgeSafely({ setAppBadge }, 3);
+    expect(setAppBadge).toHaveBeenCalledTimes(1);
+    expect(setAppBadge).toHaveBeenCalledWith(3);
+    // 引数なし呼び出しは iOS で描画されないため禁止
+    const firstCall = setAppBadge.mock.calls[0];
+    expect(firstCall).toBeDefined();
+    expect(firstCall).toHaveLength(1);
+    expect(firstCall![0]).toEqual(expect.any(Number));
+  });
+
+  it("floors fractional counts and skips non-positive via clear", async () => {
     const { setAppBadgeSafely } = await import("@/lib/web-push-sw-logic");
     const setAppBadge = vi.fn(async () => undefined);
-    await setAppBadgeSafely({ setAppBadge });
-    expect(setAppBadge).toHaveBeenCalledTimes(1);
+    const clearAppBadge = vi.fn(async () => undefined);
+    await setAppBadgeSafely({ setAppBadge, clearAppBadge }, 2.9);
+    expect(setAppBadge).toHaveBeenCalledWith(2);
+    setAppBadge.mockClear();
+    clearAppBadge.mockClear();
+    await setAppBadgeSafely({ setAppBadge, clearAppBadge }, 0);
+    expect(setAppBadge).not.toHaveBeenCalled();
+    expect(clearAppBadge).toHaveBeenCalledTimes(1);
   });
 
   it("no-ops when setAppBadge is missing (unsupported browser)", async () => {
     const { setAppBadgeSafely } = await import("@/lib/web-push-sw-logic");
-    await expect(setAppBadgeSafely({})).resolves.toBeUndefined();
-    await expect(setAppBadgeSafely(null)).resolves.toBeUndefined();
+    await expect(setAppBadgeSafely({}, 1)).resolves.toBeUndefined();
+    await expect(setAppBadgeSafely(null, 1)).resolves.toBeUndefined();
   });
 
   it("swallows setAppBadge rejection so push handler stays healthy", async () => {
@@ -75,7 +124,9 @@ describe("setAppBadgeSafely / clearAppBadgeSafely", () => {
     const setAppBadge = vi.fn(async () => {
       throw new Error("badge denied");
     });
-    await expect(setAppBadgeSafely({ setAppBadge })).resolves.toBeUndefined();
+    await expect(
+      setAppBadgeSafely({ setAppBadge }, 1),
+    ).resolves.toBeUndefined();
   });
 
   it("clears badge when clearAppBadge is available", async () => {
