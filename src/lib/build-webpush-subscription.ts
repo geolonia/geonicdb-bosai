@@ -5,10 +5,17 @@
  */
 import {
   BOSAI_LIVE_ENTITY_TYPES,
+  BOSAI_WEBPUSH_ENTITY_TYPES,
   type BosaiLiveEntityType,
+  type BosaiWebPushEntityType,
 } from "../../shared/bosai-live-entity-types";
 
-export { BOSAI_LIVE_ENTITY_TYPES, type BosaiLiveEntityType };
+export {
+  BOSAI_LIVE_ENTITY_TYPES,
+  BOSAI_WEBPUSH_ENTITY_TYPES,
+  type BosaiLiveEntityType,
+  type BosaiWebPushEntityType,
+};
 
 export type PushSubscriptionInput = {
   endpoint: string;
@@ -177,7 +184,8 @@ export function buildNgsiLdWebPushSubscription(
     description: site
       ? `geonicdb-bosai webpush (${site})`
       : "geonicdb-bosai webpush",
-    entities: BOSAI_LIVE_ENTITY_TYPES.map((type) => ({ type })),
+    // Push は割り込みなので警戒レベルのみ（WS 用 BOSAI_LIVE_ENTITY_TYPES とは別定数）
+    entities: BOSAI_WEBPUSH_ENTITY_TYPES.map((type) => ({ type })),
     notification: {
       attributes: ["language"],
       endpoint: {

@@ -125,11 +125,15 @@ npx cdk deploy \
 
 CAA / DNSSEC は独自ドメイン接続後に DNS 側で設定する。
 
-## Web Push（#39）
+## Web Push（#39 / #48）
 
 **中間サーバーは不要。** Web Push は gh-pages 上の静的アセットと GeonicDB の 2 者で完結する。
 ブラウザが `NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY`（サブスクリプション操作と配信時認可用）を使い、
 GeonicDB の `/ngsi-ld/v1/subscriptions` へ直接 POST / DELETE する。
+
+**通知対象は `bosai-AlertLevel`（警戒レベル）の変更時のみ**（#48）。
+緊急バナー・お知らせの更新では Push は飛ばない。画面を開いている間の WebSocket によるリアルタイム更新は
+従来どおり 3 タイプ（`bosai-Notice` / `bosai-EmergencyBanner` / `bosai-AlertLevel`）すべてが対象。
 
 - VAPID 公開鍵: `GET /.well-known/webpush-vapid-key`（認証不要）
 - 登録キーのポリシー: `bosai-webpush-proxy-write`（subscriptions の POST/DELETE/GET **と** `bosai-*` の GET。エンティティ書き込み不可）。配信時に購読所有者の認可を判定するため、対象エンティティタイプを読めないと配信が沈黙スキップされる（詳細・ポリシー JSON は [`geonicdb-setup.md`](geonicdb-setup.md)）
@@ -138,11 +142,16 @@ GeonicDB の `/ngsi-ld/v1/subscriptions` へ直接 POST / DELETE する。
 
 キー発行・Secrets 投入は運用側（課長）。手順の命名規則は [`geonicdb-setup.md`](geonicdb-setup.md) を参照。
 
+**購読対象を変更した場合の運用注意**: 既に購読済みの端末は、**旧仕様のサブスクリプションが GeonicDB 上に残る**。
+対象エンティティを絞った（または広げた）あとでも、旧購読は作り直すまで旧仕様のまま通知が飛ぶ。
+ステージング／本番では既存購読を削除し、住民端末で再オプトインさせること（自動移行は行わない）。
+
 **通知が届かないとき**（切り分けの要約。手順の詳細は [`geonicdb-setup.md`](geonicdb-setup.md) のトラブルシューティング）:
 
 - `geonic subscriptions get <id>` で `timesSent: 0` かつ `lastFailure` 無し → 配信未試行。購読キーの対象エンティティ GET 権限を疑う
 - `timesSent > 0` で `lastFailureReason` が HTTP ステータス → Push Service 到達済み。`404`/`410` は購読失効
 - iOS で届かない → 下の「iOS PWA とバッジ」を参照（ホーム画面追加必須）
+- バナー／お知らせ更新で通知が来ないのは仕様（#48。警戒レベル変更のみ）
 
 ### iOS PWA とバッジ（#41 / #45）
 

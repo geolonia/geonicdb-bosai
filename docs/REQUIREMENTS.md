@@ -73,7 +73,7 @@
 | 8 | JIS X 8341-3 AA 相当のアクセシブルなマークアップ、`role="alert"`/`aria-live` | guidelines.md 3.1.E |
 | 9 | 災害時モード切替（職員が1アクションで実行可能） | guidelines.md 3.1.G |
 | 10 | 静的生成 + CDN 配信、災害時モードの軽量化（1ページ1.6〜3MB以内） | guidelines.md 3.2.H |
-| 11 | 住民向け Web Push 通知（緊急バナー・警戒レベル・お知らせの発令をブラウザ通知で配信。Service Worker は受信専用） | issue #35、GeonicDB webpush プロトコル |
+| 11 | 住民向け Web Push 通知（**警戒レベル（`bosai-AlertLevel`）の変更時のみ**ブラウザ通知で配信。緊急バナー・お知らせは Push 対象外。Service Worker は受信専用） | issue #35 / #48、GeonicDB webpush プロトコル |
 
 ## 4. 非機能要件（初期リリースで満たすべき基準）
 

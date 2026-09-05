@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   assertSubscriptionId,
   BOSAI_LIVE_ENTITY_TYPES,
+  BOSAI_WEBPUSH_ENTITY_TYPES,
   buildNgsiLdWebPushSubscription,
   extractSubscriptionId,
   parsePushSubscription,
@@ -108,20 +109,22 @@ describe("parsePushSubscription", () => {
 });
 
 describe("buildNgsiLdWebPushSubscription", () => {
-  it("shapes NGSI-LD webpush subscription for the three bosai live types", () => {
+  it("subscribes only to bosai-AlertLevel for Web Push (#48)", () => {
     const body = buildNgsiLdWebPushSubscription(VALID, {
       siteOrigin: "https://bosai.example.jp",
     });
     expect(body.type).toBe("Subscription");
-    expect(body.entities).toEqual(
+    expect(body.entities).toEqual([{ type: "bosai-AlertLevel" }]);
+    expect([...BOSAI_WEBPUSH_ENTITY_TYPES]).toEqual(["bosai-AlertLevel"]);
+    // near-miss: 旧仕様の3タイプ購読になっていないこと
+    expect(body.entities).not.toEqual(
       BOSAI_LIVE_ENTITY_TYPES.map((type) => ({ type })),
     );
-    // shared/bosai-live-entity-types.ts が単一の定義元
-    expect([...BOSAI_LIVE_ENTITY_TYPES]).toEqual([
-      "bosai-Notice",
-      "bosai-EmergencyBanner",
-      "bosai-AlertLevel",
-    ]);
+    expect(
+      (body.entities as { type: string }[]).some(
+        (e) => e.type === "bosai-Notice" || e.type === "bosai-EmergencyBanner",
+      ),
+    ).toBe(false);
     const notification = body.notification as {
       attributes: string[];
       endpoint: {
@@ -135,6 +138,18 @@ describe("buildNgsiLdWebPushSubscription", () => {
     expect(notification.endpoint.protocol).toBe("webpush");
     expect(notification.endpoint.webpush.keys).toEqual(VALID.keys);
     expect(notification.endpoint.webpush.urgency).toBe("high");
+  });
+
+  it("keeps BOSAI_LIVE_ENTITY_TYPES as the three WS types (#48 regression guard)", () => {
+    expect([...BOSAI_LIVE_ENTITY_TYPES]).toEqual([
+      "bosai-Notice",
+      "bosai-EmergencyBanner",
+      "bosai-AlertLevel",
+    ]);
+    // Push 用定数と WS 用定数は独立（片方だけ変える事故のガード）
+    expect([...BOSAI_WEBPUSH_ENTITY_TYPES]).not.toEqual([
+      ...BOSAI_LIVE_ENTITY_TYPES,
+    ]);
   });
 });
 
