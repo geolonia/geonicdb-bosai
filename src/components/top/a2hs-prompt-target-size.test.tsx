@@ -39,4 +39,24 @@ describe("a2hs-prompt button hit target (#55 / WCAG 2.5.8)", () => {
     expect(rule).toMatch(/position:\s*fixed\b/);
     expect(rule).toMatch(/bottom:\s*0\b/);
   });
+
+  it("reserves body padding while the fixed bar is visible (#55)", () => {
+    // fixed のとき対応する余白確保が無いと末尾が帯の裏に隠れる
+    const reserve = extractRuleBody("html.a2hs-prompt-visible body");
+    expect(reserve).toMatch(/padding-bottom:\s*var\(--a2hs-reserve\)/);
+  });
+
+  it("includes iOS safe-area inset in the fixed bar padding (#55)", () => {
+    const rule = extractRuleBody(".a2hs-prompt");
+    expect(rule).toMatch(/safe-area-inset-bottom/);
+  });
+
+  // near-miss: fixed だけあって余白ルールが無い状態を許さない
+  it("near-miss: fixed bar must not exist without a matching body reserve rule", () => {
+    const bar = extractRuleBody(".a2hs-prompt");
+    expect(bar).toMatch(/position:\s*fixed\b/);
+    expect(globalsCss).toMatch(
+      /html\.a2hs-prompt-visible\s+body\s*\{[^}]*padding-bottom:\s*var\(--a2hs-reserve\)/,
+    );
+  });
 });

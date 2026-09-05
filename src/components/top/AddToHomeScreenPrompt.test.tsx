@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AddToHomeScreenPrompt } from "@/components/top/AddToHomeScreenPrompt";
 import { SITE_LANGUAGES } from "@/config/site-language";
 import { UI_STRINGS } from "@/config/ui-strings";
-import { A2HS_DISMISS_STORAGE_KEY } from "@/lib/a2hs";
+import { A2HS_DISMISS_STORAGE_KEY, A2HS_VISIBLE_HTML_CLASS } from "@/lib/a2hs";
 import { testStrings } from "@/test/fixtures";
 
 type MatchMediaResult = {
@@ -77,6 +77,8 @@ describe("AddToHomeScreenPrompt (#55)", () => {
   afterEach(() => {
     cleanup();
     localStorage.clear();
+    document.documentElement.classList.remove(A2HS_VISIBLE_HTML_CLASS);
+    document.documentElement.style.removeProperty("--a2hs-reserve");
   });
 
   it("does not render when display-mode is standalone", async () => {
@@ -151,6 +153,30 @@ describe("AddToHomeScreenPrompt (#55)", () => {
     await expect(
       screen.findByTestId("a2hs-prompt", {}, { timeout: 200 }),
     ).rejects.toThrow();
+  });
+
+  it("toggles html reserve class only while the bar is visible (#55)", async () => {
+    stubNavigator({
+      userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+      platform: "iPhone",
+      maxTouchPoints: 5,
+    });
+    render(<AddToHomeScreenPrompt strings={testStrings} />);
+    await screen.findByTestId("a2hs-prompt");
+    await waitFor(() => {
+      expect(
+        document.documentElement.classList.contains(A2HS_VISIBLE_HTML_CLASS),
+      ).toBe(true);
+    });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: testStrings.a2hsDismissLabel }),
+    );
+    await waitFor(() => {
+      expect(
+        document.documentElement.classList.contains(A2HS_VISIBLE_HTML_CLASS),
+      ).toBe(false);
+    });
   });
 
   it("exposes localized copy in all five languages", async () => {

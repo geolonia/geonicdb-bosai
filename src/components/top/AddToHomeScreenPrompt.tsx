@@ -4,11 +4,14 @@ import {
   useCallback,
   useEffect,
   useId,
+  useRef,
   useState,
   useSyncExternalStore,
 } from "react";
 import type { UiStrings } from "@/config/ui-strings";
 import {
+  A2HS_RESERVE_CSS_VAR,
+  A2HS_VISIBLE_HTML_CLASS,
   dismissA2hsPrompt,
   isA2hsDismissed,
   isIosLikeDevice,
@@ -37,15 +40,22 @@ function getServerSnapshot(): boolean {
   return false;
 }
 
+function clearA2hsViewportReserve(): void {
+  document.documentElement.classList.remove(A2HS_VISIBLE_HTML_CLASS);
+  document.documentElement.style.removeProperty(A2HS_RESERVE_CSS_VAR);
+}
+
 /**
  * ホーム画面への追加（A2HS）導線。
  * - PWA 起動中は出さない
  * - 一度閉じたら再表示しない
  * - Android/Chrome: beforeinstallprompt → 独自ボタンで prompt()
  * - iOS: 共有メニュー手順の案内のみ（BIP は発火しない）
+ * - fixed 帯の高さ分を body padding で確保（末尾が隠れない / CLS 回避）
  */
 export function AddToHomeScreenPrompt({ strings }: Props) {
   const titleId = useId();
+  const bannerRef = useRef<HTMLElement>(null);
   const isClient = useSyncExternalStore(
     subscribeNoop,
     getIsClientSnapshot,
@@ -86,6 +96,51 @@ export function AddToHomeScreenPrompt({ strings }: Props) {
     };
   }, [isClient, standalone, dismissed]);
 
+  const visible =
+    isClient &&
+    !standalone &&
+    !dismissed &&
+    (iosLike || deferredPrompt != null);
+
+  // fixed 帯の実高さを CSS 変数へ反映し、非表示時は余白クラスも外す
+  useEffect(() => {
+    if (!visible) {
+      clearA2hsViewportReserve();
+      return;
+    }
+
+    const root = document.documentElement;
+    root.classList.add(A2HS_VISIBLE_HTML_CLASS);
+
+    const banner = bannerRef.current;
+    if (!banner) {
+      return () => {
+        clearA2hsViewportReserve();
+      };
+    }
+
+    const syncReserve = () => {
+      const height = banner.getBoundingClientRect().height;
+      root.style.setProperty(A2HS_RESERVE_CSS_VAR, `${height}px`);
+    };
+    syncReserve();
+
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", syncReserve);
+      return () => {
+        window.removeEventListener("resize", syncReserve);
+        clearA2hsViewportReserve();
+      };
+    }
+
+    const observer = new ResizeObserver(syncReserve);
+    observer.observe(banner);
+    return () => {
+      observer.disconnect();
+      clearA2hsViewportReserve();
+    };
+  }, [visible]);
+
   const onDismiss = useCallback(() => {
     dismissA2hsPrompt();
     setDismissedLocal(true);
@@ -106,18 +161,13 @@ export function AddToHomeScreenPrompt({ strings }: Props) {
     setDismissedLocal(true);
   }, [deferredPrompt]);
 
-  const visible =
-    isClient &&
-    !standalone &&
-    !dismissed &&
-    (iosLike || deferredPrompt != null);
-
   if (!visible) {
     return null;
   }
 
   return (
     <aside
+      ref={bannerRef}
       className="a2hs-prompt"
       role="region"
       aria-labelledby={titleId}

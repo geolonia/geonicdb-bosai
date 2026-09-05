@@ -236,7 +236,15 @@ input:focus-visible {
   color: #8b0000;
 }
 
-/* #55 A2HS — ページ下部の fixed 帯（文書フローに載せると BIP 後出しで CLS になる） */
+/* #55 A2HS — ページ下部の fixed 帯（文書フローに載せると BIP 後出しで CLS になる）
+ * 表示中は html.a2hs-prompt-visible 経由で body に同高の padding-bottom を足し、
+ * 末尾コンテンツが帯の裏に隠れないようにする。閉じたらクラスも外す。
+ */
+:root {
+  /* ResizeObserver 未反映時のフォールバック（row + 上下 padding + safe-area） */
+  --a2hs-reserve: calc(2.75rem + 1.5rem + env(safe-area-inset-bottom, 0px));
+}
+
 .a2hs-prompt {
   position: fixed;
   bottom: 0;
@@ -244,10 +252,15 @@ input:focus-visible {
   right: 0;
   z-index: 20;
   margin: 0;
-  padding: 0.75rem 1rem;
+  /* iPhone ホームバーと重ならないよう safe-area を底 padding に含める */
+  padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
   background: var(--color-surface);
   border-top: 1px solid var(--color-border);
   /* 緊急バナーは画面上部のため覆わない。中央モーダルにもしない */
+}
+
+html.a2hs-prompt-visible body {
+  padding-bottom: var(--a2hs-reserve);
 }
 
 .a2hs-prompt__row {

@@ -44,6 +44,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#1a1a1a",
+  /** iOS safe-area-inset-* を有効化（A2HS fixed 帯の底余白に使用） */
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

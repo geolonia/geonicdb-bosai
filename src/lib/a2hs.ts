@@ -1,6 +1,12 @@
 /** localStorage: 一度閉じたら再表示しない（#55） */
 export const A2HS_DISMISS_STORAGE_KEY = "geonicdb-bosai-a2hs-dismissed";
 
+/** fixed 帯表示中に html へ付けるクラス（body に padding-bottom を足す） */
+export const A2HS_VISIBLE_HTML_CLASS = "a2hs-prompt-visible";
+
+/** 実高さの CSS 変数（ResizeObserver で更新。フォールバックは globals.css） */
+export const A2HS_RESERVE_CSS_VAR = "--a2hs-reserve";
+
 export type NavigatorWithStandalone = Navigator & {
   /** iOS Safari 独自。ホーム画面から起動時に true */
   standalone?: boolean;
