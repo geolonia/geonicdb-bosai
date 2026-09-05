@@ -142,6 +142,8 @@ describe("PushNotificationOptIn state transition", () => {
     );
     expect(screen.queryByRole("switch")).not.toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    // denied でも resolve 経由で永続化済み状態を捨てる
+    expect(resolveActiveWebPushState).toHaveBeenCalled();
   });
 
   it("switches to permission-denied guidance when requestPermission yields denied", async () => {

@@ -139,7 +139,8 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
     pushToggleDescriptionOff: "Get alert level changes",
     pushToggleDescriptionOn: "You will receive notifications",
     pushUnsupportedLabel: "Notifications are not supported in this browser",
-    pushErrorLabel: "Could not enable notifications. Please try again later.",
+    pushErrorLabel:
+      "Could not update notification settings. Please try again later.",
     pushBusyLabel: "Updating notification settings…",
     pushPermissionDeniedLabel:
       "Notifications are blocked. Allow them in your browser or device settings.",
@@ -196,7 +197,7 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
     pushToggleDescriptionOff: "接收警戒级别变更通知",
     pushToggleDescriptionOn: "将接收通知",
     pushUnsupportedLabel: "此浏览器不支持通知",
-    pushErrorLabel: "无法开启通知。请稍后再试。",
+    pushErrorLabel: "无法更新通知设置。请稍后再试。",
     pushBusyLabel: "正在设置通知…",
     pushPermissionDeniedLabel: "通知未被允许。请在浏览器或设备设置中允许通知。",
     quickLinks: {
@@ -252,7 +253,8 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
     pushToggleDescriptionOff: "Nhận thay đổi mức cảnh báo",
     pushToggleDescriptionOn: "Bạn sẽ nhận thông báo",
     pushUnsupportedLabel: "Trình duyệt này không hỗ trợ thông báo",
-    pushErrorLabel: "Không thể bật thông báo. Vui lòng thử lại sau.",
+    pushErrorLabel:
+      "Không thể cập nhật cài đặt thông báo. Vui lòng thử lại sau.",
     pushBusyLabel: "Đang thiết lập thông báo…",
     pushPermissionDeniedLabel:
       "Thông báo chưa được cho phép. Hãy cho phép trong cài đặt trình duyệt hoặc thiết bị.",

@@ -76,6 +76,8 @@ export function PushNotificationOptIn({ lang, strings }: Props) {
         return;
       }
       if (isNotificationPermissionDenied()) {
+        // permission !== granted 時と同様に、保存済み購読を残さない（#56 CodeRabbit）
+        await resolveActiveWebPushState();
         if (!cancelled) {
           setPermissionDenied(true);
           setStored(null);
@@ -117,6 +119,7 @@ export function PushNotificationOptIn({ lang, strings }: Props) {
       setPhase("idle");
     } catch {
       if (isNotificationPermissionDenied()) {
+        await resolveActiveWebPushState();
         setPermissionDenied(true);
         setStored(null);
         setPhase("idle");
