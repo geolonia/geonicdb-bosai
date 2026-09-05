@@ -17,7 +17,7 @@
 |---|---|---|---|
 | XACMLポリシー | `bosai-public-read` | tenant（管理者作成） | `bosai-*` への匿名（住民ブラウザ）GET読み取りを許可。`role: anonymous` |
 | XACMLポリシー | `bosai-read` | personal | `bosai-*` への **GET + WS のみ**を許可（書き込み不可）。住民ブラウザのWebSocket購読向け |
-| XACMLポリシー | `bosai-webpush-proxy-write` | personal（既作成） | `/ngsi-ld/v1/subscriptions*` への POST/DELETE/GET **と** `bosai-*` への **GET**。エンティティ書き込み不可。Web Push 購読登録向け（配信時認可のため GET 必須） |
+| XACMLポリシー | `bosai-webpush-proxy-write` | personal（既作成） | `/ngsi-ld/v1/subscriptions*` への POST/DELETE/GET **と** `bosai-*` への **GET**。エンティティ書き込み不可。Web Push 購読操作と配信時認可用（配信時認可のため GET 必須） |
 | XACMLポリシー | `bosai-write` | personal | `bosai-*` への書き込み（POST/PATCH/PUT/DELETE/GET/WS）を許可。職員のGeonicDB直接操作（`geonic` CLI / Claude Desktop MCP）向け |
 | APIキー | `bosai-public-ws-read` | - | `bosai-read` ポリシーを付与。**クライアントバンドルに埋め込む**（`NEXT_PUBLIC_GEONICDB_WS_API_KEY`）。DPoP必須・オリジン限定 |
 | APIキー | `bosai-webpush-subscribe` | - | `bosai-webpush-proxy-write` を付与。**クライアントバンドルに埋め込む**（`NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY`）。DPoP必須・オリジン限定（`https://geolonia.github.io` + `http://localhost:3000`）・`rateLimit.perMinute=30`。エンティティ書き込み権限なし |

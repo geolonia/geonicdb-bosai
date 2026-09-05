@@ -128,7 +128,7 @@ CAA / DNSSEC は独自ドメイン接続後に DNS 側で設定する。
 ## Web Push（#39）
 
 **中間サーバーは不要。** Web Push は gh-pages 上の静的アセットと GeonicDB の 2 者で完結する。
-ブラウザが `NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY`（サブスクリプション作成専用）を使い、
+ブラウザが `NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY`（サブスクリプション操作と配信時認可用）を使い、
 GeonicDB の `/ngsi-ld/v1/subscriptions` へ直接 POST / DELETE する。
 
 - VAPID 公開鍵: `GET /.well-known/webpush-vapid-key`（認証不要）

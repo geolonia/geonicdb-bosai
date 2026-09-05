@@ -52,7 +52,7 @@ export async function fetchVapidPublicKey(
 }
 
 /**
- * Web Push 購読登録が有効か（サブスクリプション作成専用 API キーの有無）。
+ * Web Push 購読が有効か（サブスクリプション操作用 API キーの有無）。
  * 未設定時はオプトイン UI を出さない。
  */
 export function isWebPushConfigured(
