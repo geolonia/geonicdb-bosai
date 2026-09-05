@@ -93,7 +93,8 @@ export class WebPushProxy extends Construct {
       runtime: lambda.Runtime.NODEJS_22_X,
       timeout: cdk.Duration.seconds(15),
       memorySize: 256,
-      // #36: Function URL 直叩きへの defense-in-depth（WAF は CloudFront 経路のみ）
+      // #36: 粗いコスト上限の backstop（主防御は CloudFront WAF）。
+      // CF 経由と Function URL 直叩きは同一プール。直叩きの完全分離はスコープ外。
       reservedConcurrentExecutions: WEBPUSH_LAMBDA_RESERVED_CONCURRENCY,
       description: "geonicdb-bosai Web Push subscription proxy",
       environment: {

@@ -9,6 +9,7 @@ import * as cdk from "aws-cdk-lib";
 import * as wafv2 from "aws-cdk-lib/aws-wafv2";
 import { Construct } from "constructs";
 import {
+  WEBPUSH_RATE_LIMIT_EVALUATION_WINDOW_SEC,
   WEBPUSH_RATE_LIMIT_PER_5_MIN,
   WEBPUSH_RATE_LIMIT_URI_PREFIX,
 } from "./webpush-limits";
@@ -56,6 +57,7 @@ export class WebPushWebAclStack extends cdk.Stack {
           statement: {
             rateBasedStatement: {
               limit: WEBPUSH_RATE_LIMIT_PER_5_MIN,
+              evaluationWindowSec: WEBPUSH_RATE_LIMIT_EVALUATION_WINDOW_SEC,
               aggregateKeyType: "IP",
               scopeDownStatement: {
                 byteMatchStatement: {

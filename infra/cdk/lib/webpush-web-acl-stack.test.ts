@@ -3,6 +3,7 @@ import { Match, Template } from "aws-cdk-lib/assertions";
 import { describe, expect, it } from "vitest";
 import {
   WEBPUSH_LAMBDA_RESERVED_CONCURRENCY,
+  WEBPUSH_RATE_LIMIT_EVALUATION_WINDOW_SEC,
   WEBPUSH_RATE_LIMIT_PER_5_MIN,
   WEBPUSH_RATE_LIMIT_URI_PREFIX,
 } from "./webpush-limits";
@@ -32,6 +33,7 @@ describe("WebPushWebAclStack", () => {
           Statement: {
             RateBasedStatement: {
               Limit: WEBPUSH_RATE_LIMIT_PER_5_MIN,
+              EvaluationWindowSec: WEBPUSH_RATE_LIMIT_EVALUATION_WINDOW_SEC,
               AggregateKeyType: "IP",
               ScopeDownStatement: {
                 ByteMatchStatement: {
@@ -77,9 +79,10 @@ describe("WebPushWebAclStack", () => {
     expect("/api/other".startsWith(search!)).toBe(false);
   });
 
-  it("rate limit threshold is finite (not effectively unlimited)", () => {
+  it("rate limit threshold and evaluation window are explicit (not CFN-default-only)", () => {
     expect(WEBPUSH_RATE_LIMIT_PER_5_MIN).toBe(120);
     expect(WEBPUSH_RATE_LIMIT_PER_5_MIN).toBeLessThan(10_000);
+    expect(WEBPUSH_RATE_LIMIT_EVALUATION_WINDOW_SEC).toBe(300);
     const { template } = synthWebAcl();
     template.hasResourceProperties("AWS::WAFv2::WebACL", {
       Rules: Match.arrayWith([
@@ -87,6 +90,7 @@ describe("WebPushWebAclStack", () => {
           Statement: {
             RateBasedStatement: Match.objectLike({
               Limit: 120,
+              EvaluationWindowSec: 300,
             }),
           },
         }),
@@ -96,8 +100,10 @@ describe("WebPushWebAclStack", () => {
 });
 
 describe("Web Push rate-limit constants (regression vs #36)", () => {
-  it("reserved concurrency is a small positive backstop (5–10)", () => {
-    expect(WEBPUSH_LAMBDA_RESERVED_CONCURRENCY).toBeGreaterThanOrEqual(5);
-    expect(WEBPUSH_LAMBDA_RESERVED_CONCURRENCY).toBeLessThanOrEqual(10);
+  it("reserved concurrency is a coarse cost backstop (~50), not a tight throttle", () => {
+    expect(WEBPUSH_LAMBDA_RESERVED_CONCURRENCY).toBe(50);
+    // 災害時の正規急増で締め出さない余裕。過度に小さくしない。
+    expect(WEBPUSH_LAMBDA_RESERVED_CONCURRENCY).toBeGreaterThanOrEqual(40);
+    expect(WEBPUSH_LAMBDA_RESERVED_CONCURRENCY).toBeLessThanOrEqual(100);
   });
 });

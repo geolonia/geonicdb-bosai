@@ -193,7 +193,7 @@ describe("BosaiSiteStack Response Headers Policy", () => {
     template.hasResourceProperties("AWS::Lambda::Function", {
       Runtime: "nodejs22.x",
       Timeout: 15,
-      ReservedConcurrentExecutions: 5,
+      ReservedConcurrentExecutions: 50,
       Environment: {
         Variables: Match.objectLike({
           GEONICDB_URL: "https://geonicdb.example.example",
