@@ -20,7 +20,7 @@
 | XACMLポリシー | `bosai-webpush-proxy-write` | personal（既作成） | `/ngsi-ld/v1/subscriptions*` への **POST / DELETE / GET のみ**。エンティティ読み書き不可。Web Push 購読登録向け |
 | XACMLポリシー | `bosai-write` | personal | `bosai-*` への書き込み（POST/PATCH/PUT/DELETE/GET/WS）を許可。職員のGeonicDB直接操作（`geonic` CLI / Claude Desktop MCP）向け |
 | APIキー | `bosai-public-ws-read` | - | `bosai-read` ポリシーを付与。**クライアントバンドルに埋め込む**（`NEXT_PUBLIC_GEONICDB_WS_API_KEY`）。DPoP必須・オリジン限定 |
-| APIキー | `bosai-public-webpush` | - | `bosai-webpush-proxy-write` を付与。**クライアントバンドルに埋め込む**（`NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY`）。DPoP必須・オリジン限定・`rateLimit` あり。エンティティ書き込み権限なし |
+| APIキー | `bosai-webpush-subscribe` | - | `bosai-webpush-proxy-write` を付与。**クライアントバンドルに埋め込む**（`NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY`）。DPoP必須・オリジン限定（`https://geolonia.github.io` + `http://localhost:3000`）・`rateLimit.perMinute=30`。エンティティ書き込み権限なし |
 | APIキー | `bosai-staff-write` | - | `bosai-write` ポリシーを付与。職員が使う。**クライアントには絶対に埋め込まない** |
 
 XACMLポリシーの `policyId`・APIキーの `name` は文字種の制約が無く（長さ制限のみ）、`bosai-` プレフィックスをそのまま使える。エンティティタイプのスコープは `resources` に `{"attributeId": "entityType", "matchValue": "bosai-*", "matchFunction": "glob"}` で3タイプ一括指定する。
@@ -150,10 +150,11 @@ geonic admin api-keys create --name "bosai-public-ws-read" --policy bosai-read \
 #### Web Push 購読登録用（サブスクリプション専用）
 
 ポリシー `bosai-webpush-proxy-write` は既に作成済み（`/ngsi-ld/v1/subscriptions*` の POST/DELETE/GET のみ）。
-キー発行例（運用側。本リポジトリの CI からは発行しない）:
+発行済みキー名は `bosai-webpush-subscribe`（`allowedOrigins`: `https://geolonia.github.io` + `http://localhost:3000`、`dpopRequired=true`、`rateLimit.perMinute=30`。GitHub Secret `NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY` に投入済み）。
+再発行例:
 
 ```bash
-geonic admin api-keys create --name "bosai-public-webpush" --policy bosai-webpush-proxy-write \
+geonic admin api-keys create --name "bosai-webpush-subscribe" --policy bosai-webpush-proxy-write \
   --origins 'https://geolonia.github.io,http://localhost:3000' --dpop-required
 ```
 
