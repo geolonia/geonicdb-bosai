@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import * as cdk from "aws-cdk-lib";
+import { assertAbsoluteHttpOrigin } from "../lib/assert-absolute-http-origin";
 import { BosaiSiteStack } from "../lib/bosai-site-stack";
 
 const app = new cdk.App();
@@ -13,39 +14,27 @@ const domainNames =
         .filter(Boolean)
     : undefined;
 
-/**
- * GeonicDB 等の別オリジンを connect-src に足す。
- * 例: cdk deploy -c geonicdbUrl=https://geonicdb.example.jp
- * または環境変数 NEXT_PUBLIC_GEONICDB_URL（サイト build と同じ値）
- */
-function originFromUrl(raw: string | undefined): string | undefined {
-  const trimmed = raw?.trim();
-  if (!trimmed) {
-    return undefined;
-  }
-  try {
-    return new URL(trimmed).origin;
-  } catch {
-    throw new Error(
-      `Invalid geonicdbUrl / NEXT_PUBLIC_GEONICDB_URL: ${trimmed}`,
-    );
-  }
-}
-
 const geonicdbUrlRaw =
   (app.node.tryGetContext("geonicdbUrl") as string | undefined) ??
   process.env.NEXT_PUBLIC_GEONICDB_URL;
-const geonicdbOrigin = originFromUrl(geonicdbUrlRaw);
+const geonicdbOrigin = assertAbsoluteHttpOrigin(
+  geonicdbUrlRaw,
+  "geonicdbUrl / NEXT_PUBLIC_GEONICDB_URL",
+);
 
 const siteOriginRaw =
   (app.node.tryGetContext("siteOrigin") as string | undefined) ??
   process.env.NEXT_PUBLIC_SITE_ORIGIN;
 const siteOrigin = siteOriginRaw?.trim()
-  ? originFromUrl(siteOriginRaw)
+  ? assertAbsoluteHttpOrigin(
+      siteOriginRaw,
+      "siteOrigin / NEXT_PUBLIC_SITE_ORIGIN",
+    )
   : undefined;
 
-const webPushRegisterOrigin = originFromUrl(
+const webPushRegisterOrigin = assertAbsoluteHttpOrigin(
   app.node.tryGetContext("webPushRegisterUrl") as string | undefined,
+  "webPushRegisterUrl",
 );
 
 const enableWebPush = app.node.tryGetContext("enableWebPush") === "true";

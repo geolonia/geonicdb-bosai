@@ -8,6 +8,10 @@ import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
 import { Construct } from "constructs";
 import * as path from "node:path";
+import {
+  assertAbsoluteHttpOrigin,
+  assertAbsoluteHttpUrl,
+} from "./assert-absolute-http-origin";
 
 export type WebPushProxyProps = {
   /** GeonicDB base URL（例: https://geonicdb.geolonia.com） */
@@ -34,6 +38,23 @@ export class WebPushProxy extends Construct {
 
   constructor(scope: Construct, id: string, props: WebPushProxyProps) {
     super(scope, id);
+
+    const geonicdbUrl = assertAbsoluteHttpUrl(
+      props.geonicdbUrl,
+      "webPush.geonicdbUrl",
+    );
+    if (!geonicdbUrl) {
+      throw new Error("webPush.geonicdbUrl is required");
+    }
+    if (props.siteOrigin) {
+      assertAbsoluteHttpOrigin(props.siteOrigin, "webPush.siteOrigin");
+    }
+    if (props.corsAllowOrigin && props.corsAllowOrigin !== "*") {
+      assertAbsoluteHttpOrigin(
+        props.corsAllowOrigin,
+        "webPush.corsAllowOrigin",
+      );
+    }
 
     if (props.apiKeySecretArn) {
       this.apiKeySecret = secretsmanager.Secret.fromSecretCompleteArn(
@@ -65,7 +86,7 @@ export class WebPushProxy extends Construct {
       memorySize: 256,
       description: "geonicdb-bosai Web Push subscription proxy",
       environment: {
-        GEONICDB_URL: props.geonicdbUrl.replace(/\/+$/, ""),
+        GEONICDB_URL: geonicdbUrl,
         GEONICDB_API_KEY_SECRET_ARN: this.apiKeySecret.secretArn,
         ...(props.geonicdbTenant
           ? { GEONICDB_TENANT: props.geonicdbTenant }
