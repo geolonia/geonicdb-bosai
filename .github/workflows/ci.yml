@@ -65,5 +65,10 @@ jobs:
         run: npm run build
 
       # ページ重量予算（lighthouserc.js）。閾値の厳格化は issue #6 と共有。
+      # build 済みの out/ を使うため lhci を直接呼び、失敗時も指標をログに出す。
       - name: Lighthouse budget
-        run: npx lhci autorun
+        run: |
+          npx lhci autorun
+          status=$?
+          node scripts/dump-lhr-metrics.mjs
+          exit $status
