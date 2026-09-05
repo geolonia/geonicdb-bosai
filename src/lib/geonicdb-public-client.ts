@@ -19,8 +19,8 @@ export type GeonicdbPublicConfig = {
   wsApiKey?: string;
   /**
    * Web Push サブスクリプション作成専用 API キー（任意）。
-   * `/ngsi-ld/v1/subscriptions*` への POST / DELETE / GET のみ（ポリシー
-   * `bosai-webpush-proxy-write`）。エンティティの読み書き権限は持たない。
+   * ポリシー `bosai-webpush-proxy-write`: `/ngsi-ld/v1/subscriptions*` への
+   * POST/DELETE/GET と、配信時認可用の `bosai-*` への GET。エンティティ書き込み不可。
    * 未設定時は Web Push オプトイン UI を出さない。
    */
   webpushApiKey?: string;
@@ -43,8 +43,8 @@ function readOptional(env: PublicEnvLike, key: string): string | undefined {
  * - `NEXT_PUBLIC_GEONICDB_WS_API_KEY` — WebSocket 購読専用（`bosai-read` =
  *   GET + WS のみ）
  * - `NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY` — サブスクリプション作成専用
- *   （`bosai-webpush-proxy-write` = `/ngsi-ld/v1/subscriptions*` の
- *   POST/DELETE/GET のみ。エンティティ読み書き権限なし）
+ *   （`bosai-webpush-proxy-write` = subscriptions の POST/DELETE/GET +
+ *   `bosai-*` の GET。エンティティ書き込み権限なし。詳細は docs/geonicdb-setup.md）
  */
 export function resolveGeonicdbPublicConfig(
   env: PublicEnvLike = {

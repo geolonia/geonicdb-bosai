@@ -53,8 +53,8 @@ jobs:
           # ソースに直接書かないためであり、権限を絞ること自体が防御線となる。
           # 詳細は docs/geonicdb-setup.md
           NEXT_PUBLIC_GEONICDB_WS_API_KEY: ${{ secrets.NEXT_PUBLIC_GEONICDB_WS_API_KEY }}
-          # Web Push 購読登録専用キー（subscriptions POST/DELETE/GET のみ。
-          # エンティティ書き込み不可。bosai-webpush-proxy-write）。
+          # Web Push 購読登録キー（subscriptions POST/DELETE/GET + bosai-* GET。
+          # エンティティ書き込み不可。bosai-webpush-proxy-write。配信時認可のため GET 必須）。
           # WS キーと同様、バンドル公開前提で権限を絞ったキーを Secrets から渡す。
           NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY: ${{ secrets.NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY }}
           # 意図的に未設定: GeonicDB 全滅時は assert で build 失敗 → deploy スキップ

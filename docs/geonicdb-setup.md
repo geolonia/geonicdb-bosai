@@ -1,7 +1,7 @@
 # GeonicDB セットアップ（APIキー・XACMLポリシー）
 
-作成日: 2026-09-01 / 改訂: 2026-09-01（直接AJAX方式への移行、WS動作確認済み）
-関連: [`data-model.md`](data-model.md)、[`REQUIREMENTS.md`](REQUIREMENTS.md) 2.1節
+作成日: 2026-09-01 / 改訂: 2026-09-05（#44: Web Push 購読キーに対象エンティティ GET が必須である旨を追記）
+関連: [`data-model.md`](data-model.md)、[`REQUIREMENTS.md`](REQUIREMENTS.md) 2.1節、[`deployment.md`](deployment.md)
 
 `geonicdb-cli`（コマンド名 `geonic`）を使い、`bosai-` プレフィックスの命名規則で APIキー・XACMLポリシーをセットアップする。**全て実際のテナント（staging）に対して実行・動作確認済み。**
 
@@ -17,7 +17,7 @@
 |---|---|---|---|
 | XACMLポリシー | `bosai-public-read` | tenant（管理者作成） | `bosai-*` への匿名（住民ブラウザ）GET読み取りを許可。`role: anonymous` |
 | XACMLポリシー | `bosai-read` | personal | `bosai-*` への **GET + WS のみ**を許可（書き込み不可）。住民ブラウザのWebSocket購読向け |
-| XACMLポリシー | `bosai-webpush-proxy-write` | personal（既作成） | `/ngsi-ld/v1/subscriptions*` への **POST / DELETE / GET のみ**。エンティティ読み書き不可。Web Push 購読登録向け |
+| XACMLポリシー | `bosai-webpush-proxy-write` | personal（既作成） | `/ngsi-ld/v1/subscriptions*` への POST/DELETE/GET **と** `bosai-*` への **GET**。エンティティ書き込み不可。Web Push 購読登録向け（配信時認可のため GET 必須） |
 | XACMLポリシー | `bosai-write` | personal | `bosai-*` への書き込み（POST/PATCH/PUT/DELETE/GET/WS）を許可。職員のGeonicDB直接操作（`geonic` CLI / Claude Desktop MCP）向け |
 | APIキー | `bosai-public-ws-read` | - | `bosai-read` ポリシーを付与。**クライアントバンドルに埋め込む**（`NEXT_PUBLIC_GEONICDB_WS_API_KEY`）。DPoP必須・オリジン限定 |
 | APIキー | `bosai-webpush-subscribe` | - | `bosai-webpush-proxy-write` を付与。**クライアントバンドルに埋め込む**（`NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY`）。DPoP必須・オリジン限定（`https://geolonia.github.io` + `http://localhost:3000`）・`rateLimit.perMinute=30`。エンティティ書き込み権限なし |
@@ -147,15 +147,65 @@ geonic admin api-keys create --name "bosai-public-ws-read" --policy bosai-read \
 
 > **APIキーの上限（実測）**: `geonic me api-keys create`（セルフサービス）はユーザーあたり5個の上限があり、超えると `Maximum number of API keys (5) reached` で失敗する。`geonic admin api-keys create`（tenant_admin権限）はこの上限の対象外だった。
 
-#### Web Push 購読登録用（サブスクリプション専用）
+#### Web Push 購読登録用（サブスクリプション + 配信時認可）
 
 | 項目 | 値 |
 |---|---|
-| ポリシー名 | `bosai-webpush-proxy-write`（`/ngsi-ld/v1/subscriptions*` の POST/DELETE/GET のみ。既作成） |
+| ポリシー名 | `bosai-webpush-proxy-write`（subscriptions の POST/DELETE/GET **と** `bosai-*` の GET。既作成） |
 | APIキー名 | `bosai-webpush-subscribe`（このキーの**値**を `NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY` に設定） |
 | allowedOrigins | `https://geolonia.github.io`, `http://localhost:3000` |
 | dpopRequired | `true` |
 | rateLimit.perMinute | `30` |
+
+**なぜ `bosai-*` への GET が必要か**: GeonicDB は通知配信時に購読所有者の認可を判定する。対象エンティティタイプを読めない principal のサブスクリプションは、**エラーも失敗カウントも残さず沈黙のうちにスキップされる**（`timesSent: 0` / `timesFailed: 0` / `lastFailure: null` のまま）。サブスクリプション作成だけできれば十分、ではない。
+
+**セキュリティ上の位置づけ**: `bosai-*` は `bosai-public-read` で既に匿名 GET が許可されている公開データなので、このキーに GET を与えても新たな露出は生じない。エンティティの**書き込み**権限は依然として持たない。
+
+ステージング適用済みのポリシー定義（`first-applicable`・3ルール）:
+
+```bash
+geonic me policies create '{
+  "policyId": "bosai-webpush-proxy-write",
+  "description": "geonicdb-bosai: Web Push subscribe + entity GET for notification delivery authz",
+  "target": {
+    "resources": [
+      { "attributeId": "path", "matchValue": "/ngsi-ld/**", "matchFunction": "glob" }
+    ]
+  },
+  "ruleCombiningAlgorithm": "first-applicable",
+  "rules": [
+    {
+      "ruleId": "permit-subscription-write",
+      "effect": "Permit",
+      "target": {
+        "resources": [
+          { "attributeId": "path", "matchValue": "/ngsi-ld/v1/subscriptions*", "matchFunction": "glob" }
+        ],
+        "actions": [
+          { "attributeId": "method", "matchValue": "POST" },
+          { "attributeId": "method", "matchValue": "DELETE" },
+          { "attributeId": "method", "matchValue": "GET" }
+        ]
+      }
+    },
+    {
+      "ruleId": "permit-bosai-read-for-notification-authz",
+      "effect": "Permit",
+      "target": {
+        "resources": [
+          { "attributeId": "entityType", "matchValue": "bosai-*", "matchFunction": "glob" }
+        ],
+        "actions": [
+          { "attributeId": "method", "matchValue": "GET" }
+        ]
+      }
+    },
+    { "ruleId": "deny-rest", "effect": "Deny" }
+  ]
+}'
+```
+
+（既に作成済みの場合は `geonic me policies update` 等で同等内容へ更新する。）
 
 GitHub Secret `NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY` には発行済みキー値を投入済み。再発行例:
 
@@ -166,6 +216,14 @@ geonic admin api-keys create --name "bosai-webpush-subscribe" --policy bosai-web
 
 発行したキー値を `.env.local` / GitHub Secrets の `NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY` に設定する。
 **`bosai-write`（エンティティ書き込み可）は絶対に埋め込まないこと。**
+
+##### トラブルシューティング: 通知が届かないとき
+
+`geonic subscriptions get <id>` で `timesSent` を見る。
+
+- `timesSent: 0` かつ `lastFailure` も無い → **配信が試行されていない**。購読所有者の認可（対象エンティティタイプへの GET 権限）を疑う
+- `timesSent > 0` かつ `lastFailureReason` に HTTP ステータス → Push Service までは到達している。`404` / `410` は購読の失効（ブラウザ側で再購読が必要）
+- iOS で届かない → ホーム画面に追加した PWA から起動しているか確認（Safari のタブからでは Web Push が動かない、iOS 16.4+）。詳細は [`deployment.md`](deployment.md) の iOS PWA 節
 
 #### 職員書き込み用
 
