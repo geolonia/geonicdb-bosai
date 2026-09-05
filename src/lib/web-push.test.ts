@@ -56,12 +56,14 @@ describe("web-push-sw-logic", () => {
 
   it("near-miss: reordered language list must not match SITE_LANGUAGES (#42)", async () => {
     const { SITE_LANGUAGES } = await import("@/config/site-language");
+    const { WEB_PUSH_SITE_LANGUAGES } = await import("@/lib/web-push-sw-logic");
+    const base = [...SITE_LANGUAGES];
+    expect(base.length).toBeGreaterThanOrEqual(2);
     // 要素は同じでも順序が違えばサイト言語の優先順位とズレる（通ってはいけない）
-    const reordered = ["en", "ja", "zh-CN", "vi", "ko"];
+    const reordered = [base[1], base[0], ...base.slice(2)];
     expect(reordered).not.toEqual([...SITE_LANGUAGES]);
-    expect(reordered.slice().sort()).toEqual(
-      [...SITE_LANGUAGES].slice().sort(),
-    );
+    expect(reordered).not.toEqual([...WEB_PUSH_SITE_LANGUAGES]);
+    expect([...WEB_PUSH_SITE_LANGUAGES]).toEqual([...SITE_LANGUAGES]);
   });
 });
 
@@ -309,10 +311,11 @@ describe("public/sw.js push-only contract", () => {
   });
 
   it("rejects module syntax left in generated output (#42 fail-closed)", async () => {
-    const { assertClassicScriptOutput } = await import(
-      pathToFileURL(path.resolve(__dirname, "../../scripts/generate-sw.mjs"))
-        .href
-    );
+    const { assertClassicScriptOutput, assertBadgeRenameConsistency } =
+      await import(
+        pathToFileURL(path.resolve(__dirname, "../../scripts/generate-sw.mjs"))
+          .href
+      );
     expect(() => assertClassicScriptOutput("const x = 1;\n")).not.toThrow();
     // コメント内の import 言及は許容
     expect(() =>
@@ -328,6 +331,22 @@ describe("public/sw.js push-only contract", () => {
     expect(() => assertClassicScriptOutput("export const x = 1;\n")).toThrow(
       /export/,
     );
+
+    const good = `async function setAppBadgeSafelyWithNav(nav, count) {}
+async function clearAppBadgeSafelyWithNav(nav) {}
+async function setAppBadgeSafely(count) {
+  await setAppBadgeSafelyWithNav(self.navigator, count);
+}
+async function clearAppBadgeSafely() {
+  await clearAppBadgeSafelyWithNav(self.navigator);
+}
+`;
+    expect(() => assertBadgeRenameConsistency(good)).not.toThrow();
+    expect(() =>
+      assertBadgeRenameConsistency(
+        good.replace(/setAppBadgeSafelyWithNav/g, "setAppBadgeSafely"),
+      ),
+    ).toThrow(/duplicate top-level function|missing renamed/);
   });
 });
 

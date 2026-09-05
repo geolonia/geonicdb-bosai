@@ -67,9 +67,10 @@ function prepareEntrySource(source) {
   let s = source;
   s = s.replace(/^\/\*\*[\s\S]*?\*\/\s*/, "");
   s = s.replace(/^\/\/\/\s*<reference[^>]*>\s*/gm, "");
-  s = s.replace(/import\s+type\s+[^;]+;\s*/g, "");
-  s = s.replace(/import\s+[\s\S]*?from\s+["'][^"']+["'];\s*/g, "");
-  s = s.replace(/declare const self:[^;]+;\s*/g, "");
+  // 行頭の静的 import のみ除去（コメント/文字列内の import…from を巻き込まない）
+  s = s.replace(/^import\s+type\s+[^;]+;\s*/gm, "");
+  s = s.replace(/^import\s[\s\S]*?from\s+["'][^"']+["'];\s*/gm, "");
+  s = s.replace(/^declare const self:[^;]+;\s*/gm, "");
   return s.trim() + "\n";
 }
 
@@ -108,6 +109,7 @@ export function buildServiceWorkerSource() {
     .replace(/\s*$/, "\n");
   const source = `${BANNER}\n${body}`;
   assertClassicScriptOutput(source);
+  assertBadgeRenameConsistency(source);
   return source;
 }
 
@@ -117,9 +119,7 @@ export function buildServiceWorkerSource() {
  * コメント内の言及は無視する（バナーや説明文の false positive 防止）。
  */
 export function assertClassicScriptOutput(source) {
-  const withoutComments = source
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/\/\/.*$/gm, "");
+  const withoutComments = stripComments(source);
   const found = [];
   if (/\brequire\s*\(/.test(withoutComments)) found.push("require(");
   if (/\bimport\b/.test(withoutComments)) found.push("import");
@@ -131,6 +131,61 @@ export function assertClassicScriptOutput(source) {
   }
 }
 
+/**
+ * WithNav リネーム漏れ・ラッパーとの識別子衝突を fail-closed で検出する。
+ * 漏れがあると後勝ちの 1 引数ラッパーが未定義の WithNav を呼んで実行時 ReferenceError になる。
+ */
+export function assertBadgeRenameConsistency(source) {
+  const code = stripComments(source);
+  const required = ["setAppBadgeSafelyWithNav", "clearAppBadgeSafelyWithNav"];
+  for (const name of required) {
+    if (!new RegExp(String.raw`(?:async\s+)?function\s+${name}\b`).test(code)) {
+      throw new Error(
+        `generate-sw: missing renamed badge helper declaration: ${name}`,
+      );
+    }
+  }
+
+  const topLevelFns = [
+    ...code.matchAll(/^(?:async\s+)?function\s+([A-Za-z_$][\w$]*)/gm),
+  ].map((m) => m[1]);
+  const counts = new Map();
+  for (const name of topLevelFns) {
+    counts.set(name, (counts.get(name) ?? 0) + 1);
+  }
+  for (const [name, n] of counts) {
+    if (n > 1) {
+      throw new Error(
+        `generate-sw: duplicate top-level function declaration: ${name} (x${n})`,
+      );
+    }
+  }
+
+  // ラッパーが WithNav を呼ぶこと（リネーム漏れで自己再帰や未定義参照にならない）
+  if (
+    !/async function setAppBadgeSafely\s*\(\s*count\s*\)[\s\S]*?setAppBadgeSafelyWithNav\s*\(/.test(
+      code,
+    )
+  ) {
+    throw new Error(
+      "generate-sw: setAppBadgeSafely wrapper must call setAppBadgeSafelyWithNav",
+    );
+  }
+  if (
+    !/async function clearAppBadgeSafely\s*\(\s*\)[\s\S]*?clearAppBadgeSafelyWithNav\s*\(/.test(
+      code,
+    )
+  ) {
+    throw new Error(
+      "generate-sw: clearAppBadgeSafely wrapper must call clearAppBadgeSafelyWithNav",
+    );
+  }
+}
+
+function stripComments(source) {
+  return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+}
+
 function parseArgs(argv) {
   let out = defaultOutPath;
   let stdout = false;
@@ -138,8 +193,9 @@ function parseArgs(argv) {
     const arg = argv[i];
     if (arg === "--stdout") stdout = true;
     else if (arg === "--out") {
-      out = path.resolve(argv[++i] ?? "");
-      if (!out) throw new Error("generate-sw: --out requires a path");
+      const value = argv[++i];
+      if (!value) throw new Error("generate-sw: --out requires a path");
+      out = path.resolve(value);
     }
   }
   return { out, stdout };

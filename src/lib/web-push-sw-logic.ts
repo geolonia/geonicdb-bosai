@@ -1,6 +1,6 @@
 /**
  * Service Worker の push 通知文言・バッジロジック（unit test / ページ側と共有可能な純粋関数）。
- * `public/sw.js` は `scripts/generate-sw.mjs` が本ファイル + `src/sw/service-worker-handlers.ts`
+ * `public/sw.js` は `scripts/generate-sw.mjs` が本ファイル + `src/sw/service-worker.ts`
  * から生成する（#42）。手編集しない。言語配列は `SITE_LANGUAGES` と二重定義のため、
  * 一致テストでガードする。
  *
