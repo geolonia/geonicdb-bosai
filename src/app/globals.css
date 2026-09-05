@@ -38,7 +38,8 @@ a {
 
 a:focus-visible,
 button:focus-visible,
-select:focus-visible {
+select:focus-visible,
+input:focus-visible {
   outline: 3px solid var(--focus-ring);
   outline-offset: 2px;
 }
@@ -128,32 +129,74 @@ select:focus-visible {
   padding: 0.75rem 1rem 0;
 }
 
-.push-opt-in__button {
-  appearance: none;
-  border: 2px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font: inherit;
+.push-opt-in__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  /* 44px 相当のタップ領域（WCAG 2.5.8 Target Size） */
+  min-height: 2.75rem;
+}
+
+.push-opt-in__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.push-opt-in__title {
   font-weight: 600;
-  padding: 0.5rem 1rem;
+  line-height: 1.4;
   cursor: pointer;
 }
 
-.push-opt-in__button:disabled {
+.push-opt-in__hint {
+  font-size: 0.875rem;
+  color: var(--color-muted);
+  line-height: 1.4;
+}
+
+.push-opt-in__switch {
+  appearance: none;
+  flex-shrink: 0;
+  width: 3rem;
+  height: 1.75rem;
+  margin: 0;
+  border: 2px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  position: relative;
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.push-opt-in__switch::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0.2rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  background: var(--color-text);
+  transform: translateY(-50%);
+  transition: left 0.15s ease;
+}
+
+.push-opt-in__switch:checked {
+  border-color: var(--color-text);
+  background: var(--color-text);
+}
+
+.push-opt-in__switch:checked::before {
+  left: calc(100% - 1.3rem);
+  background: var(--color-surface);
+}
+
+.push-opt-in__switch:disabled {
   opacity: 0.7;
   cursor: wait;
-}
-
-.push-opt-in__enabled {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  align-items: center;
-}
-
-.push-opt-in__button--secondary {
-  font-weight: 500;
-  border-style: dashed;
 }
 
 .push-opt-in__status {

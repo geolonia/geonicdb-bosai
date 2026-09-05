@@ -110,7 +110,7 @@ describe("a11y: SiteHeader / QuickLinks / NewsList", () => {
 });
 
 describe("a11y: PushNotificationOptIn", () => {
-  it("enable button has no axe violations", async () => {
+  it("toggle switch has no axe violations", async () => {
     process.env.NEXT_PUBLIC_GEONICDB_URL = "https://geonicdb.example.example";
     process.env.NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY = "gdb_webpush_test";
     Object.defineProperty(window, "Notification", {
@@ -119,7 +119,9 @@ describe("a11y: PushNotificationOptIn", () => {
     });
     Object.defineProperty(navigator, "serviceWorker", {
       configurable: true,
-      value: {},
+      value: {
+        getRegistration: async () => undefined,
+      },
     });
     Object.defineProperty(window, "PushManager", {
       configurable: true,
@@ -129,7 +131,7 @@ describe("a11y: PushNotificationOptIn", () => {
     const { container, findByRole } = render(
       <PushNotificationOptIn lang="ja" strings={testStrings} />,
     );
-    await findByRole("button", { name: testStrings.pushEnableLabel });
+    await findByRole("switch", { name: testStrings.pushToggleLabel });
     expect(await runAxe(container)).toHaveNoViolations();
   });
 });

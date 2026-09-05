@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import type { SiteLanguage } from "@/config/site-language";
 import type { UiStrings } from "@/config/ui-strings";
 import { installAppBadgeClearOnForeground } from "@/lib/app-badge-client";
@@ -26,6 +32,14 @@ function isPushSupported(): boolean {
   );
 }
 
+function isNotificationPermissionDenied(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    "Notification" in window &&
+    Notification.permission === "denied"
+  );
+}
+
 function subscribeNoop(): () => void {
   return () => undefined;
 }
@@ -39,6 +53,7 @@ function getServerSnapshot(): boolean {
 }
 
 export function PushNotificationOptIn({ lang, strings }: Props) {
+  const switchId = useId();
   const isClient = useSyncExternalStore(
     subscribeNoop,
     getIsClientSnapshot,
@@ -47,6 +62,7 @@ export function PushNotificationOptIn({ lang, strings }: Props) {
   const [phase, setPhase] = useState<"idle" | "busy" | "error">("idle");
   const [stored, setStored] = useState<StoredWebPushState | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const [permissionDenied, setPermissionDenied] = useState(false);
 
   const registerConfigured = isClient && isWebPushConfigured();
   const pushSupported = isClient && isPushSupported();
@@ -57,6 +73,14 @@ export function PushNotificationOptIn({ lang, strings }: Props) {
     void (async () => {
       if (!available) {
         if (!cancelled) setHydrated(true);
+        return;
+      }
+      if (isNotificationPermissionDenied()) {
+        if (!cancelled) {
+          setPermissionDenied(true);
+          setStored(null);
+          setHydrated(true);
+        }
         return;
       }
       const state = await resolveActiveWebPushState();
@@ -92,6 +116,12 @@ export function PushNotificationOptIn({ lang, strings }: Props) {
       setStored(next);
       setPhase("idle");
     } catch {
+      if (isNotificationPermissionDenied()) {
+        setPermissionDenied(true);
+        setStored(null);
+        setPhase("idle");
+        return;
+      }
       setPhase("error");
     }
   }, [lang]);
@@ -106,6 +136,17 @@ export function PushNotificationOptIn({ lang, strings }: Props) {
       setPhase("error");
     }
   }, []);
+
+  const onToggle = useCallback(
+    (nextChecked: boolean) => {
+      if (nextChecked) {
+        void onEnable();
+      } else {
+        void onDisable();
+      }
+    },
+    [onEnable, onDisable],
+  );
 
   // 機能オフ（API キー未設定）または SSR: 何も出さない
   if (!registerConfigured) {
@@ -127,42 +168,56 @@ export function PushNotificationOptIn({ lang, strings }: Props) {
     return null;
   }
 
+  // OS / ブラウザが通知を拒否済み: トグルは出さず復旧案内のみ
+  if (permissionDenied) {
+    return (
+      <div className="push-opt-in">
+        <p className="push-opt-in__status" role="status">
+          {strings.pushPermissionDeniedLabel}
+        </p>
+      </div>
+    );
+  }
+
   const enabled = stored != null;
+  const busy = phase === "busy";
+  const hint = busy
+    ? strings.pushBusyLabel
+    : enabled
+      ? strings.pushToggleDescriptionOn
+      : strings.pushToggleDescriptionOff;
 
   return (
     <div className="push-opt-in">
-      {enabled ? (
-        <div className="push-opt-in__enabled">
-          <p className="push-opt-in__status" role="status" aria-live="polite">
-            {strings.pushEnabledLabel}
-          </p>
-          <button
-            type="button"
-            className="push-opt-in__button push-opt-in__button--secondary"
-            onClick={() => {
-              void onDisable();
-            }}
-            disabled={phase === "busy"}
-            aria-busy={phase === "busy"}
+      <div className="push-opt-in__row">
+        <div className="push-opt-in__copy">
+          <label
+            htmlFor={switchId}
+            id={`${switchId}-label`}
+            className="push-opt-in__title"
           >
-            {phase === "busy"
-              ? strings.pushBusyLabel
-              : strings.pushDisableLabel}
-          </button>
+            {strings.pushToggleLabel}
+          </label>
+          <span className="push-opt-in__hint" id={`${switchId}-hint`}>
+            {hint}
+          </span>
         </div>
-      ) : (
-        <button
-          type="button"
-          className="push-opt-in__button"
-          onClick={() => {
-            void onEnable();
+        <input
+          id={switchId}
+          type="checkbox"
+          role="switch"
+          className="push-opt-in__switch"
+          checked={enabled}
+          disabled={busy}
+          aria-busy={busy}
+          aria-checked={enabled}
+          aria-labelledby={`${switchId}-label`}
+          aria-describedby={`${switchId}-hint`}
+          onChange={(event) => {
+            onToggle(event.target.checked);
           }}
-          disabled={phase === "busy"}
-          aria-busy={phase === "busy"}
-        >
-          {phase === "busy" ? strings.pushBusyLabel : strings.pushEnableLabel}
-        </button>
-      )}
+        />
+      </div>
       {phase === "error" ? (
         <p className="push-opt-in__error" role="alert">
           {strings.pushErrorLabel}
