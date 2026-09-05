@@ -150,6 +150,13 @@ describe("AddToHomeScreenPrompt (#55)", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows install UI when BIP fires after mount (#60)", async () => {
+    render(<AddToHomeScreenPrompt strings={testStrings} />);
+    expect(screen.queryByTestId("a2hs-prompt")).not.toBeInTheDocument();
+    fireBeforeInstallPrompt();
+    expect(await screen.findByTestId("a2hs-prompt")).toBeInTheDocument();
+  });
+
   it("does not persist dismiss when native install UI is cancelled (#60)", async () => {
     render(<AddToHomeScreenPrompt strings={testStrings} />);
     const { prompt } = fireBeforeInstallPrompt("dismissed");

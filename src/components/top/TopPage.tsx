@@ -29,8 +29,6 @@ import {
   formatLoadError,
   UI_STRINGS,
 } from "@/config/ui-strings";
-// dynamic チャンクより前に BIP を捕捉する（#60 CodeRabbit）
-import "@/lib/a2hs-bip-bridge";
 import {
   getGeonicdbPublicClient,
   languagePropertyQuery,

@@ -55,6 +55,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja">
+      <head>
+        {/* React より前に BIP を捕捉する。
+         * next/script beforeInteractive は静的 export だと preload のみで実行されない実測あり。
+         * 同期 script は意図的（#55 / #60）。 */}
+        {/* eslint-disable-next-line @next/next/no-sync-scripts -- BIP boot must run before React (static export) */}
+        <script src={withBasePath("/a2hs-bip-boot.js", basePath)} />
+      </head>
       <body>{children}</body>
     </html>
   );

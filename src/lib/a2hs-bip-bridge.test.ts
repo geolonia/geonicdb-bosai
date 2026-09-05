@@ -4,6 +4,7 @@ import {
   bootstrapBeforeInstallPromptForTests,
   getStashedBeforeInstallPrompt,
   resetBeforeInstallPromptBootstrapForTests,
+  subscribeBeforeInstallPrompt,
 } from "@/lib/a2hs-bip-bridge";
 
 function fireBeforeInstallPrompt() {
@@ -32,9 +33,18 @@ describe("a2hs-bip-bridge (#60)", () => {
   });
 
   it("stashes beforeinstallprompt before the dynamic A2HS chunk would load", () => {
-    // TopPage が静的 import するブリッジだけで捕捉できること（prompt モジュール未ロード想定）
+    // boot / フォールバックだけで捕捉できること（prompt モジュール未ロード想定）
     expect(getStashedBeforeInstallPrompt()).toBeNull();
     const event = fireBeforeInstallPrompt();
     expect(getStashedBeforeInstallPrompt()).toBe(event);
+  });
+
+  it("replays stashed BIP when a subscriber registers after the event (#60)", () => {
+    const event = fireBeforeInstallPrompt();
+    const spy = vi.fn();
+    const unsubscribe = subscribeBeforeInstallPrompt(spy);
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy).toHaveBeenCalledWith(event);
+    unsubscribe();
   });
 });

@@ -1,9 +1,9 @@
 /**
  * beforeinstallprompt の早期捕捉ブリッジ（#55 / #60）。
  *
- * AddToHomeScreenPrompt は next/dynamic で遅延ロードされるため、
- * リスナーをそのチャンク内だけに置くと mount 前発火を取りこぼす。
- * TopPage など静的バンドルから本モジュールを import し、先に登録する。
+ * 実リスナーは `public/a2hs-bip-boot.js`（layout の beforeInteractive）が張る。
+ * 本モジュールは stash の読み出しと React 側購読を担当する。
+ * テスト環境など boot 未ロード時はフォールバックで自分で登録する。
  */
 
 export type BeforeInstallPromptEvent = Event & {
@@ -11,8 +11,15 @@ export type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 };
 
+type BosaiA2hsWindow = Window & {
+  __bosaiA2hsBipBootstrapped?: boolean;
+  __bosaiA2hsBip?: BeforeInstallPromptEvent | null;
+};
+
 let stashedBeforeInstallPrompt: BeforeInstallPromptEvent | null = null;
 const bipListeners = new Set<(event: BeforeInstallPromptEvent) => void>();
+let fallbackListening = false;
+let customEventListening = false;
 
 function notifyBipListeners(event: BeforeInstallPromptEvent): void {
   for (const listener of bipListeners) {
@@ -20,27 +27,69 @@ function notifyBipListeners(event: BeforeInstallPromptEvent): void {
   }
 }
 
+function readWindowStash(): BeforeInstallPromptEvent | null {
+  if (typeof window === "undefined") return null;
+  const w = window as BosaiA2hsWindow;
+  return w.__bosaiA2hsBip ?? null;
+}
+
+function syncStashFromWindow(): BeforeInstallPromptEvent | null {
+  const fromWindow = readWindowStash();
+  if (fromWindow) {
+    stashedBeforeInstallPrompt = fromWindow;
+  }
+  return stashedBeforeInstallPrompt;
+}
+
 function onWindowBeforeInstallPrompt(event: Event): void {
   event.preventDefault();
   const bip = event as BeforeInstallPromptEvent;
   stashedBeforeInstallPrompt = bip;
+  if (typeof window !== "undefined") {
+    (window as BosaiA2hsWindow).__bosaiA2hsBip = bip;
+  }
   notifyBipListeners(bip);
+}
+
+function onBosaiBeforeInstallPrompt(): void {
+  const bip = syncStashFromWindow();
+  if (bip) {
+    notifyBipListeners(bip);
+  }
 }
 
 export function ensureBeforeInstallPromptBootstrap(): void {
   if (typeof window === "undefined") return;
-  const flagged = window as Window & { __bosaiA2hsBipBootstrapped?: boolean };
-  if (flagged.__bosaiA2hsBipBootstrapped) return;
-  flagged.__bosaiA2hsBipBootstrapped = true;
+  const w = window as BosaiA2hsWindow;
+
+  // public boot が既に張っていれば CustomEvent で追従するだけ
+  if (w.__bosaiA2hsBipBootstrapped) {
+    syncStashFromWindow();
+    if (!customEventListening) {
+      customEventListening = true;
+      window.addEventListener(
+        "bosai:beforeinstallprompt",
+        onBosaiBeforeInstallPrompt,
+      );
+    }
+    return;
+  }
+
+  if (fallbackListening) return;
+  fallbackListening = true;
+  w.__bosaiA2hsBipBootstrapped = true;
   window.addEventListener("beforeinstallprompt", onWindowBeforeInstallPrompt);
 }
 
 export function getStashedBeforeInstallPrompt(): BeforeInstallPromptEvent | null {
-  return stashedBeforeInstallPrompt;
+  return syncStashFromWindow();
 }
 
 export function clearStashedBeforeInstallPrompt(): void {
   stashedBeforeInstallPrompt = null;
+  if (typeof window !== "undefined") {
+    (window as BosaiA2hsWindow).__bosaiA2hsBip = null;
+  }
 }
 
 export function subscribeBeforeInstallPrompt(
@@ -48,6 +97,11 @@ export function subscribeBeforeInstallPrompt(
 ): () => void {
   ensureBeforeInstallPromptBootstrap();
   bipListeners.add(listener);
+  // 購読前に stash 済みのイベントを取りこぼさない（#60 CodeRabbit）
+  const current = syncStashFromWindow();
+  if (current) {
+    listener(current);
+  }
   return () => {
     bipListeners.delete(listener);
   };
@@ -58,15 +112,24 @@ export function resetBeforeInstallPromptBootstrapForTests(): void {
   stashedBeforeInstallPrompt = null;
   bipListeners.clear();
   if (typeof window !== "undefined") {
-    const flagged = window as Window & { __bosaiA2hsBipBootstrapped?: boolean };
-    if (flagged.__bosaiA2hsBipBootstrapped) {
+    const w = window as BosaiA2hsWindow;
+    if (fallbackListening) {
       window.removeEventListener(
         "beforeinstallprompt",
         onWindowBeforeInstallPrompt,
       );
-      flagged.__bosaiA2hsBipBootstrapped = false;
     }
+    if (customEventListening) {
+      window.removeEventListener(
+        "bosai:beforeinstallprompt",
+        onBosaiBeforeInstallPrompt,
+      );
+    }
+    w.__bosaiA2hsBipBootstrapped = false;
+    w.__bosaiA2hsBip = null;
   }
+  fallbackListening = false;
+  customEventListening = false;
 }
 
 /** テスト用: BIP 早期捕捉リスナーを再度張る */
@@ -74,5 +137,5 @@ export function bootstrapBeforeInstallPromptForTests(): void {
   ensureBeforeInstallPromptBootstrap();
 }
 
-// 静的 import 時点で登録（dynamic chunk 待ちにしない）
+// クライアントで評価されたら boot / フォールバックを確保
 ensureBeforeInstallPromptBootstrap();
