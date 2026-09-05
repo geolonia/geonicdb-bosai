@@ -2,14 +2,14 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  AddToHomeScreenPrompt,
-  bootstrapBeforeInstallPromptForTests,
-  resetBeforeInstallPromptBootstrapForTests,
-} from "@/components/top/AddToHomeScreenPrompt";
+import { AddToHomeScreenPrompt } from "@/components/top/AddToHomeScreenPrompt";
 import { SITE_LANGUAGES } from "@/config/site-language";
 import { UI_STRINGS } from "@/config/ui-strings";
 import { A2HS_DISMISS_STORAGE_KEY, A2HS_VISIBLE_HTML_CLASS } from "@/lib/a2hs";
+import {
+  bootstrapBeforeInstallPromptForTests,
+  resetBeforeInstallPromptBootstrapForTests,
+} from "@/lib/a2hs-bip-bridge";
 import { testStrings } from "@/test/fixtures";
 
 type MatchMediaResult = {

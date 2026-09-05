@@ -10,6 +10,12 @@ import {
 } from "react";
 import type { UiStrings } from "@/config/ui-strings";
 import {
+  clearStashedBeforeInstallPrompt,
+  getStashedBeforeInstallPrompt,
+  subscribeBeforeInstallPrompt,
+  type BeforeInstallPromptEvent,
+} from "@/lib/a2hs-bip-bridge";
+import {
   A2HS_RESERVE_CSS_VAR,
   A2HS_VISIBLE_HTML_CLASS,
   dismissA2hsPrompt,
@@ -21,63 +27,6 @@ import {
 type Props = {
   strings: UiStrings;
 };
-
-/** Chromium 系の beforeinstallprompt が載せるイベント */
-type BeforeInstallPromptEvent = Event & {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
-};
-
-/**
- * useEffect 登録前に BIP が発火しても取りこぼさないようモジュールで保持する。
- * （CodeRabbit #60: mount 前発火の取りこぼし防止）
- */
-let stashedBeforeInstallPrompt: BeforeInstallPromptEvent | null = null;
-const bipListeners = new Set<(event: BeforeInstallPromptEvent) => void>();
-
-function notifyBipListeners(event: BeforeInstallPromptEvent): void {
-  for (const listener of bipListeners) {
-    listener(event);
-  }
-}
-
-function onWindowBeforeInstallPrompt(event: Event): void {
-  event.preventDefault();
-  const bip = event as BeforeInstallPromptEvent;
-  stashedBeforeInstallPrompt = bip;
-  notifyBipListeners(bip);
-}
-
-function ensureBeforeInstallPromptBootstrap(): void {
-  if (typeof window === "undefined") return;
-  const flagged = window as Window & { __bosaiA2hsBipBootstrapped?: boolean };
-  if (flagged.__bosaiA2hsBipBootstrapped) return;
-  flagged.__bosaiA2hsBipBootstrapped = true;
-  window.addEventListener("beforeinstallprompt", onWindowBeforeInstallPrompt);
-}
-
-/** テスト用: モジュール保持と bootstrap フラグをリセットする */
-export function resetBeforeInstallPromptBootstrapForTests(): void {
-  stashedBeforeInstallPrompt = null;
-  bipListeners.clear();
-  if (typeof window !== "undefined") {
-    const flagged = window as Window & { __bosaiA2hsBipBootstrapped?: boolean };
-    if (flagged.__bosaiA2hsBipBootstrapped) {
-      window.removeEventListener(
-        "beforeinstallprompt",
-        onWindowBeforeInstallPrompt,
-      );
-      flagged.__bosaiA2hsBipBootstrapped = false;
-    }
-  }
-}
-
-/** テスト用: BIP 早期捕捉リスナーを再度張る */
-export function bootstrapBeforeInstallPromptForTests(): void {
-  ensureBeforeInstallPromptBootstrap();
-}
-
-ensureBeforeInstallPromptBootstrap();
 
 function subscribeNoop(): () => void {
   return () => undefined;
@@ -99,7 +48,7 @@ function clearA2hsViewportReserve(): void {
 /**
  * ホーム画面への追加（A2HS）導線。
  * - PWA 起動中は出さない
- * - 一度閉じたら再表示しない
+ * - 一度閉じたら再表示しない（※明示的な「閉じる」のみ。ネイティブキャンセルは別扱い）
  * - Android/Chrome: beforeinstallprompt → 独自ボタンで prompt()
  * - iOS: 共有メニュー手順の案内のみ（BIP は発火しない）
  * - fixed 帯の高さ分を body padding で確保（末尾が隠れない / CLS 回避）
@@ -113,7 +62,9 @@ export function AddToHomeScreenPrompt({ strings }: Props) {
     getServerSnapshot,
   );
   const [deferredPrompt, setDeferredPrompt] =
-    useState<BeforeInstallPromptEvent | null>(() => stashedBeforeInstallPrompt);
+    useState<BeforeInstallPromptEvent | null>(() =>
+      getStashedBeforeInstallPrompt(),
+    );
   const [dismissedLocal, setDismissedLocal] = useState(false);
 
   let standalone = false;
@@ -136,15 +87,9 @@ export function AddToHomeScreenPrompt({ strings }: Props) {
   useEffect(() => {
     if (!isClient || standalone || dismissed) return;
 
-    ensureBeforeInstallPromptBootstrap();
-
-    const onBip = (event: BeforeInstallPromptEvent) => {
+    return subscribeBeforeInstallPrompt((event) => {
       setDeferredPrompt(event);
-    };
-    bipListeners.add(onBip);
-    return () => {
-      bipListeners.delete(onBip);
-    };
+    });
   }, [isClient, standalone, dismissed]);
 
   const visible =
@@ -193,10 +138,11 @@ export function AddToHomeScreenPrompt({ strings }: Props) {
   }, [visible]);
 
   const onDismiss = useCallback(() => {
+    // 明示的な「閉じる」= 恒久 dismiss（防災サイトで毎回出すのは邪魔）
     dismissA2hsPrompt();
     setDismissedLocal(true);
     setDeferredPrompt(null);
-    stashedBeforeInstallPrompt = null;
+    clearStashedBeforeInstallPrompt();
   }, []);
 
   const onInstall = useCallback(async () => {
@@ -204,10 +150,14 @@ export function AddToHomeScreenPrompt({ strings }: Props) {
     try {
       await deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
-      // ネイティブ UI でキャンセルした場合は永続 dismiss しない（再試行可）
+      // ネイティブ UI で「キャンセル」した場合:
+      // - 恒久 dismiss は保存しない（「今回は後で」の意図）
+      // - 消費済み BIP は捨て、帯は一旦閉じる
+      // - 次回ページ表示でブラウザが BIP を再発火すれば再び導線を出せる
+      // 明示的な「閉じる」ボタンとは意図が違うので区別する
       if (outcome !== "accepted") {
         setDeferredPrompt(null);
-        stashedBeforeInstallPrompt = null;
+        clearStashedBeforeInstallPrompt();
         return;
       }
     } catch {
@@ -215,7 +165,7 @@ export function AddToHomeScreenPrompt({ strings }: Props) {
       return;
     }
     setDeferredPrompt(null);
-    stashedBeforeInstallPrompt = null;
+    clearStashedBeforeInstallPrompt();
     dismissA2hsPrompt();
     setDismissedLocal(true);
   }, [deferredPrompt]);
