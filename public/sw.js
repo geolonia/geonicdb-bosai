@@ -8,7 +8,13 @@
 
 "use strict";
 /** `SITE_LANGUAGES` と同値。SW バンドル依存ゼロ化のためのローカル定義（#42）。 */
-const WEB_PUSH_SITE_LANGUAGES = ["ja", "en", "zh-CN", "vi", "ko"];
+const WEB_PUSH_SITE_LANGUAGES = [
+    "ja",
+    "en",
+    "zh-CN",
+    "vi",
+    "ko",
+];
 const WEB_PUSH_MESSAGES = {
     ja: {
         "bosai-AlertLevel": {

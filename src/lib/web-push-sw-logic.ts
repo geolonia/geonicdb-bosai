@@ -11,7 +11,13 @@
  */
 
 /** `SITE_LANGUAGES` と同値。SW バンドル依存ゼロ化のためのローカル定義（#42）。 */
-export const WEB_PUSH_SITE_LANGUAGES = ["ja", "en", "zh-CN", "vi", "ko"] as const;
+export const WEB_PUSH_SITE_LANGUAGES = [
+  "ja",
+  "en",
+  "zh-CN",
+  "vi",
+  "ko",
+] as const;
 
 export type WebPushSiteLanguage = (typeof WEB_PUSH_SITE_LANGUAGES)[number];
 

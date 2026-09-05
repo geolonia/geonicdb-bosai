@@ -103,7 +103,9 @@ export function buildServiceWorkerSource() {
   }
 
   // 生成結果は常に LF。末尾改行を 1 つに正規化。
-  const body = transpiled.outputText.replace(/\r\n/g, "\n").replace(/\s*$/, "\n");
+  const body = transpiled.outputText
+    .replace(/\r\n/g, "\n")
+    .replace(/\s*$/, "\n");
   const source = `${BANNER}\n${body}`;
   assertClassicScriptOutput(source);
   return source;

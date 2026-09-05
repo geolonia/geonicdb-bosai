@@ -59,7 +59,9 @@ describe("web-push-sw-logic", () => {
     // 要素は同じでも順序が違えばサイト言語の優先順位とズレる（通ってはいけない）
     const reordered = ["en", "ja", "zh-CN", "vi", "ko"];
     expect(reordered).not.toEqual([...SITE_LANGUAGES]);
-    expect(reordered.slice().sort()).toEqual([...SITE_LANGUAGES].slice().sort());
+    expect(reordered.slice().sort()).toEqual(
+      [...SITE_LANGUAGES].slice().sort(),
+    );
   });
 });
 
@@ -299,9 +301,8 @@ describe("public/sw.js push-only contract", () => {
 
   it("is generated from web-push-sw-logic (#42 freshness)", async () => {
     const { buildServiceWorkerSource } = await import(
-      pathToFileURL(
-        path.resolve(__dirname, "../../scripts/generate-sw.mjs"),
-      ).href
+      pathToFileURL(path.resolve(__dirname, "../../scripts/generate-sw.mjs"))
+        .href
     );
     const expected = buildServiceWorkerSource();
     expect(sw.replace(/\r\n/g, "\n")).toBe(expected);
@@ -309,9 +310,8 @@ describe("public/sw.js push-only contract", () => {
 
   it("rejects module syntax left in generated output (#42 fail-closed)", async () => {
     const { assertClassicScriptOutput } = await import(
-      pathToFileURL(
-        path.resolve(__dirname, "../../scripts/generate-sw.mjs"),
-      ).href
+      pathToFileURL(path.resolve(__dirname, "../../scripts/generate-sw.mjs"))
+        .href
     );
     expect(() => assertClassicScriptOutput("const x = 1;\n")).not.toThrow();
     // コメント内の import 言及は許容

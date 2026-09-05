@@ -23,7 +23,9 @@ const { buildServiceWorkerSource } = await import(
 );
 
 if (!fs.existsSync(committedPath)) {
-  fail(`missing ${path.relative(root, committedPath)} — run npm run generate:sw`);
+  fail(
+    `missing ${path.relative(root, committedPath)} — run npm run generate:sw`,
+  );
 }
 
 const expected = buildServiceWorkerSource();
