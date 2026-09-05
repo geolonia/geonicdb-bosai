@@ -123,4 +123,18 @@ describe("PushNotificationOptIn state transition", () => {
       );
     });
   });
+
+  it("shows unsupported status when Push APIs are missing", async () => {
+    // Notification / serviceWorker / PushManager を外す
+    Reflect.deleteProperty(window, "Notification");
+    Reflect.deleteProperty(navigator, "serviceWorker");
+    Reflect.deleteProperty(window, "PushManager");
+
+    render(<PushNotificationOptIn lang="ja" strings={testStrings} />);
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      testStrings.pushUnsupportedLabel,
+    );
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
 });

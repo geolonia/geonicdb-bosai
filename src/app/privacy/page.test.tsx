@@ -38,12 +38,23 @@ describe("PrivacyPage (N-26)", () => {
     expect(main.textContent).toMatch(/ページ読み込み時に自動では行いません/);
   });
 
-  // near-miss: wording that admits server storage must fail even if "位置情報を" が直前に無い
+  // near-miss: wording that admits server-side storage of location must fail
   it("does not claim server-side storage or upload of location", () => {
     render(<PrivacyPage />);
     const main = screen.getByRole("main");
-    expect(main.textContent).not.toMatch(/サーバに保存して/);
-    expect(main.textContent).not.toMatch(/サーバーに保存/);
+    expect(main.textContent).not.toMatch(/位置情報をサーバに保存/);
     expect(main.textContent).not.toMatch(/位置情報を送信して/);
+  });
+
+  it("metadata description scopes device-only claim to location and notes Web Push exception", async () => {
+    const mod = await import("@/app/privacy/page");
+    const description = (mod.metadata as { description?: string }).description;
+    expect(description).toMatch(/位置情報は端末側処理を優先しサーバに保存しない/);
+    expect(description).toMatch(/Web Push/);
+    expect(description).toMatch(/GeonicDB/);
+    // 旧メタ（広い「サーバに保存しない」だけ）への回帰を防ぐ
+    expect(description).not.toBe(
+      "位置情報・個人情報の取扱い方針の雛形（端末側処理を優先しサーバに保存しない）",
+    );
   });
 });

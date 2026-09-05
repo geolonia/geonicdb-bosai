@@ -4,7 +4,7 @@ import { ContentPageChrome } from "@/components/content/ContentPageChrome";
 export const metadata: Metadata = {
   title: "プライバシーポリシー | 防災情報",
   description:
-    "位置情報・個人情報の取扱い方針の雛形（端末側処理を優先しサーバに保存しない）",
+    "位置情報は端末側処理を優先しサーバに保存しない。Web Push 購読情報（PushSubscription）は利用者の同意時のみ登録用プロキシ経由で GeonicDB に保存する。個人情報・プライバシー方針の雛形",
 };
 
 /**

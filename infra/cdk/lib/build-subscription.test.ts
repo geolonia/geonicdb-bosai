@@ -50,7 +50,7 @@ describe("buildNgsiLdWebPushSubscription", () => {
     expect(body.entities).toEqual(
       BOSAI_LIVE_ENTITY_TYPES.map((type) => ({ type })),
     );
-    // フロントの BOSAI_LIVE_ENTITY_TYPES と同一であること（src/lib/bosai-live-entity-types.ts）
+    // shared/bosai-live-entity-types.ts が単一の定義元
     expect([...BOSAI_LIVE_ENTITY_TYPES]).toEqual([
       "bosai-Notice",
       "bosai-EmergencyBanner",

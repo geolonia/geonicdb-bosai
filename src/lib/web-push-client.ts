@@ -246,13 +246,15 @@ export async function enableWebPushNotifications(options: {
     return stored;
   }
 
-  const vapidKey = await fetchVapidPublicKey(options.env, options.fetchFn);
-  const subscription =
-    existingSub ??
-    (await registration.pushManager.subscribe({
+  // 既存 PushSubscription がある場合は VAPID 取得をスキップ（localStorage 再同期のみ）
+  let subscription = existingSub;
+  if (!subscription) {
+    const vapidKey = await fetchVapidPublicKey(options.env, options.fetchFn);
+    subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(vapidKey) as BufferSource,
-    }));
+    });
+  }
   const json = subscription.toJSON();
   const endpoint = json.endpoint ?? subscription.endpoint;
   const subscriptionId = await registerPushWithProxy(

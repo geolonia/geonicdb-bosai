@@ -94,4 +94,4 @@
 
 ## 6. Issue 分割方針
 
-MVP機能（3節の#1〜#10）を軸に、Cursor が1issue=1機能で実装できる粒度に分割する。最初のissueは**プロジェクト初期セットアップ**（Next.js scaffold、`@geolonia/geonicdb-sdk`導入、Lint/CI設定）とし、以降を機能単位で積む。
+MVP機能（3節の#1〜#11）を軸に、Cursor が1issue=1機能で実装できる粒度に分割する。最初のissueは**プロジェクト初期セットアップ**（Next.js scaffold、`@geolonia/geonicdb-sdk`導入、Lint/CI設定）とし、以降を機能単位で積む。

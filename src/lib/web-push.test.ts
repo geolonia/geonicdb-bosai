@@ -134,11 +134,14 @@ describe("public/sw.js push-only contract", () => {
   });
 });
 
-describe("BOSAI_LIVE_ENTITY_TYPES parity with Lambda", () => {
-  it("matches the webpush subscription entity list", async () => {
-    const { BOSAI_LIVE_ENTITY_TYPES } =
+describe("BOSAI_LIVE_ENTITY_TYPES single source", () => {
+  it("frontend re-export matches shared module (Lambda imports the same file)", async () => {
+    const { BOSAI_LIVE_ENTITY_TYPES: fromSrc } =
       await import("@/lib/bosai-live-entity-types");
-    expect([...BOSAI_LIVE_ENTITY_TYPES]).toEqual([
+    const { BOSAI_LIVE_ENTITY_TYPES: fromShared } =
+      await import("../../shared/bosai-live-entity-types");
+    expect(fromSrc).toBe(fromShared);
+    expect([...fromShared]).toEqual([
       "bosai-Notice",
       "bosai-EmergencyBanner",
       "bosai-AlertLevel",

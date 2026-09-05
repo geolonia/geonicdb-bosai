@@ -1,11 +1,8 @@
 /**
  * ライブ更新・Web Push が対象とするエンティティタイプ。
- * Lambda（infra/cdk/lambda/webpush-proxy）からも同一配列を参照する。
+ * 定義本体は `shared/bosai-live-entity-types.ts`（Lambda と共有）。
  */
-export const BOSAI_LIVE_ENTITY_TYPES = [
-  "bosai-Notice",
-  "bosai-EmergencyBanner",
-  "bosai-AlertLevel",
-] as const;
-
-export type BosaiLiveEntityType = (typeof BOSAI_LIVE_ENTITY_TYPES)[number];
+export {
+  BOSAI_LIVE_ENTITY_TYPES,
+  type BosaiLiveEntityType,
+} from "../../shared/bosai-live-entity-types";

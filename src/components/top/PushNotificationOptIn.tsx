@@ -47,8 +47,9 @@ export function PushNotificationOptIn({ lang, strings }: Props) {
   const [stored, setStored] = useState<StoredWebPushState | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
-  const available =
-    isClient && resolveWebPushRegisterUrl() != null && isPushSupported();
+  const registerConfigured = isClient && resolveWebPushRegisterUrl() != null;
+  const pushSupported = isClient && isPushSupported();
+  const available = registerConfigured && pushSupported;
 
   useEffect(() => {
     let cancelled = false;
@@ -99,7 +100,23 @@ export function PushNotificationOptIn({ lang, strings }: Props) {
     }
   }, []);
 
-  if (!available || !hydrated) {
+  // 機能オフ（URL 未設定）または SSR: 何も出さない
+  if (!registerConfigured) {
+    return null;
+  }
+
+  // 未対応ブラウザ: 理由を status で明示
+  if (!pushSupported) {
+    return (
+      <div className="push-opt-in">
+        <p className="push-opt-in__status" role="status">
+          {strings.pushUnsupportedLabel}
+        </p>
+      </div>
+    );
+  }
+
+  if (!hydrated) {
     return null;
   }
 

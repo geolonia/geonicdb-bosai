@@ -2,12 +2,12 @@
  * ブラウザ PushSubscription → NGSI-LD webpush サブスクリプション body の整形。
  * GeonicDB #3014: notification.endpoint.protocol=webpush + webpush.keys。
  */
+import {
+  BOSAI_LIVE_ENTITY_TYPES,
+  type BosaiLiveEntityType,
+} from "../../../../shared/bosai-live-entity-types";
 
-export const BOSAI_LIVE_ENTITY_TYPES = [
-  "bosai-Notice",
-  "bosai-EmergencyBanner",
-  "bosai-AlertLevel",
-] as const;
+export { BOSAI_LIVE_ENTITY_TYPES, type BosaiLiveEntityType };
 
 export type PushSubscriptionInput = {
   endpoint: string;
