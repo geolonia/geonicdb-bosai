@@ -128,15 +128,21 @@ CAA / DNSSEC は独自ドメイン接続後に DNS 側で設定する。
 ## Web Push（#39）
 
 **中間サーバーは不要。** Web Push は gh-pages 上の静的アセットと GeonicDB の 2 者で完結する。
-ブラウザが `NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY`（サブスクリプション作成専用）を使い、
+ブラウザが `NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY`（サブスクリプション操作と配信時認可用）を使い、
 GeonicDB の `/ngsi-ld/v1/subscriptions` へ直接 POST / DELETE する。
 
 - VAPID 公開鍵: `GET /.well-known/webpush-vapid-key`（認証不要）
-- 登録キーのポリシー: `bosai-webpush-proxy-write`（subscriptions のみ。エンティティ書き込み不可）
+- 登録キーのポリシー: `bosai-webpush-proxy-write`（subscriptions の POST/DELETE/GET **と** `bosai-*` の GET。エンティティ書き込み不可）。配信時に購読所有者の認可を判定するため、対象エンティティタイプを読めないと配信が沈黙スキップされる（詳細・ポリシー JSON は [`geonicdb-setup.md`](geonicdb-setup.md)）
 - SSRF / 量産防御は GeonicDB 本体（配信時の `pinnedRequest` + API キー `rateLimit`）に委ねる
 - Lambda Function URL / CloudFront `/api/webpush` / WAFv2 は使わない（#35/#36 の中間層は撤去）
 
 キー発行・Secrets 投入は運用側（課長）。手順の命名規則は [`geonicdb-setup.md`](geonicdb-setup.md) を参照。
+
+**通知が届かないとき**（切り分けの要約。手順の詳細は [`geonicdb-setup.md`](geonicdb-setup.md) のトラブルシューティング）:
+
+- `geonic subscriptions get <id>` で `timesSent: 0` かつ `lastFailure` 無し → 配信未試行。購読キーの対象エンティティ GET 権限を疑う
+- `timesSent > 0` で `lastFailureReason` が HTTP ステータス → Push Service 到達済み。`404`/`410` は購読失効
+- iOS で届かない → 下の「iOS PWA とバッジ」を参照（ホーム画面追加必須）
 
 ### iOS PWA とバッジ（#41）
 
