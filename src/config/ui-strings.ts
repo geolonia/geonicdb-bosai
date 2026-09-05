@@ -25,13 +25,15 @@ export type UiStrings = {
   /** F-45: 取得失敗かつ最終取得時刻あり。`{time}` は HH:MM。 */
   loadErrorWithLastFetch: string;
   bannerLoadingLabel: string;
-  /** #35 Web Push 購読ボタン */
-  pushEnableLabel: string;
-  pushEnabledLabel: string;
+  /** #35 / #56 Web Push トグル */
+  pushToggleLabel: string;
+  pushToggleDescriptionOff: string;
+  pushToggleDescriptionOn: string;
   pushUnsupportedLabel: string;
   pushErrorLabel: string;
   pushBusyLabel: string;
-  pushDisableLabel: string;
+  /** OS / ブラウザが通知を拒否済みのときの復旧案内 */
+  pushPermissionDeniedLabel: string;
   quickLinks: {
     shelters: string;
     hazard: string;
@@ -74,13 +76,15 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
     asOfLabel: "この情報は {time} 時点",
     loadErrorWithLastFetch: "情報を取得できません（最終取得 {time}）",
     bannerLoadingLabel: "緊急情報を読み込み中",
-    pushEnableLabel: "通知を受け取る",
-    pushEnabledLabel: "通知はオンです",
+    pushToggleLabel: "災害情報の通知",
+    pushToggleDescriptionOff: "警戒レベルの変更をお知らせ",
+    pushToggleDescriptionOn: "通知を受け取ります",
     pushUnsupportedLabel: "このブラウザでは通知を利用できません",
     pushErrorLabel:
       "通知の設定に失敗しました。時間をおいて再度お試しください。",
     pushBusyLabel: "通知を設定しています…",
-    pushDisableLabel: "通知をオフにする",
+    pushPermissionDeniedLabel:
+      "通知が許可されていません。ブラウザまたは端末の設定から通知を許可してください。",
     quickLinks: {
       shelters: "避難所を探す",
       hazard: "ハザードマップ",
@@ -131,12 +135,15 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
     loadErrorWithLastFetch:
       "Unable to retrieve information (last fetched {time})",
     bannerLoadingLabel: "Loading emergency information",
-    pushEnableLabel: "Enable notifications",
-    pushEnabledLabel: "Notifications are on",
+    pushToggleLabel: "Disaster alerts",
+    pushToggleDescriptionOff: "Get alert level changes",
+    pushToggleDescriptionOn: "You will receive notifications",
     pushUnsupportedLabel: "Notifications are not supported in this browser",
-    pushErrorLabel: "Could not enable notifications. Please try again later.",
-    pushBusyLabel: "Enabling notifications…",
-    pushDisableLabel: "Turn off notifications",
+    pushErrorLabel:
+      "Could not update notification settings. Please try again later.",
+    pushBusyLabel: "Updating notification settings…",
+    pushPermissionDeniedLabel:
+      "Notifications are blocked. Allow them in your browser or device settings.",
     quickLinks: {
       shelters: "Find Shelters",
       hazard: "Hazard Map",
@@ -186,12 +193,13 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
     asOfLabel: "本信息截至 {time}",
     loadErrorWithLastFetch: "无法获取信息（最后获取 {time}）",
     bannerLoadingLabel: "正在加载紧急信息",
-    pushEnableLabel: "接收通知",
-    pushEnabledLabel: "通知已开启",
+    pushToggleLabel: "灾害信息通知",
+    pushToggleDescriptionOff: "接收警戒级别变更通知",
+    pushToggleDescriptionOn: "将接收通知",
     pushUnsupportedLabel: "此浏览器不支持通知",
-    pushErrorLabel: "无法开启通知。请稍后再试。",
+    pushErrorLabel: "无法更新通知设置。请稍后再试。",
     pushBusyLabel: "正在设置通知…",
-    pushDisableLabel: "关闭通知",
+    pushPermissionDeniedLabel: "通知未被允许。请在浏览器或设备设置中允许通知。",
     quickLinks: {
       shelters: "查找避难所",
       hazard: "灾害风险地图",
@@ -241,12 +249,15 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
     asOfLabel: "Thông tin này tính đến {time}",
     loadErrorWithLastFetch: "Không thể lấy thông tin (lần lấy cuối {time})",
     bannerLoadingLabel: "Đang tải thông tin khẩn cấp",
-    pushEnableLabel: "Nhận thông báo",
-    pushEnabledLabel: "Thông báo đang bật",
+    pushToggleLabel: "Thông báo thiên tai",
+    pushToggleDescriptionOff: "Nhận thay đổi mức cảnh báo",
+    pushToggleDescriptionOn: "Bạn sẽ nhận thông báo",
     pushUnsupportedLabel: "Trình duyệt này không hỗ trợ thông báo",
-    pushErrorLabel: "Không thể bật thông báo. Vui lòng thử lại sau.",
+    pushErrorLabel:
+      "Không thể cập nhật cài đặt thông báo. Vui lòng thử lại sau.",
     pushBusyLabel: "Đang thiết lập thông báo…",
-    pushDisableLabel: "Tắt thông báo",
+    pushPermissionDeniedLabel:
+      "Thông báo chưa được cho phép. Hãy cho phép trong cài đặt trình duyệt hoặc thiết bị.",
     quickLinks: {
       shelters: "Tìm nơi sơ tán",
       hazard: "Bản đồ rủi ro",
@@ -298,12 +309,14 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
     asOfLabel: "이 정보는 {time} 시점입니다",
     loadErrorWithLastFetch: "정보를 가져올 수 없습니다(마지막 취득 {time})",
     bannerLoadingLabel: "긴급 정보를 불러오는 중",
-    pushEnableLabel: "알림 받기",
-    pushEnabledLabel: "알림이 켜져 있습니다",
+    pushToggleLabel: "재해 정보 알림",
+    pushToggleDescriptionOff: "경계 수준 변경을 알려 드립니다",
+    pushToggleDescriptionOn: "알림을 받습니다",
     pushUnsupportedLabel: "이 브라우저에서는 알림을 사용할 수 없습니다",
     pushErrorLabel: "알림 설정에 실패했습니다. 잠시 후 다시 시도해 주세요.",
     pushBusyLabel: "알림을 설정하는 중…",
-    pushDisableLabel: "알림 끄기",
+    pushPermissionDeniedLabel:
+      "알림이 허용되지 않았습니다. 브라우저 또는 기기 설정에서 알림을 허용해 주세요.",
     quickLinks: {
       shelters: "대피소 찾기",
       hazard: "위험 지도",
