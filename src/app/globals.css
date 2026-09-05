@@ -134,7 +134,6 @@ input:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  /* 44px 相当のタップ領域（WCAG 2.5.8 Target Size） */
   min-height: 2.75rem;
 }
 
@@ -157,20 +156,44 @@ input:focus-visible {
   line-height: 1.4;
 }
 
+/*
+ * トグルの当たり判定は input 自体が 44px 相当（WCAG 2.5.8）。
+ * 見た目のレール/つまみは ::after / ::before で中央に描く（見た目は約 48×28px のまま）。
+ */
 .push-opt-in__switch {
   appearance: none;
   flex-shrink: 0;
+  box-sizing: border-box;
   width: 3rem;
-  height: 1.75rem;
+  /* 入力要素自体のヒットボックス（親 row の余白に頼らない） */
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  height: 2.75rem;
   margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  position: relative;
+  cursor: pointer;
+}
+
+/* 見た目のレール */
+.push-opt-in__switch::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1.75rem;
+  transform: translateY(-50%);
   border: 2px solid var(--color-border);
   border-radius: 999px;
   background: var(--color-surface);
-  position: relative;
-  cursor: pointer;
-  vertical-align: middle;
+  box-sizing: border-box;
+  pointer-events: none;
 }
 
+/* 見た目のつまみ */
 .push-opt-in__switch::before {
   content: "";
   position: absolute;
@@ -182,9 +205,11 @@ input:focus-visible {
   background: var(--color-text);
   transform: translateY(-50%);
   transition: left 0.15s ease;
+  z-index: 1;
+  pointer-events: none;
 }
 
-.push-opt-in__switch:checked {
+.push-opt-in__switch:checked::after {
   border-color: var(--color-text);
   background: var(--color-text);
 }
