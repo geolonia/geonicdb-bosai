@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import * as cdk from "aws-cdk-lib";
 import { assertAbsoluteHttpOrigin } from "../lib/assert-absolute-http-origin";
+import { assertWebPushCloudFrontContext } from "../lib/assert-webpush-cloudfront-context";
 import { BosaiSiteStack } from "../lib/bosai-site-stack";
 import { WebPushProxyStack } from "../lib/webpush-proxy-stack";
 import { WebPushWebAclStack } from "../lib/webpush-web-acl-stack";
@@ -50,6 +51,12 @@ const enableWebPushCloudFrontCtx = app.node.tryGetContext(
 );
 const enableWebPushCloudFront =
   enableWebPushCloudFrontCtx === true || enableWebPushCloudFrontCtx === "true";
+
+assertWebPushCloudFrontContext({
+  enableWebPush,
+  enableWebPushCloudFront,
+  geonicdbUrlRaw,
+});
 
 const geonicdbTenant =
   (app.node.tryGetContext("geonicdbTenant") as string | undefined) ??

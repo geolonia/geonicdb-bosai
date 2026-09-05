@@ -147,7 +147,9 @@ CAA / DNSSEC は独自ドメイン接続後に DNS 側で設定する。
 
 ```bash
 cd infra/cdk
-npx cdk bootstrap aws://705008887115/ap-northeast-1
+export CDK_DEFAULT_ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+# ステージング固定例: export CDK_DEFAULT_ACCOUNT=705008887115
+npx cdk bootstrap aws://$CDK_DEFAULT_ACCOUNT/ap-northeast-1
 npx cdk deploy GeonicdbBosaiWebPushProxy \
   -c enableWebPush=true \
   -c geonicdbUrl=https://geonicdb.geolonia.com \
@@ -160,6 +162,7 @@ npx cdk deploy GeonicdbBosaiWebPushProxy \
 ### フル CDK（CloudFront + WAF）
 
 ```bash
+export CDK_DEFAULT_ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
 npx cdk bootstrap aws://$CDK_DEFAULT_ACCOUNT/ap-northeast-1
 npx cdk bootstrap aws://$CDK_DEFAULT_ACCOUNT/us-east-1
 npx cdk deploy --all \

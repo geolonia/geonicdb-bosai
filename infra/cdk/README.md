@@ -40,18 +40,28 @@ CORS は `-c siteOrigin=` に GitHub Pages の origin（例: `https://<org>.gith
 cd infra/cdk
 npm install
 
-# サイトリージョンのみ bootstrap（WAF/us-east-1 は不要）
-npx cdk bootstrap aws://705008887115/ap-northeast-1
+# アカウント ID をシェルに載せる（未設定だと aws:///region になり bootstrap が失敗する）
+export CDK_DEFAULT_ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+# ステージング固定例: export CDK_DEFAULT_ACCOUNT=705008887115
 
+# サイトリージョンのみ bootstrap（WAF/us-east-1 は不要）
+npx cdk bootstrap aws://$CDK_DEFAULT_ACCOUNT/ap-northeast-1
+
+# 必須 context のみ（これだけでデプロイ可能）
 npx cdk deploy GeonicdbBosaiWebPushProxy \
   -c enableWebPush=true \
   -c geonicdbUrl=https://geonicdb.geolonia.com \
   -c geonicdbTenant=miya \
-  -c siteOrigin=https://geolonia.github.io \
-  # 任意: 既存 Secrets Manager の ARN（未指定時は空シークレットを新規作成）
-  # -c geonicdbApiKeySecretArn=arn:aws:secretsmanager:ap-northeast-1:705008887115:secret:... \
-  # 任意: bosai-context.jsonld の絶対 URL
-  # -c bosaiContextUrl=https://geolonia.github.io/geonicdb-bosai/ngsi-ld/bosai-context.jsonld
+  -c siteOrigin=https://geolonia.github.io
+
+# 任意オプションを付ける場合（行末 \ の直後にコメントを置かない）:
+# npx cdk deploy GeonicdbBosaiWebPushProxy \
+#   -c enableWebPush=true \
+#   -c geonicdbUrl=https://geonicdb.geolonia.com \
+#   -c geonicdbTenant=miya \
+#   -c siteOrigin=https://geolonia.github.io \
+#   -c geonicdbApiKeySecretArn=arn:aws:secretsmanager:ap-northeast-1:705008887115:secret:... \
+#   -c bosaiContextUrl=https://geolonia.github.io/geonicdb-bosai/ngsi-ld/bosai-context.jsonld
 
 # デプロイ後:
 # 1. Secrets Manager に GEONICDB_API_KEY（平文 or JSON { "apiKey": "..." }）を投入
@@ -62,16 +72,16 @@ npx cdk deploy GeonicdbBosaiWebPushProxy \
 #    （CSP connect-src 用に -c webPushRegisterUrl=<同 URL> をサイト synth に渡してもよい）
 ```
 
-| context / 環境変数                               | 必須                | 説明                                                         |
-| ------------------------------------------------ | ------------------- | ------------------------------------------------------------ |
-| `enableWebPush`                                  | はい                | `true` で `GeonicdbBosaiWebPushProxy` を合成                 |
-| `geonicdbUrl` / `NEXT_PUBLIC_GEONICDB_URL`       | はい                | GeonicDB base URL                                            |
-| `siteOrigin` / `NEXT_PUBLIC_SITE_ORIGIN`         | はい（Web Push 時） | CORS Allow-Origin（GitHub Pages origin 可。`*` 不可）        |
-| `geonicdbTenant` / `NEXT_PUBLIC_GEONICDB_TENANT` | 任意                | Fiware-Service                                               |
-| `geonicdbApiKeySecretArn`                        | 任意                | 既存シークレット ARN。未指定時は新規作成                     |
-| `bosaiContextUrl`                                | 任意                | NGSI-LD Link ヘッダ用 context URL                            |
-| `webPushRegisterUrl`                             | 任意                | サイト側 CSP `connect-src` に Function URL origin を足すとき |
-| `enableWebPushCloudFront`                        | 任意                | `true` で CloudFront `/api/webpush` + WAFv2（フル CDK 向け） |
+| context / 環境変数                               | 必須                | 説明                                                                             |
+| ------------------------------------------------ | ------------------- | -------------------------------------------------------------------------------- |
+| `enableWebPush`                                  | はい                | `true` で `GeonicdbBosaiWebPushProxy` を合成                                     |
+| `geonicdbUrl` / `NEXT_PUBLIC_GEONICDB_URL`       | はい                | GeonicDB base URL                                                                |
+| `siteOrigin` / `NEXT_PUBLIC_SITE_ORIGIN`         | はい（Web Push 時） | CORS Allow-Origin（GitHub Pages origin 可。`*` 不可）                            |
+| `geonicdbTenant` / `NEXT_PUBLIC_GEONICDB_TENANT` | 任意                | Fiware-Service                                                                   |
+| `geonicdbApiKeySecretArn`                        | 任意                | 既存シークレット ARN。未指定時は新規作成                                         |
+| `bosaiContextUrl`                                | 任意                | NGSI-LD Link ヘッダ用 context URL                                                |
+| `webPushRegisterUrl`                             | 任意                | サイト側 CSP `connect-src` に Function URL origin を足すとき                     |
+| `enableWebPushCloudFront`                        | 任意                | `true` で CloudFront `/api/webpush` + WAFv2（フル CDK 向け。`geonicdbUrl` 必須） |
 
 ### フル CDK（CloudFront + WAF）デプロイ
 
@@ -79,6 +89,8 @@ npx cdk deploy GeonicdbBosaiWebPushProxy \
 Function URL 単体運用では **reserved concurrency（50）のみが防御**。
 
 ```bash
+export CDK_DEFAULT_ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+
 npx cdk bootstrap aws://$CDK_DEFAULT_ACCOUNT/ap-northeast-1
 npx cdk bootstrap aws://$CDK_DEFAULT_ACCOUNT/us-east-1   # WAF / crossRegionReferences 用
 
