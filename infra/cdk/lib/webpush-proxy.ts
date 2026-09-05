@@ -12,6 +12,7 @@ import {
   assertAbsoluteHttpOrigin,
   assertAbsoluteHttpUrl,
 } from "./assert-absolute-http-origin";
+import { WEBPUSH_LAMBDA_RESERVED_CONCURRENCY } from "./webpush-limits";
 
 export type WebPushProxyProps = {
   /** GeonicDB base URL（例: https://geonicdb.geolonia.com） */
@@ -92,6 +93,8 @@ export class WebPushProxy extends Construct {
       runtime: lambda.Runtime.NODEJS_22_X,
       timeout: cdk.Duration.seconds(15),
       memorySize: 256,
+      // #36: Function URL 直叩きへの defense-in-depth（WAF は CloudFront 経路のみ）
+      reservedConcurrentExecutions: WEBPUSH_LAMBDA_RESERVED_CONCURRENCY,
       description: "geonicdb-bosai Web Push subscription proxy",
       environment: {
         GEONICDB_URL: geonicdbUrl,

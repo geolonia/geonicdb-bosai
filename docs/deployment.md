@@ -125,6 +125,23 @@ npx cdk deploy \
 
 CAA / DNSSEC は独自ドメイン接続後に DNS 側で設定する。
 
+## Web Push 購読プロキシとレート制限（#35 / #36）
+
+`enableWebPush=true` のとき:
+
+1. **`GeonicdbBosaiWebAcl`（us-east-1）** — CLOUDFRONT-scoped WAFv2。`/api/webpush*` のみ IP あたり 5 分 120 req で Block（他パスは Allow）。CloudFront 用 WebACL は us-east-1 でのみ作成可能なため、サイトスタック（既定 `ap-northeast-1`）と分離し `crossRegionReferences` で ARN を渡す（ACM 証明書と同型）。
+2. **`GeonicdbBosaiSite`** — Lambda Function URL + Secrets Manager + CloudFront `/api/webpush` behavior。Distribution に上記 WebACL を関連付け。Lambda には `reservedConcurrentExecutions: 5`（Function URL 直叩きのバックストップ）。
+
+フロントの登録 URL は **`NEXT_PUBLIC_WEBPUSH_REGISTER_URL=/api/webpush`**（CloudFront 同一オリジン）を使うこと。Function URL をブラウザから直接叩くと WAF を迂回する。
+
+```bash
+cd infra/cdk
+npx cdk deploy --all \
+  -c enableWebPush=true \
+  -c geonicdbUrl=https://geonicdb.geolonia.com \
+  -c siteOrigin=https://bosai.example.jp
+```
+
 ## CDK の使い方（要約）
 
 ```bash

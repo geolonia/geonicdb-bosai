@@ -52,6 +52,6 @@
 | ID | 扱い |
 |---|---|
 | N-21 ヘッダ・TLS | #6 |
-| N-22 DDoS / Bot | CDN/WAF は CloudFront 前提。災害時に CAPTCHA 等で住民を締め出しない |
+| N-22 DDoS / Bot | CDN/WAF は CloudFront 前提。災害時に CAPTCHA 等で住民を締め出しない。Web Push 購読 API（`/api/webpush*`）は WAFv2 rate-based（IP あたり 5 分 120）で量産を抑制（#36） |
 | N-23 管理画面認証 | 管理 UI 実装時の issue で扱う |
 | N-25 ISMAP | SHOULD。クラウド選定時に登録サービスまたは同等を確認 |

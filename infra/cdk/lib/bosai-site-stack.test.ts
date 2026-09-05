@@ -193,6 +193,7 @@ describe("BosaiSiteStack Response Headers Policy", () => {
     template.hasResourceProperties("AWS::Lambda::Function", {
       Runtime: "nodejs22.x",
       Timeout: 15,
+      ReservedConcurrentExecutions: 5,
       Environment: {
         Variables: Match.objectLike({
           GEONICDB_URL: "https://geonicdb.example.example",
@@ -218,6 +219,34 @@ describe("BosaiSiteStack Response Headers Policy", () => {
       Object.values(policies)[0].Properties.ResponseHeadersPolicyConfig
         .SecurityHeadersConfig.ContentSecurityPolicy.ContentSecurityPolicy;
     expect(csp).toContain("worker-src 'self'");
+  });
+
+  it("attaches WAFv2 WebACL ARN to the CloudFront Distribution when webAclArn is set (#36)", () => {
+    const webAclArn =
+      "arn:aws:wafv2:us-east-1:111111111111:global/webacl/geonicdb-bosai-webpush/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+    const template = synth({
+      webPush: {
+        geonicdbUrl: "https://geonicdb.example.example",
+      },
+      webAclArn,
+    });
+
+    template.hasResourceProperties("AWS::CloudFront::Distribution", {
+      DistributionConfig: {
+        WebACLId: webAclArn,
+      },
+    });
+  });
+
+  it("does not attach WebACL when webAclArn is omitted", () => {
+    const template = synth({
+      webPush: {
+        geonicdbUrl: "https://geonicdb.example.example",
+      },
+    });
+    const dist = template.findResources("AWS::CloudFront::Distribution");
+    const config = Object.values(dist)[0].Properties.DistributionConfig;
+    expect(config.WebACLId).toBeUndefined();
   });
 
   it("rejects relative geonicdbUrl on the WebPushProxy construct", () => {

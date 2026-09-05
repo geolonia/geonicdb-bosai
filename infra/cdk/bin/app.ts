@@ -2,8 +2,12 @@
 import * as cdk from "aws-cdk-lib";
 import { assertAbsoluteHttpOrigin } from "../lib/assert-absolute-http-origin";
 import { BosaiSiteStack } from "../lib/bosai-site-stack";
+import { WebPushWebAclStack } from "../lib/webpush-web-acl-stack";
 
 const app = new cdk.App();
+
+const account = process.env.CDK_DEFAULT_ACCOUNT;
+const siteRegion = process.env.CDK_DEFAULT_REGION ?? "ap-northeast-1";
 
 const domainNamesCtx = app.node.tryGetContext("domainNames");
 const domainNames =
@@ -53,11 +57,23 @@ const connectSrc = [
   ...(webPushRegisterOrigin ? [webPushRegisterOrigin] : []),
 ];
 
+// #36: CLOUDFRONT-scoped WAFv2 は us-east-1 のみ（ACM 証明書と同型のリージョン分離）
+let webAclArn: string | undefined;
+if (enableWebPush && geonicdbUrlRaw) {
+  const webAclStack = new WebPushWebAclStack(app, "GeonicdbBosaiWebAcl", {
+    env: { account, region: "us-east-1" },
+    crossRegionReferences: true,
+  });
+  webAclArn = webAclStack.webAclArn;
+}
+
 new BosaiSiteStack(app, "GeonicdbBosaiSite", {
   env: {
-    account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: process.env.CDK_DEFAULT_REGION ?? "ap-northeast-1",
+    account,
+    region: siteRegion,
   },
+  // WebACL ARN を us-east-1 から参照するとき必須
+  ...(webAclArn ? { crossRegionReferences: true } : {}),
   // 初回デプロイや CSP 変更時は context で report-only に切り替え可能:
   //   cdk deploy -c cspReportOnly=true -c cspReportUri=https://example.com/csp
   cspReportOnly: app.node.tryGetContext("cspReportOnly") === "true",
@@ -71,6 +87,7 @@ new BosaiSiteStack(app, "GeonicdbBosaiSite", {
   //   cdk deploy -c certificateArn=arn:aws:acm:us-east-1:...:certificate/... -c domainNames=bosai.example.jp
   certificateArn: app.node.tryGetContext("certificateArn"),
   domainNames,
+  ...(webAclArn ? { webAclArn } : {}),
   ...(enableWebPush && geonicdbUrlRaw
     ? {
         webPush: {

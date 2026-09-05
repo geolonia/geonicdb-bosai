@@ -40,6 +40,11 @@ export type BosaiSiteStackProps = cdk.StackProps & {
   webPush?: Omit<WebPushProxyProps, "geonicdbUrl"> & {
     geonicdbUrl: string;
   };
+  /**
+   * WAFv2 WebACL ARN（#36）。CLOUDFRONT scope のため us-east-1 の WebPushWebAclStack から渡し、
+   * Distribution の webAclId に設定する。`crossRegionReferences: true` が必要。
+   */
+  webAclArn?: string;
 };
 
 const CUSTOM_SECURITY_HEADERS = [
@@ -205,6 +210,8 @@ export class BosaiSiteStack extends cdk.Stack {
               cloudfront.SecurityPolicyProtocol.TLS_V1_2_2021,
           }
         : {}),
+      // #36: WAFv2（us-east-1 WebPushWebAclStack）— /api/webpush* のみ rate-limit
+      ...(props.webAclArn ? { webAclId: props.webAclArn } : {}),
       defaultBehavior: {
         origin: origins.S3BucketOrigin.withOriginAccessIdentity(this.bucket, {
           originAccessIdentity,
