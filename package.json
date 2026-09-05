@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "next dev",
     "generate:sw": "node scripts/generate-sw.mjs",
-    "build": "node scripts/assert-sw-fresh.mjs && next build && node scripts/externalize-inline-scripts.mjs && node scripts/assert-pwa-manifest.mjs",
+    "build": "node scripts/assert-sw-fresh.mjs && next build && node scripts/externalize-inline-scripts.mjs && node scripts/inject-a2hs-bip-boot.mjs && node scripts/assert-pwa-manifest.mjs",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

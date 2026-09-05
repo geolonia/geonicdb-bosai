@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
-import { A2HS_BIP_BOOT_SCRIPT } from "@/lib/a2hs-bip-boot-script";
 import { normalizeBasePath, withBasePath } from "@/lib/pwa-manifest";
 import "./globals.css";
 
@@ -54,14 +53,10 @@ export default function RootLayout({
 }: Readonly<{
   children: ReactNode;
 }>) {
+  // BIP boot は layout に埋め込まない（RSC 重複で LH が落ちる実測あり）。
+  // postbuild scripts/inject-a2hs-bip-boot.mjs が public/a2hs-bip-boot.js を head へ挿入する。
   return (
     <html lang="ja">
-      <head>
-        {/* BIP を React より前に捕捉。src 付き同期 script は no-sync-scripts に抵触し、
-         * next/script beforeInteractive は静的 export で preload のみになる実測あり。
-         * インライン → postbuild で csp-inline 外部化（script-src 'self'、#60）。 */}
-        <script dangerouslySetInnerHTML={{ __html: A2HS_BIP_BOOT_SCRIPT }} />
-      </head>
       <body>{children}</body>
     </html>
   );

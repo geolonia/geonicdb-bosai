@@ -1,10 +1,9 @@
 /**
- * BIP 早期捕捉スクリプト本文（#55 / #60）。
- * layout のインライン <script> に埋め込み、postbuild の
- * externalize-inline-scripts が `out/_next/csp-inline/<hash>.js` へ書き出す。
- * CSP は `script-src 'self'` のまま（unsafe-inline 不要）。
+ * beforeinstallprompt を React バンドルより先に捕捉する（#55 / #60）。
+ * postbuild（inject-a2hs-bip-boot.mjs）が out/*.html の head 先頭へ挿入する。
+ * CSP は script-src 'self'（public 配信）。
  */
-export const A2HS_BIP_BOOT_SCRIPT = `(function () {
+(function () {
   if (typeof window === "undefined") return;
   var w = window;
   if (w.__bosaiA2hsBipBootstrapped) return;
@@ -19,4 +18,4 @@ export const A2HS_BIP_BOOT_SCRIPT = `(function () {
       // CustomEvent 非対応環境では stash のみ
     }
   });
-})();`;
+})();
