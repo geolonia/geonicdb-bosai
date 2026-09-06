@@ -14,7 +14,7 @@
     w.__bosaiA2hsBip = event;
     try {
       w.dispatchEvent(new CustomEvent("bosai:beforeinstallprompt"));
-    } catch (e) {
+    } catch {
       // CustomEvent 非対応環境では stash のみ
     }
   });
