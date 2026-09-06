@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 type Props = {
   accessibilityLabel: string;
@@ -9,6 +10,8 @@ type Props = {
   linksLabel: string;
   contactLabel: string;
   contactValue: string;
+  /** 連絡先の後に置く付加 UI（例: 通知トグル）。ContentPageChrome は渡さない。 */
+  children?: ReactNode;
 };
 
 export function SiteFooter({
@@ -18,6 +21,7 @@ export function SiteFooter({
   linksLabel,
   contactLabel,
   contactValue,
+  children,
 }: Props) {
   return (
     <footer className="site-footer">
@@ -40,6 +44,7 @@ export function SiteFooter({
         <p className="site-footer__contact">
           {contactLabel}: {contactValue}
         </p>
+        {children}
       </div>
     </footer>
   );

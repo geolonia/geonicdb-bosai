@@ -35,6 +35,36 @@ describe("SiteFooter", () => {
         .getAttribute("href"),
     ).toMatch(/^\/privacy\/?$/);
   });
+
+  it("renders children after contact as the last footer content (#63)", () => {
+    const { container } = render(
+      <SiteFooter
+        accessibilityLabel="ウェブアクセシビリティ方針"
+        testResultsLabel="試験結果"
+        privacyLabel="プライバシーポリシー"
+        linksLabel="フッターリンク"
+        contactLabel="お問い合わせ"
+        contactValue="防災担当: 000-0000-0000"
+      >
+        <div data-testid="footer-extra">通知トグル</div>
+      </SiteFooter>,
+    );
+    const footer = container.querySelector("footer.site-footer");
+    const contact = container.querySelector(".site-footer__contact");
+    const extra = screen.getByTestId("footer-extra");
+    expect(footer).not.toBeNull();
+    expect(contact).not.toBeNull();
+    expect(footer!.contains(extra)).toBe(true);
+    expect(
+      contact!.compareDocumentPosition(extra) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    // near-miss: children が contact より前だと FOLLOWING にならない
+    expect(
+      extra.compareDocumentPosition(contact!) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeFalsy();
+  });
 });
 
 describe("SafeMarkdown", () => {
