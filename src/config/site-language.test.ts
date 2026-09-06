@@ -106,6 +106,9 @@ describe("UI_STRINGS i18n coverage", () => {
         UI_STRINGS[lang].bannerVariants["emergency-safety"].length,
       ).toBeGreaterThan(0);
       expect(SITE_LANGUAGE_LABELS[lang].length).toBeGreaterThan(0);
+      expect(UI_STRINGS[lang].a2hsTitle.length).toBeGreaterThan(0);
+      expect(UI_STRINGS[lang].a2hsIosHint.length).toBeGreaterThan(0);
+      expect(UI_STRINGS[lang].a2hsDismissLabel.length).toBeGreaterThan(0);
     }
   });
 

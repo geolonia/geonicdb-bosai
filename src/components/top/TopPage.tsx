@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo } from "react";
+import dynamic from "next/dynamic";
 import { useLdEntities } from "@geolonia/geonicdb-sdk/react";
 import {
   AlertLevelDisplay,
@@ -17,6 +18,7 @@ import {
   NewsListError,
   NewsListPlaceholder,
 } from "@/components/top/NewsList";
+import { OptionalFeatureBoundary } from "@/components/top/OptionalFeatureBoundary";
 import { PushNotificationOptIn } from "@/components/top/PushNotificationOptIn";
 import { QuickLinks } from "@/components/top/QuickLinks";
 import { SiteFooter } from "@/components/top/SiteFooter";
@@ -45,6 +47,15 @@ import type {
   BosaiEmergencyBanner,
   BosaiNotice,
 } from "@/types/top-page";
+
+/** A2HS は初期バンドルから外し、表示時も fixed で CLS を避ける（#55 / Lighthouse） */
+const AddToHomeScreenPrompt = dynamic(
+  () =>
+    import("@/components/top/AddToHomeScreenPrompt").then(
+      (m) => m.AddToHomeScreenPrompt,
+    ),
+  { ssr: false },
+);
 
 /** useLdEntities 第1引数（react エントリの GeonicDB とコアの型が分かれている）。 */
 type LdClient = Parameters<typeof useLdEntities>[0];
@@ -200,7 +211,6 @@ export function TopPage({ initialSnapshot }: TopPageProps = {}) {
   return (
     <>
       <SiteHeader strings={strings} lang={lang} onLangChange={setLang} />
-      <PushNotificationOptIn lang={lang} strings={strings} />
       {bannerView.kind === "ready" ? (
         <>
           <EmergencyBanner data={bannerView.data} strings={strings} />
@@ -242,6 +252,11 @@ export function TopPage({ initialSnapshot }: TopPageProps = {}) {
         ) : (
           <AlertLevelPlaceholder strings={strings} />
         )}
+        {/* 付加 UI は緊急バナー・警戒レベルより後（WCAG 1.3.2 / #55） */}
+        <PushNotificationOptIn lang={lang} strings={strings} />
+        <OptionalFeatureBoundary>
+          <AddToHomeScreenPrompt strings={strings} />
+        </OptionalFeatureBoundary>
         <QuickLinks heading={strings.quickLinksHeading} links={quickLinks} />
         {noticesView.kind === "ready" ? (
           <>

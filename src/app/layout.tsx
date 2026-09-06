@@ -44,6 +44,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#1a1a1a",
+  /** iOS safe-area-inset-* を有効化（A2HS fixed 帯の底余白に使用） */
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -51,6 +53,8 @@ export default function RootLayout({
 }: Readonly<{
   children: ReactNode;
 }>) {
+  // BIP boot は layout に埋め込まない（RSC 重複で LH が落ちる実測あり）。
+  // postbuild scripts/inject-a2hs-bip-boot.mjs が public/a2hs-bip-boot.js を head へ挿入する。
   return (
     <html lang="ja">
       <body>{children}</body>

@@ -170,4 +170,67 @@ describe("TopPage load states", () => {
     });
     expect(screen.queryByText(/最終取得/)).not.toBeInTheDocument();
   });
+
+  it("still renders emergency content when matchMedia is unavailable (#55)", async () => {
+    const original = window.matchMedia;
+    // jsdom でも明示的に欠落させ、A2HS がトップを巻き込まないことを固定する
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      writable: true,
+      value: undefined,
+    });
+
+    try {
+      render(<TopPage />);
+      await waitFor(() => {
+        expect(screen.getByText("バナー見出しJA")).toBeInTheDocument();
+      });
+      expect(screen.getByText("レベル1ラベル")).toBeInTheDocument();
+      expect(screen.getByText("お知らせタイトルJA")).toBeInTheDocument();
+      expect(screen.queryByTestId("a2hs-prompt")).not.toBeInTheDocument();
+    } finally {
+      Object.defineProperty(window, "matchMedia", {
+        configurable: true,
+        writable: true,
+        value: original,
+      });
+    }
+  });
+
+  it("places optional prompts after emergency banner and alert level (#55)", async () => {
+    Object.defineProperty(navigator, "userAgent", {
+      configurable: true,
+      value: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+    });
+    Object.defineProperty(navigator, "platform", {
+      configurable: true,
+      value: "iPhone",
+    });
+    Object.defineProperty(navigator, "maxTouchPoints", {
+      configurable: true,
+      value: 5,
+    });
+    Object.defineProperty(navigator, "standalone", {
+      configurable: true,
+      value: false,
+    });
+    window.matchMedia = vi.fn().mockReturnValue({
+      matches: false,
+      media: "",
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }) as unknown as typeof window.matchMedia;
+
+    render(<TopPage />);
+    const banner = await screen.findByText("バナー見出しJA");
+    const alert = screen.getByText("レベル1ラベル");
+    const a2hs = await screen.findByTestId("a2hs-prompt");
+
+    expect(
+      banner.compareDocumentPosition(a2hs) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      alert.compareDocumentPosition(a2hs) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
 });
