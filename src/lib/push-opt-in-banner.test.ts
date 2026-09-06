@@ -104,6 +104,34 @@ describe("push opt-in banner dismissal window", () => {
     expect(isPushOptInBannerDismissed(NOW + clockFastBy, storage)).toBe(true);
   });
 
+  it("survives a localStorage getter that throws (all cookies blocked / file:)", () => {
+    // 既定引数は関数本体の try/catch より前に評価されるため、getter が
+    // SecurityError を投げると関数ごと throw する。呼び出し側（描画中の
+    // PushOptInBanner）はこれを捕まえないのでページごと落ちる。
+    // near-miss: defaultStorage() の try/catch を外すとここで赤になる。
+    const original = Object.getOwnPropertyDescriptor(
+      globalThis,
+      "localStorage",
+    );
+    Object.defineProperty(globalThis, "localStorage", {
+      configurable: true,
+      get() {
+        throw new Error("SecurityError: access is denied for this document");
+      },
+    });
+    try {
+      expect(() => isPushOptInBannerDismissed(NOW)).not.toThrow();
+      expect(isPushOptInBannerDismissed(NOW)).toBe(false);
+      expect(() => dismissPushOptInBanner(NOW)).not.toThrow();
+    } finally {
+      if (original) {
+        Object.defineProperty(globalThis, "localStorage", original);
+      } else {
+        Reflect.deleteProperty(globalThis, "localStorage");
+      }
+    }
+  });
+
   it("survives storage being unavailable (SSR / private mode)", () => {
     expect(isPushOptInBannerDismissed(NOW, null)).toBe(false);
     expect(() => dismissPushOptInBanner(NOW, null)).not.toThrow();

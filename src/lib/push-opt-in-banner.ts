@@ -10,12 +10,22 @@ export const PUSH_OPT_IN_SWITCH_ID = "push-opt-in-switch";
 /** フッターの通知トグルを囲むブロックの id（スクロール先の目印）。 */
 export const PUSH_OPT_IN_ANCHOR_ID = "push-opt-in";
 
-function defaultReadStorage(): Pick<Storage, "getItem"> | null {
-  return typeof localStorage !== "undefined" ? localStorage : null;
-}
-
-function defaultWriteStorage(): Pick<Storage, "setItem"> | null {
-  return typeof localStorage !== "undefined" ? localStorage : null;
+/**
+ * 既定の localStorage を取り出す。
+ *
+ * **必ず try/catch で囲むこと。** これは既定引数として評価される
+ * ＝ 呼び出し先の関数本体の try/catch より前に走るため、ここで throw すると
+ * 関数がそのまま throw する。Cookie を全ブロックした環境や `file:` /
+ * `data:` スキームでは `localStorage` の getter 自体が SecurityError を
+ * 投げるので、`typeof localStorage !== "undefined"` では防げない
+ *（typeof もプロパティを評価する）。
+ */
+function defaultStorage(): Storage | null {
+  try {
+    return typeof localStorage !== "undefined" ? localStorage : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -34,7 +44,7 @@ function defaultWriteStorage(): Pick<Storage, "setItem"> | null {
  */
 export function isPushOptInBannerDismissed(
   now: number = Date.now(),
-  storage: Pick<Storage, "getItem"> | null | undefined = defaultReadStorage(),
+  storage: Pick<Storage, "getItem"> | null | undefined = defaultStorage(),
 ): boolean {
   try {
     if (!storage || typeof storage.getItem !== "function") return false;
@@ -52,7 +62,7 @@ export function isPushOptInBannerDismissed(
 /** 帯を閉じた時刻を記録する。private mode 等で失敗しても呼び出し側は落とさない。 */
 export function dismissPushOptInBanner(
   now: number = Date.now(),
-  storage: Pick<Storage, "setItem"> | null | undefined = defaultWriteStorage(),
+  storage: Pick<Storage, "setItem"> | null | undefined = defaultStorage(),
 ): void {
   try {
     if (!storage || typeof storage.setItem !== "function") return;
