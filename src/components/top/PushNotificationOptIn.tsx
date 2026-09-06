@@ -14,8 +14,11 @@ import {
   disableWebPushNotifications,
   enableWebPushNotifications,
   isWebPushConfigured,
+  readStoredWebPushState,
   resolveActiveWebPushState,
+  resyncWebPushSubscriptionLang,
   syncServiceWorkerLang,
+  writeStoredWebPushState,
   type StoredWebPushState,
 } from "@/lib/web-push-client";
 
@@ -98,11 +101,45 @@ export function PushNotificationOptIn({ lang, strings }: Props) {
 
   useEffect(() => {
     if (!stored || !available) return;
-    void navigator.serviceWorker.getRegistration().then((registration) => {
+    let cancelled = false;
+    void (async () => {
+      const registration = await navigator.serviceWorker.getRegistration();
       if (registration) {
-        void syncServiceWorkerLang(registration, lang);
+        await syncServiceWorkerLang(registration, lang);
       }
-    });
+      if (cancelled) return;
+
+      // 言語一致: 何もしない
+      if (stored.lang === lang) return;
+
+      // 旧データ（lang 未保存）: GeonicDB は触らずローカルだけ記録（#61 移行なし）
+      if (stored.lang === undefined) {
+        const claimed: StoredWebPushState = { ...stored, lang };
+        writeStoredWebPushState(claimed);
+        if (!cancelled) setStored(claimed);
+        return;
+      }
+
+      // 表示言語が変わった: 購読の q を作り直す（POST→DELETE）
+      setPhase("busy");
+      try {
+        const next = await resyncWebPushSubscriptionLang({ lang });
+        if (!cancelled) {
+          setStored(next);
+          setPhase("idle");
+        }
+      } catch {
+        if (!cancelled) {
+          // 再同期が POST 後に破綻した場合は localStorage がクリアされている
+          // （沈黙障害を避け UI をオフへ。#52 のオフ操作 5xx 保持とは文脈が異なる）
+          setStored(readStoredWebPushState());
+          setPhase("error");
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [lang, stored, available]);
 
   // 通知で立てたバッジを、アプリが前面になったときに消す（#41）

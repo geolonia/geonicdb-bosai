@@ -133,8 +133,9 @@ GeonicDB の 2 者で完結する。
 GeonicDB の `/ngsi-ld/v1/subscriptions` へ直接 POST / DELETE する。
 
 **新規または再作成済みの購読では、通知対象は `bosai-AlertLevel`（警戒レベル）の変更時のみ**（#48）。
-緊急バナー・お知らせの更新では Push は飛ばない。ただし旧仕様（3タイプ）の既存購読が残っている端末では、
-`bosai-Notice` / `bosai-EmergencyBanner` の通知も届き、SW は `default` フォールバック文言を表示する。
+さらに購読者の表示言語で `q: language=="<lang>"` に絞る（#61）。
+緊急バナー・お知らせの更新では Push は飛ばない。ただし旧仕様（3タイプ、または `q` 無し）の既存購読が残っている端末では、
+`bosai-Notice` / `bosai-EmergencyBanner` の通知や他言語の警戒レベル更新も届きうる（SW は `default` フォールバック文言を表示する）。
 画面を開いている間の WebSocket によるリアルタイム更新は従来どおり 3 タイプ
 （`bosai-Notice` / `bosai-EmergencyBanner` / `bosai-AlertLevel`）すべてが対象。
 
@@ -145,9 +146,11 @@ GeonicDB の `/ngsi-ld/v1/subscriptions` へ直接 POST / DELETE する。
 
 キー発行・Secrets 投入は運用側（課長）。手順の命名規則は [`geonicdb-setup.md`](geonicdb-setup.md) を参照。
 
-**購読対象を変更した場合の運用注意**: 既に購読済みの端末は、**旧仕様のサブスクリプションが GeonicDB 上に残る**。
+**購読条件を変更した場合の運用注意**: 既に購読済みの端末は、**旧仕様のサブスクリプションが GeonicDB 上に残る**。
 対象エンティティを絞った（または広げた）あとでも、旧購読は作り直すまで旧仕様のまま通知が飛ぶ。
+表示言語の `q` フィルタ（#61）を入れたあとも同様で、**`q` 無しの旧購読は全言語の警戒レベル更新で通知が届く**。
 ステージング／本番では既存購読を削除し、住民端末で再オプトインさせること（自動移行は行わない）。
+表示言語を切り替えた端末は、切替時に購読が作り直され新しい `q` が付く。
 
 **通知が届かないとき**（切り分けの要約。手順の詳細は [`geonicdb-setup.md`](geonicdb-setup.md) のトラブルシューティング）:
 
