@@ -38,6 +38,12 @@ export type UiStrings = {
    * 打つ手が無い非対応環境では「利用できません」ラベルを出さず UI ごと出さない。
    */
   pushIosInstallHint: string;
+  /**
+   * 通知オフのときヘッダー上部に出す推奨帯。
+   * クリックでフッターの通知トグルへ飛ぶので、行き先が分かる文言にする。
+   */
+  pushOptInBannerText: string;
+  pushOptInBannerDismissLabel: string;
   /** #55 ホーム画面への追加（A2HS） */
   a2hsTitle: string;
   /** Chromium 系: 追加すると通知を受け取れる旨（強制しない） */
@@ -105,6 +111,9 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
     pushPermissionDeniedLabel:
       "通知が許可されていません。ブラウザまたは端末の設定から通知を許可してください。",
     pushIosInstallHint: "ホーム画面に追加すると通知を受け取れます",
+    pushOptInBannerText:
+      "災害情報の通知がオフです。通知をオンにすることをおすすめします。",
+    pushOptInBannerDismissLabel: "閉じる",
     a2hsTitle: "ホーム画面に追加",
     a2hsDescription:
       "ホーム画面に追加すると、このサイトから通知を受け取れるようになります（任意です）。",
@@ -181,6 +190,9 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
       "Notifications are blocked. Allow them in your browser or device settings.",
     pushIosInstallHint:
       "Add this site to your Home Screen to receive notifications",
+    pushOptInBannerText:
+      "Disaster alerts are off. We recommend turning notifications on.",
+    pushOptInBannerDismissLabel: "Dismiss",
     a2hsTitle: "Add to Home Screen",
     a2hsDescription:
       "Add this site to your Home Screen to receive notifications (optional).",
@@ -253,6 +265,8 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
     pushBusyLabel: "正在设置通知…",
     pushPermissionDeniedLabel: "通知未被允许。请在浏览器或设备设置中允许通知。",
     pushIosInstallHint: "添加到主屏幕后即可接收通知",
+    pushOptInBannerText: "灾害信息通知已关闭。建议开启通知。",
+    pushOptInBannerDismissLabel: "关闭",
     a2hsTitle: "添加到主屏幕",
     a2hsDescription: "添加到主屏幕后即可接收通知（可选）。",
     a2hsIosHint: "添加到主屏幕后即可接收通知（可选）。",
@@ -324,6 +338,8 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
     pushPermissionDeniedLabel:
       "Thông báo chưa được cho phép. Hãy cho phép trong cài đặt trình duyệt hoặc thiết bị.",
     pushIosInstallHint: "Thêm vào Màn hình chính để nhận thông báo",
+    pushOptInBannerText: "Thông báo thiên tai đang tắt. Bạn nên bật thông báo.",
+    pushOptInBannerDismissLabel: "Đóng",
     a2hsTitle: "Thêm vào Màn hình chính",
     a2hsDescription:
       "Thêm trang này vào Màn hình chính để nhận thông báo (tùy chọn).",
@@ -399,6 +415,9 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
     pushPermissionDeniedLabel:
       "알림이 허용되지 않았습니다. 브라우저 또는 기기 설정에서 알림을 허용해 주세요.",
     pushIosInstallHint: "홈 화면에 추가하면 알림을 받을 수 있습니다",
+    pushOptInBannerText:
+      "재해 정보 알림이 꺼져 있습니다. 알림을 켜는 것을 권장합니다.",
+    pushOptInBannerDismissLabel: "닫기",
     a2hsTitle: "홈 화면에 추가",
     a2hsDescription: "홈 화면에 추가하면 알림을 받을 수 있습니다(선택 사항).",
     a2hsIosHint: "홈 화면에 추가하면 알림을 받을 수 있습니다(선택 사항).",

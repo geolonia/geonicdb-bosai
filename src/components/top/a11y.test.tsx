@@ -7,10 +7,31 @@ import { AlertLevelDisplay } from "@/components/top/AlertLevelDisplay";
 import { EmergencyBanner } from "@/components/top/EmergencyBanner";
 import { NewsList } from "@/components/top/NewsList";
 import { PushNotificationOptIn } from "@/components/top/PushNotificationOptIn";
+import { PushOptInBanner } from "@/components/top/PushOptInBanner";
 import { QuickLinks } from "@/components/top/QuickLinks";
 import { SiteHeader } from "@/components/top/SiteHeader";
 import { BANNER_VARIANT_COLORS } from "@/config/alert-colors";
 import { contrastRatio } from "@/lib/contrast";
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const globalsCss = readFileSync(
+  resolve(dirname(fileURLToPath(import.meta.url)), "../../app/globals.css"),
+  "utf8",
+);
+
+/** `selector { ... prop: value; ... }` から値を 1 件取り出す */
+function readCssDecl(selector: string, prop: string): string {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const rule = globalsCss.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`, "m"));
+  expect(rule, `rule for ${selector}`).toBeTruthy();
+  const decl = rule![1].match(
+    new RegExp(`(?:^|;)\\s*${prop}\\s*:\\s*([^;]+)`, "m"),
+  );
+  expect(decl, `${prop} in ${selector}`).toBeTruthy();
+  return decl![1].trim();
+}
 import {
   ALL_BANNER_VARIANTS,
   makeAlertLevel,
@@ -193,5 +214,36 @@ describe("a11y: AddToHomeScreenPrompt", () => {
       screen.getByRole("button", { name: testStrings.a2hsDismissLabel }),
     ).toBeInTheDocument();
     expect(await runAxeWithRegion(container)).toHaveNoViolations();
+  });
+});
+
+describe("a11y: PushOptInBanner", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it("has no violations and keeps the copy readable on its tinted background", async () => {
+    const { container } = render(
+      <PushOptInBanner strings={testStrings} recommended />,
+    );
+    // 帯は初回操作まで出さない（CLS 対策）ので、操作を模して出す
+    window.dispatchEvent(new MouseEvent("click"));
+    await screen.findByTestId("push-opt-in-banner");
+
+    expect(
+      screen.getByRole("link", { name: testStrings.pushOptInBannerText }),
+    ).toHaveAttribute("href", "#push-opt-in-switch");
+    expect(
+      screen.getByRole("button", {
+        name: testStrings.pushOptInBannerDismissLabel,
+      }),
+    ).toBeInTheDocument();
+    expect(await runAxeWithRegion(container)).toHaveNoViolations();
+
+    // 色は globals.css から読む。ハードコードすると背景や --color-text を
+    // 変えてもこの主張が落ちず、WCAG 1.4.3 AA の担保が空になる。
+    const bg = readCssDecl(".push-opt-in-banner", "background");
+    const fg = readCssDecl(":root", "--color-text");
+    expect(contrastRatio(bg, fg)).toBeGreaterThanOrEqual(4.5);
   });
 });

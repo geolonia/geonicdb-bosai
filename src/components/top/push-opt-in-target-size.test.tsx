@@ -37,6 +37,27 @@ describe("push-opt-in switch hit target (#56 / WCAG 2.5.8)", () => {
     expect(track).toMatch(/pointer-events:\s*none\b/);
   });
 
+  it("sizes the header banner's link and dismiss button to at least 44px", () => {
+    const link = extractRuleBody(".push-opt-in-banner__link");
+    expect(link).toMatch(/min-height:\s*2\.75rem\b/);
+
+    const dismiss = extractRuleBody(".push-opt-in-banner__dismiss");
+    expect(dismiss).toMatch(/min-height:\s*2\.75rem\b/);
+    expect(dismiss).toMatch(/min-width:\s*2\.75rem\b/);
+
+    // near-miss: 親 .push-opt-in-banner__row の min-height だけでは当たり判定に
+    // ならない（row は行の高さを決めるだけで、子の当たり判定は広がらない）
+    const row = extractRuleBody(".push-opt-in-banner__row");
+    expect(row).toMatch(/min-height:\s*2\.75rem\b/);
+  });
+
+  it("keeps the header banner in document flow (no fixed overlay)", () => {
+    const banner = extractRuleBody(".push-opt-in-banner");
+    // アクセシビリティ方針で「固定オーバーレイは置かない」と公表済み。
+    // near-miss: CLS 回避のために position: fixed へ逃げると方針違反になる
+    expect(banner).not.toMatch(/position:\s*(fixed|sticky|absolute)\b/);
+  });
+
   it("resets width/padding when nested in the footer (#63)", () => {
     const nested = extractRuleBody(".site-footer .push-opt-in");
     expect(nested).toMatch(/max-width:\s*none\b/);
