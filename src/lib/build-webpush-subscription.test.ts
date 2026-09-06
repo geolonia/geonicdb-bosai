@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { SITE_LANGUAGES } from "@/config/site-language";
+import { languagePropertyQuery } from "@/lib/geonicdb-public-client";
 import {
   assertSubscriptionId,
   BOSAI_LIVE_ENTITY_TYPES,
@@ -112,6 +114,7 @@ describe("buildNgsiLdWebPushSubscription", () => {
   it("subscribes only to bosai-AlertLevel for Web Push (#48)", () => {
     const body = buildNgsiLdWebPushSubscription(VALID, {
       siteOrigin: "https://bosai.example.jp",
+      lang: "ja",
     });
     expect(body.type).toBe("Subscription");
     expect(body.entities).toEqual([{ type: "bosai-AlertLevel" }]);
@@ -150,6 +153,44 @@ describe("buildNgsiLdWebPushSubscription", () => {
     expect([...BOSAI_WEBPUSH_ENTITY_TYPES]).not.toEqual([
       ...BOSAI_LIVE_ENTITY_TYPES,
     ]);
+  });
+
+  it("includes q filtered to the subscriber display language (#61)", () => {
+    const body = buildNgsiLdWebPushSubscription(VALID, {
+      siteOrigin: "https://bosai.example.jp",
+      lang: "ja",
+    });
+    expect(body.q).toBe(languagePropertyQuery("ja"));
+    expect(body.q).toBe('language=="ja"');
+  });
+
+  it("builds the correct q for every SITE_LANGUAGES entry (#61)", () => {
+    for (const lang of SITE_LANGUAGES) {
+      const body = buildNgsiLdWebPushSubscription(VALID, { lang });
+      expect(body.q).toBe(languagePropertyQuery(lang));
+      expect(body.q).toBe(`language=="${lang}"`);
+    }
+  });
+
+  it("near-miss: rejects missing lang so q cannot be omitted (#61)", () => {
+    expect(() =>
+      buildNgsiLdWebPushSubscription(VALID, {
+        siteOrigin: "https://bosai.example.jp",
+      } as { siteOrigin: string; lang: "ja" }),
+    ).toThrow(ValidationError);
+  });
+
+  it("near-miss: rejects non-allowlisted lang before embedding into q (#61)", () => {
+    expect(() =>
+      buildNgsiLdWebPushSubscription(VALID, {
+        lang: "ja; drop all" as "ja",
+      }),
+    ).toThrow(ValidationError);
+    expect(() =>
+      buildNgsiLdWebPushSubscription(VALID, {
+        lang: "fr" as "ja",
+      }),
+    ).toThrow(ValidationError);
   });
 });
 

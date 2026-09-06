@@ -19,6 +19,9 @@ const syncServiceWorkerLang = vi.fn(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock arity
   async (..._args: [ServiceWorkerRegistration, string]) => undefined,
 );
+const resyncWebPushSubscriptionLang =
+  vi.fn<(options: { lang: string }) => Promise<StoredWebPushState>>();
+const writeStoredWebPushState = vi.fn<(state: StoredWebPushState) => void>();
 
 vi.mock("@/lib/web-push-client", () => ({
   enableWebPushNotifications: (options: { lang: string }) =>
@@ -30,6 +33,10 @@ vi.mock("@/lib/web-push-client", () => ({
     registration: ServiceWorkerRegistration,
     lang: string,
   ) => syncServiceWorkerLang(registration, lang),
+  resyncWebPushSubscriptionLang: (options: { lang: string }) =>
+    resyncWebPushSubscriptionLang(options),
+  writeStoredWebPushState: (state: StoredWebPushState) =>
+    writeStoredWebPushState(state),
 }));
 
 function stubPushApis(permission: NotificationPermission = "default") {
@@ -233,6 +240,56 @@ describe("PushNotificationOptIn state transition", () => {
     );
 
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it("resyncs GeonicDB subscription when display language changes (#61)", async () => {
+    resolveActiveWebPushState.mockResolvedValue({
+      subscriptionId: "urn:ngsi-ld:Subscription:test",
+      endpoint: "https://fcm.googleapis.com/fcm/send/x",
+      enabledAt: "2026-09-05T00:00:00.000Z",
+      lang: "ja",
+    });
+    resyncWebPushSubscriptionLang.mockResolvedValue({
+      subscriptionId: "urn:ngsi-ld:Subscription:en",
+      endpoint: "https://fcm.googleapis.com/fcm/send/x",
+      enabledAt: "2026-09-06T00:00:00.000Z",
+      lang: "en",
+    });
+
+    const { rerender } = render(
+      <PushNotificationOptIn lang="ja" strings={testStrings} />,
+    );
+    await findSwitch();
+    expect(resyncWebPushSubscriptionLang).not.toHaveBeenCalled();
+
+    rerender(<PushNotificationOptIn lang="en" strings={UI_STRINGS.en} />);
+
+    await waitFor(() => {
+      expect(resyncWebPushSubscriptionLang).toHaveBeenCalledWith({
+        lang: "en",
+      });
+    });
+  });
+
+  it("claims missing stored.lang locally without GeonicDB resync (#61 no migration)", async () => {
+    resolveActiveWebPushState.mockResolvedValue({
+      subscriptionId: "urn:ngsi-ld:Subscription:legacy",
+      endpoint: "https://fcm.googleapis.com/fcm/send/x",
+      enabledAt: "2026-09-05T00:00:00.000Z",
+    });
+
+    render(<PushNotificationOptIn lang="ja" strings={testStrings} />);
+    await findSwitch();
+
+    await waitFor(() => {
+      expect(writeStoredWebPushState).toHaveBeenCalledWith(
+        expect.objectContaining({
+          subscriptionId: "urn:ngsi-ld:Subscription:legacy",
+          lang: "ja",
+        }),
+      );
+    });
+    expect(resyncWebPushSubscriptionLang).not.toHaveBeenCalled();
   });
 
   it("provides toggle and denied strings in all site languages", () => {

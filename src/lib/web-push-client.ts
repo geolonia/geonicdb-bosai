@@ -1,4 +1,4 @@
-import type { SiteLanguage } from "@/config/site-language";
+import { isSiteLanguage, type SiteLanguage } from "@/config/site-language";
 import {
   assertSubscriptionId,
   buildNgsiLdWebPushSubscription,
@@ -17,8 +17,9 @@ export type StoredWebPushState = {
   subscriptionId: string;
   endpoint: string;
   enabledAt: string;
+  /** 購読作成時の表示言語（`q` と対応）。旧データは欠けることがある */
+  lang?: SiteLanguage;
 };
-
 export type PublicWebPushEnv = PublicEnvLike;
 
 /** @internal テスト注入用。SDK の requestRaw 面だけ。 */
@@ -96,11 +97,16 @@ export function readStoredWebPushState(
     ) {
       return null;
     }
-    return {
+    const state: StoredWebPushState = {
       subscriptionId: parsed.subscriptionId,
       endpoint: parsed.endpoint,
       enabledAt: parsed.enabledAt,
     };
+    if (parsed.lang !== undefined) {
+      if (!isSiteLanguage(parsed.lang)) return null;
+      state.lang = parsed.lang;
+    }
+    return state;
   } catch {
     return null;
   }
@@ -129,10 +135,11 @@ export async function registerWebPushSubscription(
     keys?: { p256dh?: string; auth?: string };
   },
   options: {
+    lang: SiteLanguage;
     env?: PublicWebPushEnv;
     client?: WebPushGeonicdbClient;
     siteOrigin?: string;
-  } = {},
+  },
 ): Promise<string> {
   const parsed = parsePushSubscription({
     endpoint: pushSubscriptionJson.endpoint,
@@ -143,7 +150,10 @@ export async function registerWebPushSubscription(
     (typeof globalThis.location?.origin === "string"
       ? globalThis.location.origin
       : undefined);
-  const body = buildNgsiLdWebPushSubscription(parsed, { siteOrigin });
+  const body = buildNgsiLdWebPushSubscription(parsed, {
+    siteOrigin,
+    lang: options.lang,
+  });
 
   const client =
     options.client ??
@@ -257,7 +267,8 @@ export async function resolveActiveWebPushState(
 
 /**
  * 通知許可 → SW 登録 → pushManager.subscribe → GeonicDB へ直接登録。
- * 同一 endpoint の既存購読 + 保存済み subscriptionId がある場合は再 POST しない。
+ * 同一 endpoint の既存購読 + 保存済み subscriptionId があり、言語も一致する場合は再 POST しない。
+ * 言語だけ変わっている場合は購読を作り直す（#61。ポリシーが PATCH 非許可のため POST 新→DELETE 旧）。
  */
 export async function enableWebPushNotifications(options: {
   lang: SiteLanguage;
@@ -305,7 +316,25 @@ export async function enableWebPushNotifications(options: {
     existingSub.endpoint === stored.endpoint &&
     stored.subscriptionId
   ) {
-    return stored;
+    if (stored.lang === options.lang) {
+      return stored;
+    }
+    // 旧データ（lang 未保存）: GeonicDB は触らずローカルだけ記録（#61 移行なし）
+    if (stored.lang === undefined) {
+      const claimed: StoredWebPushState = {
+        ...stored,
+        lang: options.lang,
+      };
+      writeStoredWebPushState(claimed);
+      return claimed;
+    }
+    // 言語不一致 → 購読を作り直す
+    return resyncWebPushSubscriptionLang({
+      lang: options.lang,
+      env: options.env,
+      client: options.client,
+      registration,
+    });
   }
 
   // 既存 PushSubscription がある場合は VAPID 取得をスキップ（localStorage 再同期のみ）
@@ -324,16 +353,99 @@ export async function enableWebPushNotifications(options: {
       endpoint,
       keys: json.keys,
     },
-    { env: options.env, client: options.client },
+    { lang: options.lang, env: options.env, client: options.client },
   );
 
   const state: StoredWebPushState = {
     subscriptionId,
     endpoint,
     enabledAt: new Date().toISOString(),
+    lang: options.lang,
   };
   writeStoredWebPushState(state);
   return state;
+}
+
+/**
+ * 表示言語変更に合わせて GeonicDB 購読の `q` を更新する（#61）。
+ *
+ * ポリシー `bosai-webpush-proxy-write` は PATCH 非許可のため、POST 新購読 → DELETE 旧購読。
+ * 失敗時に通知停止・二重配信を残さない:
+ * - POST 失敗 → 旧購読のまま（状態変更なし）
+ * - POST 成功・旧 DELETE 失敗 → 新購読をロールバック削除し、旧のまま throw
+ * - 旧 DELETE の 404/410 は成功扱い（#52）
+ */
+export async function resyncWebPushSubscriptionLang(options: {
+  lang: SiteLanguage;
+  env?: PublicWebPushEnv;
+  client?: WebPushGeonicdbClient;
+  registration?: ServiceWorkerRegistration | null;
+}): Promise<StoredWebPushState> {
+  if (!isSiteLanguage(options.lang)) {
+    throw new Error("lang must be a SITE_LANGUAGES value");
+  }
+  if (!isWebPushConfigured(options.env)) {
+    throw new Error("NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY is not set");
+  }
+
+  const stored = readStoredWebPushState();
+  if (!stored) {
+    throw new Error("Web Push is not enabled");
+  }
+  if (stored.lang === options.lang) {
+    return stored;
+  }
+
+  const registration =
+    options.registration ??
+    (typeof navigator !== "undefined" && "serviceWorker" in navigator
+      ? await navigator.serviceWorker.getRegistration()
+      : undefined);
+  if (registration) {
+    await syncServiceWorkerLang(registration, options.lang);
+  }
+
+  const pushSub = await registration?.pushManager.getSubscription();
+  if (!pushSub || pushSub.endpoint !== stored.endpoint) {
+    throw new Error("PushSubscription missing or endpoint mismatch");
+  }
+
+  const json = pushSub.toJSON();
+  const endpoint = json.endpoint ?? pushSub.endpoint;
+  const previousId = stored.subscriptionId;
+
+  // 先に新購読を作る（失敗しても旧が残る → 通知は止まらない）
+  const newSubscriptionId = await registerWebPushSubscription(
+    { endpoint, keys: json.keys },
+    { lang: options.lang, env: options.env, client: options.client },
+  );
+
+  try {
+    await unregisterWebPushSubscription(previousId, {
+      env: options.env,
+      client: options.client,
+    });
+  } catch (error) {
+    // 旧が残ると二重配信になるので、新をロールバックして旧のみの状態へ戻す
+    try {
+      await unregisterWebPushSubscription(newSubscriptionId, {
+        env: options.env,
+        client: options.client,
+      });
+    } catch {
+      // ロールバック失敗時は二重のままになりうる。上位で再試行できるよう throw を維持
+    }
+    throw error;
+  }
+
+  const next: StoredWebPushState = {
+    subscriptionId: newSubscriptionId,
+    endpoint,
+    enabledAt: new Date().toISOString(),
+    lang: options.lang,
+  };
+  writeStoredWebPushState(next);
+  return next;
 }
 
 /**

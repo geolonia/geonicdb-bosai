@@ -186,6 +186,7 @@ describe("registerWebPushSubscription (direct GeonicDB)", () => {
 
     await expect(
       registerWebPushSubscription(pushJson, {
+        lang: "ja",
         client,
         siteOrigin: "https://geolonia.github.io",
       }),
@@ -194,11 +195,34 @@ describe("registerWebPushSubscription (direct GeonicDB)", () => {
     expect(requestRaw).toHaveBeenCalledTimes(1);
     const body = postedBody as {
       type: string;
+      q: string;
       notification: { endpoint: { protocol: string }; attributes: string[] };
     };
     expect(body.type).toBe("Subscription");
+    expect(body.q).toBe('language=="ja"');
     expect(body.notification.endpoint.protocol).toBe("webpush");
     expect(body.notification.attributes).toEqual(["language"]);
+  });
+
+  it("near-miss: POST q must match lang (not another SITE_LANGUAGES value) (#61)", async () => {
+    let postedBody: unknown;
+    const requestRaw = vi.fn(async (_m, _p, body?: unknown) => {
+      postedBody = body;
+      return new Response(null, {
+        status: 201,
+        headers: {
+          Location: "/ngsi-ld/v1/subscriptions/urn:ngsi-ld:Subscription:99",
+        },
+      });
+    });
+    await registerWebPushSubscription(pushJson, {
+      lang: "ko",
+      client: { requestRaw },
+    });
+    const body = postedBody as { q: string };
+    expect(body.q).toBe('language=="ko"');
+    expect(body.q).not.toBe('language=="ja"');
+    expect(body.q).not.toBeUndefined();
   });
 
   it("rejects private push endpoints before calling GeonicDB (near-miss)", async () => {
@@ -209,7 +233,7 @@ describe("registerWebPushSubscription (direct GeonicDB)", () => {
           ...pushJson,
           endpoint: "https://127.0.0.1/push",
         },
-        { client: { requestRaw } },
+        { lang: "ja", client: { requestRaw } },
       ),
     ).rejects.toThrow(/host is not allowed/);
     expect(requestRaw).not.toHaveBeenCalled();

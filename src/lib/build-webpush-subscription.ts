@@ -3,6 +3,8 @@
  * GeonicDB #3014: notification.endpoint.protocol=webpush + webpush.keys。
  * （旧 Lambda プロキシからフロントへ移設。issue #39）
  */
+import { isSiteLanguage, type SiteLanguage } from "@/config/site-language";
+import { languagePropertyQuery } from "@/lib/geonicdb-public-client";
 import {
   BOSAI_LIVE_ENTITY_TYPES,
   BOSAI_WEBPUSH_ENTITY_TYPES,
@@ -28,8 +30,12 @@ export type PushSubscriptionInput = {
 export type BuildSubscriptionOptions = {
   /** 通知クリック先（サイトトップ）。payload には載せないが description に残す */
   siteOrigin?: string;
+  /**
+   * 購読者の表示言語。NGSI-LD `q` で言語版エンティティを絞る（#61）。
+   * SITE_LANGUAGES の allowlist のみ許可（インジェクション耐性）。
+   */
+  lang: SiteLanguage;
 };
-
 /**
  * Push Service の endpoint URL と VAPID keys を検証する。
  * near-miss: http:// や "https://" のみ（hostname 無し）は拒否。
@@ -173,11 +179,15 @@ export class ValidationError extends Error {
  * NGSI-LD Subscription 作成 body。
  * attributes に language のみを指定し、ペイロードを ~4KB 上限内に抑える
  * （SW は type だけ見て短い文言を表示する）。
+ * `q` で表示言語のエンティティだけに絞る（警戒レベルは言語ごとに別エンティティ, #61）。
  */
 export function buildNgsiLdWebPushSubscription(
   subscription: PushSubscriptionInput,
-  options: BuildSubscriptionOptions = {},
+  options: BuildSubscriptionOptions,
 ): Record<string, unknown> {
+  if (!isSiteLanguage(options.lang)) {
+    throw new ValidationError("lang must be a SITE_LANGUAGES value");
+  }
   const site = options.siteOrigin?.replace(/\/+$/, "") ?? "";
   return {
     type: "Subscription",
@@ -186,6 +196,8 @@ export function buildNgsiLdWebPushSubscription(
       : "geonicdb-bosai webpush",
     // Push は割り込みなので警戒レベルのみ（WS 用 BOSAI_LIVE_ENTITY_TYPES とは別定数）
     entities: BOSAI_WEBPUSH_ENTITY_TYPES.map((type) => ({ type })),
+    // notification.attributes の language は射影のみ。絞り込みは q（#61）
+    q: languagePropertyQuery(options.lang),
     notification: {
       attributes: ["language"],
       endpoint: {
