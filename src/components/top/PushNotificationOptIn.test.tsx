@@ -5,6 +5,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PushNotificationOptIn } from "@/components/top/PushNotificationOptIn";
 import { UI_STRINGS } from "@/config/ui-strings";
 import type { StoredWebPushState } from "@/lib/web-push-client";
+import {
+  PUSH_OPT_IN_ANCHOR_ID,
+  PUSH_OPT_IN_SWITCH_ID,
+} from "@/lib/push-opt-in-banner";
 import { SITE_LANGUAGES } from "@/config/site-language";
 import { testStrings } from "@/test/fixtures";
 
@@ -435,6 +439,74 @@ describe("PushNotificationOptIn state transition", () => {
       );
     });
     expect(resyncWebPushSubscriptionLang).not.toHaveBeenCalled();
+  });
+
+  it("exposes a stable anchor id so the header banner can link to the toggle", async () => {
+    render(<PushNotificationOptIn lang="ja" strings={testStrings} />);
+    const control = await findSwitch();
+
+    expect(control).toHaveAttribute("id", PUSH_OPT_IN_SWITCH_ID);
+    // near-miss: useId() の不透明な値だと `#id` アンカーの行き先にできない
+    expect(control.id).not.toMatch(/^:.*:$/);
+    expect(document.getElementById(PUSH_OPT_IN_ANCHOR_ID)).toContainElement(
+      control,
+    );
+  });
+
+  it("reports that opting in should be recommended while unsubscribed", async () => {
+    const onOptInRecommendedChange = vi.fn<(recommended: boolean) => void>();
+    render(
+      <PushNotificationOptIn
+        lang="ja"
+        strings={testStrings}
+        onOptInRecommendedChange={onOptInRecommendedChange}
+      />,
+    );
+    await findSwitch();
+
+    await waitFor(() => {
+      expect(onOptInRecommendedChange).toHaveBeenLastCalledWith(true);
+    });
+  });
+
+  it("stops recommending once the user is subscribed", async () => {
+    resolveActiveWebPushState.mockResolvedValue({
+      subscriptionId: "urn:ngsi-ld:Subscription:test",
+      endpoint: "https://fcm.googleapis.com/fcm/send/x",
+      enabledAt: "2026-09-05T00:00:00.000Z",
+      lang: "ja",
+    });
+    const onOptInRecommendedChange = vi.fn<(recommended: boolean) => void>();
+    render(
+      <PushNotificationOptIn
+        lang="ja"
+        strings={testStrings}
+        onOptInRecommendedChange={onOptInRecommendedChange}
+      />,
+    );
+    await findSwitch();
+
+    // near-miss: 購読済みでも true を投げると、通知オンの利用者に推奨帯が出る
+    await waitFor(() => {
+      expect(onOptInRecommendedChange).toHaveBeenCalled();
+    });
+    expect(onOptInRecommendedChange).not.toHaveBeenCalledWith(true);
+  });
+
+  it("stops recommending when the browser has denied notifications", async () => {
+    stubPushApis("denied");
+    const onOptInRecommendedChange = vi.fn<(recommended: boolean) => void>();
+    render(
+      <PushNotificationOptIn
+        lang="ja"
+        strings={testStrings}
+        onOptInRecommendedChange={onOptInRecommendedChange}
+      />,
+    );
+
+    await screen.findByText(testStrings.pushPermissionDeniedLabel);
+    // 許可拒否では打つ手が無いので「オンにしましょう」と勧めない
+    expect(onOptInRecommendedChange).not.toHaveBeenCalledWith(true);
   });
 
   it("provides toggle and denied strings in all site languages", () => {

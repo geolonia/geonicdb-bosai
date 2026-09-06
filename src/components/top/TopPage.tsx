@@ -21,6 +21,7 @@ import {
 } from "@/components/top/NewsList";
 import { OptionalFeatureBoundary } from "@/components/top/OptionalFeatureBoundary";
 import { PushNotificationOptIn } from "@/components/top/PushNotificationOptIn";
+import { PushOptInBanner } from "@/components/top/PushOptInBanner";
 import { QuickLinks } from "@/components/top/QuickLinks";
 import { SiteFooter } from "@/components/top/SiteFooter";
 import { SiteHeader } from "@/components/top/SiteHeader";
@@ -108,6 +109,8 @@ export function TopPage({ initialSnapshot }: TopPageProps = {}) {
   const langSnapshot = initialSnapshot?.languages[lang];
   const [iosGuideOpen, setIosGuideOpen] = useState(false);
   const iosGuideReturnFocusRef = useRef<HTMLElement | null>(null);
+  // フッターのトグルが解決した「通知オフ」状態を、ヘッダー上部の推奨帯へ渡す
+  const [pushOptInRecommended, setPushOptInRecommended] = useState(false);
 
   const openIosGuide = useCallback((opener: HTMLElement) => {
     iosGuideReturnFocusRef.current = opener;
@@ -222,6 +225,10 @@ export function TopPage({ initialSnapshot }: TopPageProps = {}) {
 
   return (
     <>
+      {/* 通知オフのときだけヘッダーより上に出す。トグル本体とは別の境界で包む（#63 と同じ理由） */}
+      <OptionalFeatureBoundary>
+        <PushOptInBanner strings={strings} recommended={pushOptInRecommended} />
+      </OptionalFeatureBoundary>
       <SiteHeader strings={strings} lang={lang} onLangChange={setLang} />
       {bannerView.kind === "ready" ? (
         <>
@@ -316,6 +323,7 @@ export function TopPage({ initialSnapshot }: TopPageProps = {}) {
             lang={lang}
             strings={strings}
             onOpenIosGuide={openIosGuide}
+            onOptInRecommendedChange={setPushOptInRecommended}
           />
         </OptionalFeatureBoundary>
       </SiteFooter>

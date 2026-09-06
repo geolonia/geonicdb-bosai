@@ -7,6 +7,7 @@ import { AlertLevelDisplay } from "@/components/top/AlertLevelDisplay";
 import { EmergencyBanner } from "@/components/top/EmergencyBanner";
 import { NewsList } from "@/components/top/NewsList";
 import { PushNotificationOptIn } from "@/components/top/PushNotificationOptIn";
+import { PushOptInBanner } from "@/components/top/PushOptInBanner";
 import { QuickLinks } from "@/components/top/QuickLinks";
 import { SiteHeader } from "@/components/top/SiteHeader";
 import { BANNER_VARIANT_COLORS } from "@/config/alert-colors";
@@ -193,5 +194,33 @@ describe("a11y: AddToHomeScreenPrompt", () => {
       screen.getByRole("button", { name: testStrings.a2hsDismissLabel }),
     ).toBeInTheDocument();
     expect(await runAxeWithRegion(container)).toHaveNoViolations();
+  });
+});
+
+describe("a11y: PushOptInBanner", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it("has no violations and keeps the copy readable on its tinted background", async () => {
+    const { container } = render(
+      <PushOptInBanner strings={testStrings} recommended />,
+    );
+    // 帯は初回操作まで出さない（CLS 対策）ので、操作を模して出す
+    window.dispatchEvent(new MouseEvent("click"));
+    await screen.findByTestId("push-opt-in-banner");
+
+    expect(
+      screen.getByRole("link", { name: testStrings.pushOptInBannerText }),
+    ).toHaveAttribute("href", "#push-opt-in-switch");
+    expect(
+      screen.getByRole("button", {
+        name: testStrings.pushOptInBannerDismissLabel,
+      }),
+    ).toBeInTheDocument();
+    expect(await runAxeWithRegion(container)).toHaveNoViolations();
+
+    // globals.css の .push-opt-in-banner 背景と本文色（WCAG 1.4.3 AA = 4.5:1）
+    expect(contrastRatio("#fffbe6", "#1a1a1a")).toBeGreaterThanOrEqual(4.5);
   });
 });

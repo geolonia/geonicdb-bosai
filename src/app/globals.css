@@ -125,6 +125,57 @@ input:focus-visible {
   min-height: 2.75rem;
 }
 
+/* 通知オフのときヘッダーより上に出す推奨帯。文書フローに載せる
+ * （固定オーバーレイは置かない = アクセシビリティ方針 WCAG 2.4.11 の公表内容）。
+ * ロード直後には出さずロード後の差し込みにする理由は
+ * src/config/push-opt-in-banner.ts を参照。
+ */
+.push-opt-in-banner {
+  background: #fffbe6;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.push-opt-in-banner__row {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0.5rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 2.75rem;
+}
+
+.push-opt-in-banner__link {
+  /* 当たり判定はリンク自体（親余白に頼らない / WCAG 2.5.8） */
+  display: flex;
+  align-items: center;
+  min-height: 2.75rem;
+  min-width: 0;
+  padding: 0.25rem 0;
+  color: var(--color-text);
+  font-size: 0.9375rem;
+  line-height: 1.4;
+}
+
+.push-opt-in-banner__dismiss {
+  box-sizing: border-box;
+  flex-shrink: 0;
+  margin: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 0.25rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.875rem;
+  line-height: 1.2;
+  cursor: pointer;
+  /* 当たり判定はボタン自体（親余白に頼らない / WCAG 2.5.8） */
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0.5rem 0.75rem;
+}
+
 .push-opt-in {
   max-width: var(--max-width);
   margin: 0 auto;
@@ -174,6 +225,8 @@ input:focus-visible {
   appearance: none;
   flex-shrink: 0;
   box-sizing: border-box;
+  /* 推奨帯からアンカーで飛んできたとき、ラベルが画面外に切れないよう余白を持たせる */
+  scroll-margin-block: 6rem;
   width: 3rem;
   /* 入力要素自体のヒットボックス（親 row の余白に頼らない） */
   min-width: 2.75rem;
@@ -725,6 +778,7 @@ html.a2hs-prompt-visible body {
 @media (max-width: 320px) {
   .site-header__inner,
   .emergency-banner__inner,
+  .push-opt-in-banner__row,
   .top-main,
   .site-footer__inner,
   .content-page,
@@ -741,6 +795,7 @@ html.a2hs-prompt-visible body {
 @media print {
   .site-header__lang,
   .site-footer,
+  .push-opt-in-banner,
   .content-page-header {
     display: none;
   }

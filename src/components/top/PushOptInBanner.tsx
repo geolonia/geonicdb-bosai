@@ -1,0 +1,145 @@
+"use client";
+
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import type { MouseEvent } from "react";
+import { PUSH_OPT_IN_BANNER_REVEAL_IDLE_MS } from "@/config/push-opt-in-banner";
+import type { UiStrings } from "@/config/ui-strings";
+import {
+  dismissPushOptInBanner,
+  isPushOptInBannerDismissed,
+  PUSH_OPT_IN_SWITCH_ID,
+} from "@/lib/push-opt-in-banner";
+
+type Props = {
+  strings: Pick<
+    UiStrings,
+    "pushOptInBannerText" | "pushOptInBannerDismissLabel" | "pushToggleLabel"
+  >;
+  /**
+   * 通知が未購読で、オンを勧めるべきか。
+   * 対応状況・許可状態・購読有無はフッターの `PushNotificationOptIn` が
+   * 解決済みなので、判定を二重に走らせず親経由で受け取る。
+   */
+  recommended: boolean;
+};
+
+function subscribeNoop(): () => void {
+  return () => undefined;
+}
+
+function getIsClientSnapshot(): boolean {
+  return true;
+}
+
+function getServerSnapshot(): boolean {
+  return false;
+}
+
+function prefersReducedMotion(): boolean {
+  try {
+    return (
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * ヘッダー上部の「通知をオンにすることをおすすめします」帯。
+ *
+ * - 通知がオフのときだけ出す（オン・非対応・許可拒否では出さない）
+ * - テキストはフッターの通知トグルへのリンク。JS が無くても
+ *   `href="#push-opt-in-switch"` でトグル本体へ飛んでフォーカスが載る
+ * - 閉じたら `PUSH_OPT_IN_BANNER_DISMISS_DAYS` 日は再表示しない
+ * - 文書フローに入るのでロード直後には出さない（CLS 対策 / 設定ファイル参照）
+ */
+export function PushOptInBanner({ strings, recommended }: Props) {
+  const isClient = useSyncExternalStore(
+    subscribeNoop,
+    getIsClientSnapshot,
+    getServerSnapshot,
+  );
+  const [dismissedLocal, setDismissedLocal] = useState(false);
+  const [revealReady, setRevealReady] = useState(false);
+
+  let dismissedStored = false;
+  if (isClient) {
+    try {
+      dismissedStored = isPushOptInBannerDismissed();
+    } catch {
+      // 判定に失敗したら帯を出さず、主要情報の描画を優先する
+      dismissedStored = true;
+    }
+  }
+  const dismissed = dismissedLocal || dismissedStored;
+
+  useEffect(() => {
+    if (!isClient || !recommended || dismissed) return;
+
+    const enable = () => {
+      setRevealReady(true);
+    };
+    // pointerdown / keydown ではなく click / keyup で出す。押下時点で差し込むと
+    // 帯の高さだけページが下へずれ、pointerup が別要素に当たって最初のタップが
+    // 無効になる（click は mousedown と mouseup の共通祖先へ飛ぶ）。
+    // どちらもユーザー入力から 500ms 以内なので CLS には計上されない。
+    window.addEventListener("click", enable, { once: true });
+    window.addEventListener("keyup", enable, { once: true });
+    const timer = window.setTimeout(enable, PUSH_OPT_IN_BANNER_REVEAL_IDLE_MS);
+    return () => {
+      window.removeEventListener("click", enable);
+      window.removeEventListener("keyup", enable);
+      window.clearTimeout(timer);
+    };
+  }, [isClient, recommended, dismissed]);
+
+  const onDismiss = useCallback(() => {
+    dismissPushOptInBanner();
+    setDismissedLocal(true);
+  }, []);
+
+  const onJumpToToggle = useCallback((event: MouseEvent<HTMLAnchorElement>) => {
+    const target = document.getElementById(PUSH_OPT_IN_SWITCH_ID);
+    // 見つからなければ preventDefault せず、素のアンカー移動に任せる
+    if (!target) return;
+
+    event.preventDefault();
+    target.scrollIntoView({
+      behavior: prefersReducedMotion() ? "auto" : "smooth",
+      block: "center",
+    });
+    // スクロールは scrollIntoView に任せ、focus では動かさない
+    target.focus({ preventScroll: true });
+  }, []);
+
+  if (!(isClient && recommended && !dismissed && revealReady)) {
+    return null;
+  }
+
+  return (
+    <aside
+      className="push-opt-in-banner"
+      aria-label={strings.pushToggleLabel}
+      data-testid="push-opt-in-banner"
+    >
+      <div className="push-opt-in-banner__row">
+        <a
+          className="push-opt-in-banner__link"
+          href={`#${PUSH_OPT_IN_SWITCH_ID}`}
+          onClick={onJumpToToggle}
+        >
+          {strings.pushOptInBannerText}
+        </a>
+        <button
+          type="button"
+          className="push-opt-in-banner__dismiss"
+          onClick={onDismiss}
+        >
+          {strings.pushOptInBannerDismissLabel}
+        </button>
+      </div>
+    </aside>
+  );
+}

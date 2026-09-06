@@ -1,16 +1,14 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useId,
-  useState,
-  useSyncExternalStore,
-} from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import type { SiteLanguage } from "@/config/site-language";
 import type { UiStrings } from "@/config/ui-strings";
 import { installAppBadgeClearOnForeground } from "@/lib/app-badge-client";
 import { isIosLikeDevice, isRunningAsInstalledPwa } from "@/lib/a2hs";
+import {
+  PUSH_OPT_IN_ANCHOR_ID,
+  PUSH_OPT_IN_SWITCH_ID,
+} from "@/lib/push-opt-in-banner";
 import {
   disableWebPushNotifications,
   enableWebPushNotifications,
@@ -28,6 +26,12 @@ type Props = {
   strings: UiStrings;
   /** #65: iOS 手順ダイアログを開く（帯 dismiss 後も到達できるよう親が所有） */
   onOpenIosGuide?: (opener: HTMLElement) => void;
+  /**
+   * 「通知をオンにすることを勧めるべきか」を親へ通知する。
+   * ヘッダー上部の推奨帯（`PushOptInBanner`）が同じ判定を二重に走らせないよう、
+   * 対応状況・許可状態・購読有無を解決済みのこちらから渡す。
+   */
+  onOptInRecommendedChange?: (recommended: boolean) => void;
 };
 
 function isPushSupported(): boolean {
@@ -62,8 +66,11 @@ export function PushNotificationOptIn({
   lang,
   strings,
   onOpenIosGuide,
+  onOptInRecommendedChange,
 }: Props) {
-  const switchId = useId();
+  // ページに 1 個しか置かないので固定 id。推奨帯から `#id` で飛べる必要があり、
+  // useId() の不透明な値ではアンカーにできない。
+  const switchId = PUSH_OPT_IN_SWITCH_ID;
   const isClient = useSyncExternalStore(
     subscribeNoop,
     getIsClientSnapshot,
@@ -154,6 +161,17 @@ export function PushNotificationOptIn({
     if (!available || !stored) return;
     return installAppBadgeClearOnForeground();
   }, [available, stored]);
+
+  // オンを勧められる状態（対応済み・許可拒否でない・未購読）だけ帯を出させる。
+  // アンマウント時（OptionalFeatureBoundary が握り潰した場合を含む）は false に戻す。
+  const optInRecommended =
+    available && hydrated && !permissionDenied && stored == null;
+  useEffect(() => {
+    onOptInRecommendedChange?.(optInRecommended);
+    return () => {
+      onOptInRecommendedChange?.(false);
+    };
+  }, [optInRecommended, onOptInRecommendedChange]);
 
   const onEnable = useCallback(async () => {
     setPhase("busy");
@@ -258,7 +276,7 @@ export function PushNotificationOptIn({
       : strings.pushToggleDescriptionOff;
 
   return (
-    <div className="push-opt-in">
+    <div className="push-opt-in" id={PUSH_OPT_IN_ANCHOR_ID}>
       <div className="push-opt-in__row">
         <div className="push-opt-in__copy">
           <label
