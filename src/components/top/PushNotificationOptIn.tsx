@@ -10,6 +10,7 @@ import {
 import type { SiteLanguage } from "@/config/site-language";
 import type { UiStrings } from "@/config/ui-strings";
 import { installAppBadgeClearOnForeground } from "@/lib/app-badge-client";
+import { isIosLikeDevice, isRunningAsInstalledPwa } from "@/lib/a2hs";
 import {
   disableWebPushNotifications,
   enableWebPushNotifications,
@@ -25,6 +26,8 @@ import {
 type Props = {
   lang: SiteLanguage;
   strings: UiStrings;
+  /** #65: iOS 手順ダイアログを開く（帯 dismiss 後も到達できるよう親が所有） */
+  onOpenIosGuide?: (opener: HTMLElement) => void;
 };
 
 function isPushSupported(): boolean {
@@ -55,7 +58,11 @@ function getServerSnapshot(): boolean {
   return false;
 }
 
-export function PushNotificationOptIn({ lang, strings }: Props) {
+export function PushNotificationOptIn({
+  lang,
+  strings,
+  onOpenIosGuide,
+}: Props) {
   const switchId = useId();
   const isClient = useSyncExternalStore(
     subscribeNoop,
@@ -193,13 +200,36 @@ export function PushNotificationOptIn({ lang, strings }: Props) {
     return null;
   }
 
-  // 未対応ブラウザ: 理由を status で明示
+  // Push 非対応: iOS 未インストールだけ手順へ誘導。それ以外は UI ごと出さない（#65）
   if (!pushSupported) {
+    let iosLike = false;
+    let standalone = false;
+    try {
+      iosLike = isIosLikeDevice();
+      standalone = isRunningAsInstalledPwa();
+    } catch {
+      return null;
+    }
+
+    // インストール済みなのに Push が無い（例: iOS 16.4 未満）→ 打つ手なし
+    if (!(iosLike && !standalone)) {
+      return null;
+    }
+
     return (
-      <div className="push-opt-in">
+      <div className="push-opt-in" data-testid="push-ios-install-hint">
         <p className="push-opt-in__status" role="status">
-          {strings.pushUnsupportedLabel}
+          {strings.pushIosInstallHint}
         </p>
+        <button
+          type="button"
+          className="push-opt-in__guide"
+          onClick={(event) => {
+            onOpenIosGuide?.(event.currentTarget);
+          }}
+        >
+          {strings.a2hsIosGuideOpenLabel}
+        </button>
       </div>
     );
   }

@@ -187,6 +187,9 @@ describe("a11y: AddToHomeScreenPrompt", () => {
     );
     await screen.findByTestId("a2hs-prompt");
     expect(
+      screen.getByRole("button", { name: testStrings.a2hsIosGuideOpenLabel }),
+    ).toBeInTheDocument();
+    expect(
       screen.getByRole("button", { name: testStrings.a2hsDismissLabel }),
     ).toBeInTheDocument();
     expect(await runAxeWithRegion(container)).toHaveNoViolations();

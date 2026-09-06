@@ -115,18 +115,32 @@ describe("AddToHomeScreenPrompt (#55)", () => {
     ).rejects.toThrow();
   });
 
-  it("shows iOS install instructions without waiting for beforeinstallprompt", async () => {
+  it("shows iOS install guide CTA without waiting for beforeinstallprompt (#65)", async () => {
     stubNavigator({
       userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
       platform: "iPhone",
       maxTouchPoints: 5,
     });
-    render(<AddToHomeScreenPrompt strings={testStrings} />);
+    const onOpenIosGuide = vi.fn();
+    render(
+      <AddToHomeScreenPrompt
+        strings={testStrings}
+        onOpenIosGuide={onOpenIosGuide}
+      />,
+    );
     expect(await screen.findByTestId("a2hs-prompt")).toBeInTheDocument();
     expect(screen.getByText(testStrings.a2hsIosHint)).toBeInTheDocument();
+    expect(testStrings.a2hsIosHint).not.toMatch(/画面下|画面下部/);
     expect(
       screen.queryByRole("button", { name: testStrings.a2hsInstallLabel }),
     ).not.toBeInTheDocument();
+
+    const guideButton = screen.getByRole("button", {
+      name: testStrings.a2hsIosGuideOpenLabel,
+    });
+    await userEvent.click(guideButton);
+    expect(onOpenIosGuide).toHaveBeenCalledTimes(1);
+    expect(onOpenIosGuide.mock.calls[0]?.[0]).toBeInstanceOf(HTMLElement);
   });
 
   it("shows Chromium install button after beforeinstallprompt and user gesture (#60 CLS)", async () => {
@@ -244,6 +258,9 @@ describe("AddToHomeScreenPrompt (#55)", () => {
       const { unmount } = render(<AddToHomeScreenPrompt strings={strings} />);
       expect(await screen.findByText(strings.a2hsTitle)).toBeInTheDocument();
       expect(screen.getByText(strings.a2hsIosHint)).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: strings.a2hsIosGuideOpenLabel }),
+      ).toBeInTheDocument();
       expect(
         screen.getByRole("button", { name: strings.a2hsDismissLabel }),
       ).toBeInTheDocument();
