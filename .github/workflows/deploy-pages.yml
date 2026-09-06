@@ -29,14 +29,14 @@ jobs:
           persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: npm
 
       - name: Setup Pages
         id: pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
 
       - name: Install dependencies
         run: npm ci
@@ -63,9 +63,12 @@ jobs:
         run: npm run build
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: ./out
+          # v4+ は dotfile をデフォルト除外する。.nojekyll が落ちると Pages が
+          # Jekyll を有効化し _next/ が 404 になる（#69）。
+          include-hidden-files: true
 
   deploy:
     needs: build

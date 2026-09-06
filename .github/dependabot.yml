@@ -5,6 +5,21 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      # TypeScript 7+ / 次 major の通常版上げは見送り（#70）。
+      # versions は security update にも効くため付けない。update-types のみなら
+      # version update の major だけ無視し、security update は通る。
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
+      # ESLint 10+ は eslint-plugin-react（next 経由）未対応（#70）。同上。
+      - dependency-name: eslint
+        update-types: ["version-update:semver-major"]
+      # @types/node は CI Node major と揃えるまで major 版上げを止める（#70）。
+      # Node 上げ時にこの ignore を外す。security update は通す。
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+  # infra/cdk は別 package.json だが、現状 dependabot の監視対象外（directory: / のみ）。
+  # cdk 用の entry を足すときは上記 ignore を同様に付けること（#70）。
   - package-ecosystem: github-actions
     directory: /
     schedule:
