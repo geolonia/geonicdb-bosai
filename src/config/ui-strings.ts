@@ -35,7 +35,7 @@ export type UiStrings = {
   pushPermissionDeniedLabel: string;
   /**
    * #65 iOS Safari（未インストール）: ホーム画面追加で Push が使える旨。
-   * 打つ手が無い非対応環境では UI ごと出さない（pushUnsupportedLabel は撤去）。
+   * 打つ手が無い非対応環境では「利用できません」ラベルを出さず UI ごと出さない。
    */
   pushIosInstallHint: string;
   /** #55 ホーム画面への追加（A2HS） */
