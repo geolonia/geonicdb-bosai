@@ -71,15 +71,25 @@ export function IosA2hsGuideDialog({
 
     if (open) {
       if (!dialog.open) {
-        dialog.showModal();
+        try {
+          dialog.showModal();
+        } catch {
+          // showModal 失敗（未実装・InvalidStateError 等）でも親ツリーは落とさない。
+          // open を戻さないと次のクリックが効かなくなるので親へ閉じを通知する。
+          onClose();
+        }
       }
       return;
     }
 
     if (dialog.open) {
-      dialog.close();
+      try {
+        dialog.close();
+      } catch {
+        // close 失敗は握りつぶす（親の open は既に false）
+      }
     }
-  }, [open]);
+  }, [open, onClose]);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -125,7 +135,11 @@ export function IosA2hsGuideDialog({
           type="button"
           className="ios-a2hs-guide__close"
           onClick={() => {
-            dialogRef.current?.close();
+            try {
+              dialogRef.current?.close();
+            } catch {
+              onClose();
+            }
           }}
         >
           {strings.a2hsIosGuideCloseLabel}

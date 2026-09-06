@@ -408,4 +408,87 @@ describe("TopPage load states", () => {
     expect(container.querySelector(".push-opt-in")).toBeNull();
     expect(container.querySelector("footer.site-footer")).not.toBeNull();
   });
+
+  /**
+   * #66: IosA2hsGuideDialog の showModal が throw しても主要情報は残る。
+   * InvalidStateError 相当をモック（既に open な dialog への再呼び出しと同型）。
+   */
+  it("still renders emergency content when ios guide showModal throws (#66)", async () => {
+    const proto = HTMLDialogElement.prototype;
+    if (typeof proto.showModal !== "function") {
+      proto.showModal = function showModal(this: HTMLDialogElement) {
+        this.setAttribute("open", "");
+      };
+    }
+    if (typeof proto.close !== "function") {
+      proto.close = function close(this: HTMLDialogElement) {
+        this.removeAttribute("open");
+        this.dispatchEvent(new Event("close"));
+      };
+    }
+
+    const showModal = vi
+      .spyOn(HTMLDialogElement.prototype, "showModal")
+      .mockImplementation(() => {
+        throw new DOMException(
+          "Failed to execute 'showModal' on 'HTMLDialogElement': The element already has an 'open' attribute",
+          "InvalidStateError",
+        );
+      });
+
+    isWebPushConfiguredMock.mockReturnValue(true);
+    localStorage.setItem(A2HS_DISMISS_STORAGE_KEY, "1");
+    Reflect.deleteProperty(window, "Notification");
+    Reflect.deleteProperty(navigator, "serviceWorker");
+    Reflect.deleteProperty(window, "PushManager");
+    Object.defineProperty(navigator, "userAgent", {
+      configurable: true,
+      value: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+    });
+    Object.defineProperty(navigator, "platform", {
+      configurable: true,
+      value: "iPhone",
+    });
+    Object.defineProperty(navigator, "maxTouchPoints", {
+      configurable: true,
+      value: 5,
+    });
+    Object.defineProperty(navigator, "standalone", {
+      configurable: true,
+      value: false,
+    });
+    window.matchMedia = vi.fn().mockReturnValue({
+      matches: false,
+      media: "",
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }) as unknown as typeof window.matchMedia;
+
+    try {
+      const user = userEvent.setup();
+      render(<TopPage />);
+
+      await waitFor(() => {
+        expect(screen.getByText("バナー見出しJA")).toBeInTheDocument();
+      });
+
+      const guideButton = await screen.findByRole("button", {
+        name: UI_STRINGS.ja.a2hsIosGuideOpenLabel,
+      });
+      await user.click(guideButton);
+
+      expect(screen.getByText("バナー見出しJA")).toBeInTheDocument();
+      expect(screen.getByText("レベル1ラベル")).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          `${UI_STRINGS.ja.footerContact}: ${UI_STRINGS.ja.footerContactValue}`,
+        ),
+      ).toBeInTheDocument();
+      expect(screen.getByTestId("ios-a2hs-guide-dialog")).not.toHaveAttribute(
+        "open",
+      );
+    } finally {
+      showModal.mockRestore();
+    }
+  });
 });
