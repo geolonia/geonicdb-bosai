@@ -223,17 +223,125 @@ describe("PushNotificationOptIn state transition", () => {
     expect(await findSwitch()).toHaveAttribute("aria-checked", "true");
   });
 
-  it("shows unsupported status when Push APIs are missing", async () => {
+  it("shows iOS install hint and opens guide when Push APIs are missing (#65)", async () => {
     Reflect.deleteProperty(window, "Notification");
     Reflect.deleteProperty(navigator, "serviceWorker");
     Reflect.deleteProperty(window, "PushManager");
+    Object.defineProperty(navigator, "userAgent", {
+      configurable: true,
+      value: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+    });
+    Object.defineProperty(navigator, "platform", {
+      configurable: true,
+      value: "iPhone",
+    });
+    Object.defineProperty(navigator, "maxTouchPoints", {
+      configurable: true,
+      value: 5,
+    });
+    Object.defineProperty(navigator, "standalone", {
+      configurable: true,
+      value: false,
+    });
+    window.matchMedia = vi.fn((query: string) => ({
+      matches: false,
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })) as unknown as typeof window.matchMedia;
 
-    render(<PushNotificationOptIn lang="ja" strings={testStrings} />);
+    const onOpenIosGuide = vi.fn();
+    render(
+      <PushNotificationOptIn
+        lang="ja"
+        strings={testStrings}
+        onOpenIosGuide={onOpenIosGuide}
+      />,
+    );
 
-    expect(await screen.findByRole("status")).toHaveTextContent(
-      testStrings.pushUnsupportedLabel,
+    expect(
+      await screen.findByTestId("push-ios-install-hint"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      testStrings.pushIosInstallHint,
     );
     expect(screen.queryByRole("switch")).not.toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: testStrings.a2hsIosGuideOpenLabel }),
+    );
+    expect(onOpenIosGuide).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders nothing when Push APIs are missing outside actionable iOS Safari (#65)", () => {
+    Reflect.deleteProperty(window, "Notification");
+    Reflect.deleteProperty(navigator, "serviceWorker");
+    Reflect.deleteProperty(window, "PushManager");
+    Object.defineProperty(navigator, "userAgent", {
+      configurable: true,
+      value:
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0.0.0",
+    });
+    Object.defineProperty(navigator, "platform", {
+      configurable: true,
+      value: "Linux x86_64",
+    });
+    Object.defineProperty(navigator, "maxTouchPoints", {
+      configurable: true,
+      value: 0,
+    });
+
+    const { container } = render(
+      <PushNotificationOptIn lang="ja" strings={testStrings} />,
+    );
+
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  // near-miss: インストール済みなのに「追加すると〜」を出すのは矛盾
+  it("near-miss: iOS standalone without PushManager renders nothing (#65)", () => {
+    Reflect.deleteProperty(window, "Notification");
+    Reflect.deleteProperty(navigator, "serviceWorker");
+    Reflect.deleteProperty(window, "PushManager");
+    Object.defineProperty(navigator, "userAgent", {
+      configurable: true,
+      value: "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X)",
+    });
+    Object.defineProperty(navigator, "platform", {
+      configurable: true,
+      value: "iPhone",
+    });
+    Object.defineProperty(navigator, "maxTouchPoints", {
+      configurable: true,
+      value: 5,
+    });
+    Object.defineProperty(navigator, "standalone", {
+      configurable: true,
+      value: true,
+    });
+    window.matchMedia = vi.fn((query: string) => ({
+      matches: query === "(display-mode: standalone)",
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })) as unknown as typeof window.matchMedia;
+
+    const { container } = render(
+      <PushNotificationOptIn lang="ja" strings={testStrings} />,
+    );
+
+    expect(container).toBeEmptyDOMElement();
+    expect(
+      screen.queryByText(testStrings.pushIosInstallHint),
+    ).not.toBeInTheDocument();
   });
 
   it("renders nothing when API key is not configured", () => {

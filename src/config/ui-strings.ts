@@ -29,19 +29,31 @@ export type UiStrings = {
   pushToggleLabel: string;
   pushToggleDescriptionOff: string;
   pushToggleDescriptionOn: string;
-  pushUnsupportedLabel: string;
   pushErrorLabel: string;
   pushBusyLabel: string;
   /** OS / ブラウザが通知を拒否済みのときの復旧案内 */
   pushPermissionDeniedLabel: string;
+  /**
+   * #65 iOS Safari（未インストール）: ホーム画面追加で Push が使える旨。
+   * 打つ手が無い非対応環境では UI ごと出さない（pushUnsupportedLabel は撤去）。
+   */
+  pushIosInstallHint: string;
   /** #55 ホーム画面への追加（A2HS） */
   a2hsTitle: string;
   /** Chromium 系: 追加すると通知を受け取れる旨（強制しない） */
   a2hsDescription: string;
-  /** iOS: 共有メニューからの手順案内 */
+  /** iOS: 帯内の短い案内（位置を断定しない。詳細は手順ダイアログ） */
   a2hsIosHint: string;
   a2hsInstallLabel: string;
   a2hsDismissLabel: string;
+  /** #65 iOS 手順ダイアログ */
+  a2hsIosGuideOpenLabel: string;
+  a2hsIosGuideTitle: string;
+  a2hsIosGuideStep1: string;
+  a2hsIosGuideStep2: string;
+  a2hsIosGuideStep3: string;
+  a2hsIosGuideStep4: string;
+  a2hsIosGuideCloseLabel: string;
   quickLinks: {
     shelters: string;
     hazard: string;
@@ -87,19 +99,28 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
     pushToggleLabel: "災害情報の通知",
     pushToggleDescriptionOff: "警戒レベルの変更をお知らせ",
     pushToggleDescriptionOn: "通知を受け取ります",
-    pushUnsupportedLabel: "このブラウザでは通知を利用できません",
     pushErrorLabel:
       "通知の設定に失敗しました。時間をおいて再度お試しください。",
     pushBusyLabel: "通知を設定しています…",
     pushPermissionDeniedLabel:
       "通知が許可されていません。ブラウザまたは端末の設定から通知を許可してください。",
+    pushIosInstallHint: "ホーム画面に追加すると通知を受け取れます",
     a2hsTitle: "ホーム画面に追加",
     a2hsDescription:
       "ホーム画面に追加すると、このサイトから通知を受け取れるようになります（任意です）。",
     a2hsIosHint:
-      "画面下の共有ボタンから「ホーム画面に追加」を選ぶと、通知を受け取れるようになります（任意です）。",
+      "ホーム画面に追加すると、通知を受け取れるようになります（任意です）。",
     a2hsInstallLabel: "追加する",
     a2hsDismissLabel: "閉じる",
+    a2hsIosGuideOpenLabel: "追加手順を見る",
+    a2hsIosGuideTitle: "ホーム画面への追加手順",
+    a2hsIosGuideStep1:
+      "ブラウザの共有ボタン（□から↑が出るアイコン）をタップ。見あたらない場合はアドレスバー横の「…」→「共有」",
+    a2hsIosGuideStep2:
+      "メニューから「ホーム画面に追加」を選ぶ（下にスクロールすると出てくる場合があります）",
+    a2hsIosGuideStep3: "「追加」をタップ",
+    a2hsIosGuideStep4: "ホーム画面に追加されたアイコンから開く",
+    a2hsIosGuideCloseLabel: "閉じる",
     quickLinks: {
       shelters: "避難所を探す",
       hazard: "ハザードマップ",
@@ -153,19 +174,29 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
     pushToggleLabel: "Disaster alerts",
     pushToggleDescriptionOff: "Get alert level changes",
     pushToggleDescriptionOn: "You will receive notifications",
-    pushUnsupportedLabel: "Notifications are not supported in this browser",
     pushErrorLabel:
       "Could not update notification settings. Please try again later.",
     pushBusyLabel: "Updating notification settings…",
     pushPermissionDeniedLabel:
       "Notifications are blocked. Allow them in your browser or device settings.",
+    pushIosInstallHint:
+      "Add this site to your Home Screen to receive notifications",
     a2hsTitle: "Add to Home Screen",
     a2hsDescription:
       "Add this site to your Home Screen to receive notifications (optional).",
     a2hsIosHint:
-      "Tap the Share button, then choose “Add to Home Screen” to receive notifications (optional).",
+      "Add this site to your Home Screen to receive notifications (optional).",
     a2hsInstallLabel: "Add",
     a2hsDismissLabel: "Dismiss",
+    a2hsIosGuideOpenLabel: "View install steps",
+    a2hsIosGuideTitle: "How to add to Home Screen",
+    a2hsIosGuideStep1:
+      "Tap the browser’s Share button (square with an upward arrow). If you don’t see it, open “…” next to the address bar, then choose Share",
+    a2hsIosGuideStep2:
+      "Choose “Add to Home Screen” from the menu (you may need to scroll down)",
+    a2hsIosGuideStep3: "Tap “Add”",
+    a2hsIosGuideStep4: "Open the site from the new Home Screen icon",
+    a2hsIosGuideCloseLabel: "Close",
     quickLinks: {
       shelters: "Find Shelters",
       hazard: "Hazard Map",
@@ -218,15 +249,23 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
     pushToggleLabel: "灾害信息通知",
     pushToggleDescriptionOff: "接收警戒级别变更通知",
     pushToggleDescriptionOn: "将接收通知",
-    pushUnsupportedLabel: "此浏览器不支持通知",
     pushErrorLabel: "无法更新通知设置。请稍后再试。",
     pushBusyLabel: "正在设置通知…",
     pushPermissionDeniedLabel: "通知未被允许。请在浏览器或设备设置中允许通知。",
+    pushIosInstallHint: "添加到主屏幕后即可接收通知",
     a2hsTitle: "添加到主屏幕",
     a2hsDescription: "添加到主屏幕后即可接收通知（可选）。",
-    a2hsIosHint: "点击分享按钮，然后选择“添加到主屏幕”，即可接收通知（可选）。",
+    a2hsIosHint: "添加到主屏幕后即可接收通知（可选）。",
     a2hsInstallLabel: "添加",
     a2hsDismissLabel: "关闭",
+    a2hsIosGuideOpenLabel: "查看添加步骤",
+    a2hsIosGuideTitle: "添加到主屏幕的步骤",
+    a2hsIosGuideStep1:
+      "点按浏览器的分享按钮（从方框向上箭头的图标）。如果找不到，请点地址栏旁的“…”，再选择“分享”",
+    a2hsIosGuideStep2: "在菜单中选择“添加到主屏幕”（可能需要向下滚动才能看到）",
+    a2hsIosGuideStep3: "点按“添加”",
+    a2hsIosGuideStep4: "从主屏幕上新添加的图标打开本站",
+    a2hsIosGuideCloseLabel: "关闭",
     quickLinks: {
       shelters: "查找避难所",
       hazard: "灾害风险地图",
@@ -279,19 +318,28 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
     pushToggleLabel: "Thông báo thiên tai",
     pushToggleDescriptionOff: "Nhận thay đổi mức cảnh báo",
     pushToggleDescriptionOn: "Bạn sẽ nhận thông báo",
-    pushUnsupportedLabel: "Trình duyệt này không hỗ trợ thông báo",
     pushErrorLabel:
       "Không thể cập nhật cài đặt thông báo. Vui lòng thử lại sau.",
     pushBusyLabel: "Đang thiết lập thông báo…",
     pushPermissionDeniedLabel:
       "Thông báo chưa được cho phép. Hãy cho phép trong cài đặt trình duyệt hoặc thiết bị.",
+    pushIosInstallHint: "Thêm vào Màn hình chính để nhận thông báo",
     a2hsTitle: "Thêm vào Màn hình chính",
     a2hsDescription:
       "Thêm trang này vào Màn hình chính để nhận thông báo (tùy chọn).",
     a2hsIosHint:
-      "Nhấn nút Chia sẻ, rồi chọn “Thêm vào Màn hình chính” để nhận thông báo (tùy chọn).",
+      "Thêm trang này vào Màn hình chính để nhận thông báo (tùy chọn).",
     a2hsInstallLabel: "Thêm",
     a2hsDismissLabel: "Đóng",
+    a2hsIosGuideOpenLabel: "Xem các bước thêm",
+    a2hsIosGuideTitle: "Cách thêm vào Màn hình chính",
+    a2hsIosGuideStep1:
+      "Nhấn nút Chia sẻ của trình duyệt (biểu tượng hình vuông với mũi tên hướng lên). Nếu không thấy, mở “…” cạnh thanh địa chỉ rồi chọn Chia sẻ",
+    a2hsIosGuideStep2:
+      "Chọn “Thêm vào Màn hình chính” trong menu (có thể cần cuộn xuống)",
+    a2hsIosGuideStep3: "Nhấn “Thêm”",
+    a2hsIosGuideStep4: "Mở trang từ biểu tượng mới trên Màn hình chính",
+    a2hsIosGuideCloseLabel: "Đóng",
     quickLinks: {
       shelters: "Tìm nơi sơ tán",
       hazard: "Bản đồ rủi ro",
@@ -346,17 +394,25 @@ export const UI_STRINGS: Record<SiteLanguage, UiStrings> = {
     pushToggleLabel: "재해 정보 알림",
     pushToggleDescriptionOff: "경계 수준 변경을 알려 드립니다",
     pushToggleDescriptionOn: "알림을 받습니다",
-    pushUnsupportedLabel: "이 브라우저에서는 알림을 사용할 수 없습니다",
     pushErrorLabel: "알림 설정에 실패했습니다. 잠시 후 다시 시도해 주세요.",
     pushBusyLabel: "알림을 설정하는 중…",
     pushPermissionDeniedLabel:
       "알림이 허용되지 않았습니다. 브라우저 또는 기기 설정에서 알림을 허용해 주세요.",
+    pushIosInstallHint: "홈 화면에 추가하면 알림을 받을 수 있습니다",
     a2hsTitle: "홈 화면에 추가",
     a2hsDescription: "홈 화면에 추가하면 알림을 받을 수 있습니다(선택 사항).",
-    a2hsIosHint:
-      "공유 버튼을 누른 뒤 “홈 화면에 추가”를 선택하면 알림을 받을 수 있습니다(선택 사항).",
+    a2hsIosHint: "홈 화면에 추가하면 알림을 받을 수 있습니다(선택 사항).",
     a2hsInstallLabel: "추가",
     a2hsDismissLabel: "닫기",
+    a2hsIosGuideOpenLabel: "추가 방법 보기",
+    a2hsIosGuideTitle: "홈 화면에 추가하는 방법",
+    a2hsIosGuideStep1:
+      "브라우저의 공유 버튼(네모에서 위쪽 화살표가 나오는 아이콘)을 탭하세요. 보이지 않으면 주소 표시줄 옆 “…” → “공유”를 선택하세요",
+    a2hsIosGuideStep2:
+      "메뉴에서 “홈 화면에 추가”를 선택하세요(아래로 스크롤해야 보일 수 있습니다)",
+    a2hsIosGuideStep3: "“추가”를 탭하세요",
+    a2hsIosGuideStep4: "홈 화면에 추가된 아이콘에서 여세요",
+    a2hsIosGuideCloseLabel: "닫기",
     quickLinks: {
       shelters: "대피소 찾기",
       hazard: "위험 지도",

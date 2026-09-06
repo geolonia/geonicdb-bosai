@@ -240,6 +240,23 @@ input:focus-visible {
   color: var(--color-muted);
 }
 
+.push-opt-in__guide {
+  box-sizing: border-box;
+  display: inline-block;
+  margin: 0.5rem 0 0;
+  border: 1px solid var(--color-text);
+  border-radius: 0.25rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0.5rem 0.75rem;
+}
+
 .push-opt-in__error {
   margin: 0.5rem 0 0;
   font-size: 0.875rem;
@@ -339,6 +356,70 @@ html.a2hs-prompt-visible body {
   cursor: pointer;
   /* 当たり判定はボタン自体（親余白に頼らない / WCAG 2.5.8） */
   min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0.5rem 0.75rem;
+}
+
+/* #65 iOS ホーム画面追加手順（native dialog / top layer） */
+.ios-a2hs-guide {
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+  max-width: min(24rem, calc(100vw - 2rem));
+  width: 100%;
+}
+
+.ios-a2hs-guide::backdrop {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.ios-a2hs-guide__panel {
+  padding: 1rem 1.25rem 1.25rem;
+}
+
+.ios-a2hs-guide__title {
+  margin: 0 0 0.75rem;
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.ios-a2hs-guide__steps {
+  margin: 0 0 1rem;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  line-height: 1.5;
+}
+
+.ios-a2hs-guide__step-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.ios-a2hs-guide__share-icon {
+  flex-shrink: 0;
+  margin-top: 0.15em;
+  color: var(--color-text);
+}
+
+.ios-a2hs-guide__close {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  margin: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 0.25rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  line-height: 1.2;
+  cursor: pointer;
   min-height: 2.75rem;
   padding: 0.5rem 0.75rem;
 }

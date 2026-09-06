@@ -109,6 +109,14 @@ describe("UI_STRINGS i18n coverage", () => {
       expect(UI_STRINGS[lang].a2hsTitle.length).toBeGreaterThan(0);
       expect(UI_STRINGS[lang].a2hsIosHint.length).toBeGreaterThan(0);
       expect(UI_STRINGS[lang].a2hsDismissLabel.length).toBeGreaterThan(0);
+      expect(UI_STRINGS[lang].a2hsIosGuideOpenLabel.length).toBeGreaterThan(0);
+      expect(UI_STRINGS[lang].a2hsIosGuideTitle.length).toBeGreaterThan(0);
+      expect(UI_STRINGS[lang].a2hsIosGuideStep1.length).toBeGreaterThan(0);
+      expect(UI_STRINGS[lang].a2hsIosGuideStep2.length).toBeGreaterThan(0);
+      expect(UI_STRINGS[lang].a2hsIosGuideStep3.length).toBeGreaterThan(0);
+      expect(UI_STRINGS[lang].a2hsIosGuideStep4.length).toBeGreaterThan(0);
+      expect(UI_STRINGS[lang].a2hsIosGuideCloseLabel.length).toBeGreaterThan(0);
+      expect(UI_STRINGS[lang].pushIosInstallHint.length).toBeGreaterThan(0);
     }
   });
 

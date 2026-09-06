@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useLdEntities } from "@geolonia/geonicdb-sdk/react";
 import {
@@ -13,6 +13,7 @@ import {
   EmergencyBannerError,
   EmergencyBannerPlaceholder,
 } from "@/components/top/EmergencyBanner";
+import { IosA2hsGuideDialog } from "@/components/top/IosA2hsGuideDialog";
 import {
   NewsList,
   NewsListError,
@@ -105,6 +106,17 @@ export function TopPage({ initialSnapshot }: TopPageProps = {}) {
   const [lang, setLang] = usePreferredLanguage();
   const strings = UI_STRINGS[lang];
   const langSnapshot = initialSnapshot?.languages[lang];
+  const [iosGuideOpen, setIosGuideOpen] = useState(false);
+  const iosGuideReturnFocusRef = useRef<HTMLElement | null>(null);
+
+  const openIosGuide = useCallback((opener: HTMLElement) => {
+    iosGuideReturnFocusRef.current = opener;
+    setIosGuideOpen(true);
+  }, []);
+
+  const closeIosGuide = useCallback(() => {
+    setIosGuideOpen(false);
+  }, []);
 
   const client = useMemo((): LdClient => {
     try {
@@ -254,7 +266,10 @@ export function TopPage({ initialSnapshot }: TopPageProps = {}) {
         )}
         {/* A2HS は緊急バナー・警戒レベルより後（WCAG 1.3.2 / #55）。通知トグルはフッター末尾（#63）。 */}
         <OptionalFeatureBoundary>
-          <AddToHomeScreenPrompt strings={strings} />
+          <AddToHomeScreenPrompt
+            strings={strings}
+            onOpenIosGuide={openIosGuide}
+          />
         </OptionalFeatureBoundary>
         <QuickLinks heading={strings.quickLinksHeading} links={quickLinks} />
         {noticesView.kind === "ready" ? (
@@ -296,8 +311,18 @@ export function TopPage({ initialSnapshot }: TopPageProps = {}) {
         contactLabel={strings.footerContact}
         contactValue={strings.footerContactValue}
       >
-        <PushNotificationOptIn lang={lang} strings={strings} />
+        <PushNotificationOptIn
+          lang={lang}
+          strings={strings}
+          onOpenIosGuide={openIosGuide}
+        />
       </SiteFooter>
+      <IosA2hsGuideDialog
+        strings={strings}
+        open={iosGuideOpen}
+        onClose={closeIosGuide}
+        returnFocusRef={iosGuideReturnFocusRef}
+      />
     </>
   );
 }
