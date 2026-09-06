@@ -66,6 +66,9 @@ jobs:
         uses: actions/upload-pages-artifact@v5
         with:
           path: ./out
+          # v4+ は dotfile をデフォルト除外する。.nojekyll が落ちると Pages が
+          # Jekyll を有効化し _next/ が 404 になる（#69）。
+          include-hidden-files: true
 
   deploy:
     needs: build

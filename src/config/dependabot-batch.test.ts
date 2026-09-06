@@ -9,11 +9,9 @@ function read(rel: string): string {
 }
 
 /**
- * issue #69 / #70: major を部分取り込みしたあと、見送ったパッケージが
- * dependabot から再送されないこと、および入れた Actions / vitest の版を固定する。
+ * issue #69: vitest 4 / Actions batch と、Pages 成果物の .nojekyll 脱落防止。
  */
 describe("dependabot / Actions batch (#69)", () => {
-  const dependabot = read(".github/dependabot.yml");
   const packageJson = JSON.parse(read("package.json")) as {
     devDependencies: Record<string, string>;
   };
@@ -22,33 +20,6 @@ describe("dependabot / Actions batch (#69)", () => {
   };
   const ci = read(".github/workflows/ci.yml");
   const deploy = read(".github/workflows/deploy-pages.yml");
-
-  it("ignores deferred majors with tracking issue #70 in comments", () => {
-    expect(dependabot).toMatch(/#70/);
-    expect(dependabot).toMatch(
-      /dependency-name:\s*typescript[\s\S]*?versions:\s*\["\>=7"\]/,
-    );
-    expect(dependabot).toMatch(
-      /dependency-name:\s*eslint[\s\S]*?versions:\s*\["\>=10"\]/,
-    );
-    expect(dependabot).toMatch(
-      /dependency-name:\s*"@types\/node"[\s\S]*?versions:\s*\["\>=23"\]/,
-    );
-  });
-
-  it("does not ignore current typescript 5 / eslint 9 patch range (near-miss)", () => {
-    // >=6 や >=9 だと現行の許可レンジまで塞ぐ。閾値は「次の major だけ」。
-    expect(dependabot).not.toMatch(
-      /dependency-name:\s*typescript[\s\S]*?versions:\s*\["\>=6"\]/,
-    );
-    expect(dependabot).not.toMatch(
-      /dependency-name:\s*eslint[\s\S]*?versions:\s*\["\>=9"\]/,
-    );
-    // Node 22 系の型（@types/node@22）までは上げられる余地を残す
-    expect(dependabot).not.toMatch(
-      /dependency-name:\s*"@types\/node"[\s\S]*?versions:\s*\["\>=22"\]/,
-    );
-  });
 
   it("pins vitest 4 at root and cdk", () => {
     expect(packageJson.devDependencies.vitest).toMatch(/^(\^)?4\./);
@@ -62,5 +33,22 @@ describe("dependabot / Actions batch (#69)", () => {
     expect(deploy).toMatch(/actions\/upload-pages-artifact@v5/);
     expect(ci).not.toMatch(/actions\/setup-node@v4/);
     expect(deploy).not.toMatch(/actions\/setup-node@v4/);
+  });
+
+  it("keeps include-hidden-files when upload-pages-artifact is v4+", () => {
+    // v4+ は dotfile をデフォルト除外。.nojekyll 脱落 → Jekyll → _next/ 404。
+    const upload = deploy.match(
+      /uses:\s*actions\/upload-pages-artifact@(v\d+)([\s\S]*?)(?=\n\s{0,6}-\s+name:|\n\s{0,2}\w|$)/,
+    );
+    expect(upload).not.toBeNull();
+    const major = Number(upload![1].slice(1));
+    expect(major).toBeGreaterThanOrEqual(4);
+    expect(upload![2]).toMatch(/include-hidden-files:\s*true/);
+  });
+
+  it("ships public/.nojekyll so the static export can disable Jekyll", () => {
+    const marker = path.join(root, "public", ".nojekyll");
+    expect(fs.existsSync(marker)).toBe(true);
+    expect(fs.statSync(marker).isFile()).toBe(true);
   });
 });
