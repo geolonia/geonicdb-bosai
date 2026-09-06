@@ -10,6 +10,7 @@ import type { BosaiStaticSnapshot } from "@/types/bosai-static-snapshot";
 const useLdEntitiesMock = vi.hoisted(() => vi.fn());
 const isWebPushConfiguredMock = vi.hoisted(() => vi.fn(() => false));
 const resolveActiveWebPushStateMock = vi.hoisted(() => vi.fn(async () => null));
+const pushOptInThrowMock = vi.hoisted(() => ({ enabled: false }));
 
 vi.mock("@geolonia/geonicdb-sdk/react", () => ({
   useLdEntities: (...args: unknown[]) => useLdEntitiesMock(...args),
@@ -33,6 +34,21 @@ vi.mock("@/lib/web-push-client", async () => {
     ...actual,
     isWebPushConfigured: () => isWebPushConfiguredMock(),
     resolveActiveWebPushState: () => resolveActiveWebPushStateMock(),
+  };
+});
+
+vi.mock("@/components/top/PushNotificationOptIn", async () => {
+  const actual = await vi.importActual<
+    typeof import("@/components/top/PushNotificationOptIn")
+  >("@/components/top/PushNotificationOptIn");
+  type Props = Parameters<typeof actual.PushNotificationOptIn>[0];
+  return {
+    PushNotificationOptIn: (props: Props) => {
+      if (pushOptInThrowMock.enabled) {
+        throw new Error("intentional push opt-in failure");
+      }
+      return actual.PushNotificationOptIn(props);
+    },
   };
 });
 
@@ -104,6 +120,7 @@ describe("TopPage load states", () => {
     isWebPushConfiguredMock.mockReturnValue(false);
     resolveActiveWebPushStateMock.mockReset();
     resolveActiveWebPushStateMock.mockResolvedValue(null);
+    pushOptInThrowMock.enabled = false;
     localStorage.clear();
   });
 
@@ -365,5 +382,30 @@ describe("TopPage load states", () => {
     const steps = within(dialog).getAllByRole("listitem");
     expect(steps).toHaveLength(4);
     expect(steps[3]).toHaveTextContent(UI_STRINGS.ja.a2hsIosGuideStep4);
+  });
+
+  /**
+   * #66: PushNotificationOptIn が throw しても、緊急バナー・警戒レベル・
+   * フッター連絡先は描画され続ける（OptionalFeatureBoundary で隔離）。
+   */
+  it("still renders emergency content and footer contact when PushNotificationOptIn throws (#66)", async () => {
+    pushOptInThrowMock.enabled = true;
+    isWebPushConfiguredMock.mockReturnValue(true);
+
+    const { container } = render(<TopPage />);
+    await waitFor(() => {
+      expect(screen.getByText("バナー見出しJA")).toBeInTheDocument();
+    });
+    expect(screen.getByText("レベル1ラベル")).toBeInTheDocument();
+    expect(screen.getByText("お知らせタイトルJA")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        `${UI_STRINGS.ja.footerContact}: ${UI_STRINGS.ja.footerContactValue}`,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("switch")).not.toBeInTheDocument();
+    // boundary が null を返すので .push-opt-in（border-top 付き）も残らない
+    expect(container.querySelector(".push-opt-in")).toBeNull();
+    expect(container.querySelector("footer.site-footer")).not.toBeNull();
   });
 });

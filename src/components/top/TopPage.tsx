@@ -311,11 +311,13 @@ export function TopPage({ initialSnapshot }: TopPageProps = {}) {
         contactLabel={strings.footerContact}
         contactValue={strings.footerContactValue}
       >
-        <PushNotificationOptIn
-          lang={lang}
-          strings={strings}
-          onOpenIosGuide={openIosGuide}
-        />
+        <OptionalFeatureBoundary>
+          <PushNotificationOptIn
+            lang={lang}
+            strings={strings}
+            onOpenIosGuide={openIosGuide}
+          />
+        </OptionalFeatureBoundary>
       </SiteFooter>
       <IosA2hsGuideDialog
         strings={strings}
