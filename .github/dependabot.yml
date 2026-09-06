@@ -6,22 +6,17 @@ updates:
       interval: weekly
     open-pull-requests-limit: 5
     ignore:
-      # TypeScript 7.0 は JS API 非同梱。typescript-eslint / generate-sw.mjs が壊れる。
-      # side-by-side alias は next typegen 等が TS6 経由のままなので採用しない。再訪条件は #70。
-      # update-types を付けて security update は通す（versions のみだと security も止まる）。
+      # TypeScript 7+ / 次 major の通常版上げは見送り（#70）。
+      # versions は security update にも効くため付けない。update-types のみなら
+      # version update の major だけ無視し、security update は通る。
       - dependency-name: typescript
-        versions: [">=7"]
         update-types: ["version-update:semver-major"]
-      # ESLint 9 は EOL 済みだが、eslint-plugin-react（eslint-config-next 経由）が
-      # ESLint 10 未対応。settings.react.version 固定は fork 先で遅延クラッシュしうるため不採用。
-      # eslint-plugin-react / eslint-config-next の ESLint 10 対応後に再訪（#70）。
+      # ESLint 10+ は eslint-plugin-react（next 経由）未対応（#70）。同上。
       - dependency-name: eslint
-        versions: [">=10"]
         update-types: ["version-update:semver-major"]
-      # @types/node 26 は Node 26 の型。CI は node-version: "22"、engines は >=20.9.0。
-      # ランタイム major と揃える。CI の Node を上げるときに同時に解除する（#70）。
+      # @types/node は CI Node major と揃えるまで major 版上げを止める（#70）。
+      # Node 上げ時にこの ignore を外す。security update は通す。
       - dependency-name: "@types/node"
-        versions: [">=23"]
         update-types: ["version-update:semver-major"]
   # infra/cdk は別 package.json だが、現状 dependabot の監視対象外（directory: / のみ）。
   # cdk 用の entry を足すときは上記 ignore を同様に付けること（#70）。
