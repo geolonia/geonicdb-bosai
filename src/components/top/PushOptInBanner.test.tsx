@@ -3,10 +3,7 @@ import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PushOptInBanner } from "@/components/top/PushOptInBanner";
-import {
-  PUSH_OPT_IN_BANNER_DISMISS_MS,
-  PUSH_OPT_IN_BANNER_REVEAL_IDLE_MS,
-} from "@/config/push-opt-in-banner";
+import { PUSH_OPT_IN_BANNER_DISMISS_MS } from "@/config/push-opt-in-banner";
 import { UI_STRINGS } from "@/config/ui-strings";
 import { SITE_LANGUAGES } from "@/config/site-language";
 import {
@@ -46,16 +43,15 @@ describe("PushOptInBanner", () => {
     expect(screen.getByTestId("push-opt-in-banner")).toBeInTheDocument();
   });
 
-  it("does not reveal on pointerdown alone, so the first tap is not swallowed", () => {
+  it("does not reveal on pointer press alone, so the first tap is not swallowed", () => {
     renderBanner();
 
     // 押下時点で差し込むと帯の高さだけページがずれ、pointerup が別要素に
     // 当たって click が body へ飛ぶ = 利用者の最初のタップが消える。
-    // near-miss: pointerdown / keydown で出す実装はここで赤になる。
+    // near-miss: pointerdown / mousedown で出す実装はここで赤になる。
     act(() => {
       window.dispatchEvent(new Event("pointerdown", { bubbles: true }));
       window.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
-      window.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true }));
     });
     expect(screen.queryByTestId("push-opt-in-banner")).not.toBeInTheDocument();
 
@@ -65,20 +61,37 @@ describe("PushOptInBanner", () => {
     expect(screen.getByTestId("push-opt-in-banner")).toBeInTheDocument();
   });
 
-  it("reveals itself after the idle timeout with no interaction at all", () => {
+  it("reveals on keydown, before Tab settles focus past the banner", () => {
+    renderBanner();
+
+    // keyup で出すと Tab の移動先が確定した後に帯が挿入され、帯は DOM 上で
+    // 前方にあるためその回の順次移動で飛ばされる（前方 Tab では到達不能）。
+    // near-miss: keyup で出す実装はここで赤になる。
+    act(() => {
+      window.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Tab", bubbles: true }),
+      );
+    });
+    expect(screen.getByTestId("push-opt-in-banner")).toBeInTheDocument();
+  });
+
+  it("never reveals itself without any user input (no idle timer)", () => {
     vi.useFakeTimers();
     try {
       renderBanner();
+      act(() => {
+        vi.advanceTimersByTime(10 * 60 * 1000);
+      });
+      // 文書フローに載る帯を無入力で差し込むと、読んでいる最中にページが
+      // 飛ぶ（実ユーザーの CLS）。A2HS 帯の無操作タイマーは position: fixed
+      // + body padding 予約が前提なので流用できない。
+      // near-miss: 無操作タイマーを足す実装はここで赤になる。
       expect(
         screen.queryByTestId("push-opt-in-banner"),
       ).not.toBeInTheDocument();
-      act(() => {
-        vi.advanceTimersByTime(PUSH_OPT_IN_BANNER_REVEAL_IDLE_MS);
-      });
     } finally {
       vi.useRealTimers();
     }
-    expect(screen.getByTestId("push-opt-in-banner")).toBeInTheDocument();
   });
 
   it("remembers an interaction that happened before the push state resolved", async () => {

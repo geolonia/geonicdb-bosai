@@ -70,6 +70,10 @@ export function PushNotificationOptIn({
 }: Props) {
   // ページに 1 個しか置かないので固定 id。推奨帯から `#id` で飛べる必要があり、
   // useId() の不透明な値ではアンカーにできない。
+  // **このコンポーネントを 1 ページに 2 個置かないこと** — id が重複し、
+  // htmlFor / aria-labelledby が先頭の input に解決されて 2 個目のラベルが
+  // 別のトグルを指す。現在の描画元は TopPage の SiteFooter のみ
+  //（ContentPageChrome は children を渡さない）。
   const switchId = PUSH_OPT_IN_SWITCH_ID;
   const isClient = useSyncExternalStore(
     subscribeNoop,
@@ -162,10 +166,16 @@ export function PushNotificationOptIn({
     return installAppBadgeClearOnForeground();
   }, [available, stored]);
 
-  // オンを勧められる状態（対応済み・許可拒否でない・未購読）だけ帯を出させる。
+  // オンを勧められる状態（対応済み・許可拒否でない・未購読・処理中でない）
+  // だけ帯を出させる。処理中を除くのは、トグルが disabled の間に帯から
+  // 飛ばしても focus() が効かず、フォーカスだけ画面上部に取り残されるため。
   // アンマウント時（OptionalFeatureBoundary が握り潰した場合を含む）は false に戻す。
   const optInRecommended =
-    available && hydrated && !permissionDenied && stored == null;
+    available &&
+    hydrated &&
+    !permissionDenied &&
+    stored == null &&
+    phase !== "busy";
   useEffect(() => {
     onOptInRecommendedChange?.(optInRecommended);
     return () => {

@@ -10,7 +10,11 @@ type Props = {
   linksLabel: string;
   contactLabel: string;
   contactValue: string;
-  /** 連絡先の後に置く付加 UI（例: 通知トグル）。ContentPageChrome は渡さない。 */
+  /**
+   * 連絡先の後に置く付加 UI（例: 通知トグル）。ContentPageChrome は渡さない。
+   * `PushNotificationOptIn` は固定 id を持つので、1 ページに 2 個描画しないこと
+   *（推奨帯 `PushOptInBanner` のアンカー先が重複する）。
+   */
   children?: ReactNode;
 };
 

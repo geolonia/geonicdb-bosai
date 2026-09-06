@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import type { MouseEvent } from "react";
-import { PUSH_OPT_IN_BANNER_REVEAL_IDLE_MS } from "@/config/push-opt-in-banner";
 import type { UiStrings } from "@/config/ui-strings";
 import {
   dismissPushOptInBanner,
@@ -49,11 +48,13 @@ function prefersReducedMotion(): boolean {
 /**
  * ヘッダー上部の「通知をオンにすることをおすすめします」帯。
  *
- * - 通知がオフのときだけ出す（オン・非対応・許可拒否では出さない）
+ * - 通知がオフで、かつ操作可能なときだけ出す
+ *   （オン・処理中・非対応・許可拒否では出さない）
  * - テキストはフッターの通知トグルへのリンク。JS が無くても
  *   `href="#push-opt-in-switch"` でトグル本体へ飛んでフォーカスが載る
  * - 閉じたら `PUSH_OPT_IN_BANNER_DISMISS_DAYS` 日は再表示しない
- * - 文書フローに入るのでロード直後には出さない（CLS 対策 / 設定ファイル参照）
+ * - 文書フローに入るので初回のユーザー入力まで出さない
+ *   （CLS 対策。契機の選定理由は src/config/push-opt-in-banner.ts）
  */
 export function PushOptInBanner({ strings, recommended }: Props) {
   const isClient = useSyncExternalStore(
@@ -64,38 +65,28 @@ export function PushOptInBanner({ strings, recommended }: Props) {
   const [dismissedLocal, setDismissedLocal] = useState(false);
   const [revealReady, setRevealReady] = useState(false);
 
-  let dismissedStored = false;
-  if (isClient) {
-    try {
-      dismissedStored = isPushOptInBannerDismissed();
-    } catch {
-      // 判定に失敗したら帯を出さず、主要情報の描画を優先する
-      dismissedStored = true;
-    }
-  }
-  const dismissed = dismissedLocal || dismissedStored;
+  // isPushOptInBannerDismissed は storage 不在・例外・壊れた値をすべて
+  // 内部で false に倒すので throw しない（ここで catch すると死んだ分岐になる）。
+  const dismissed =
+    dismissedLocal || (isClient && isPushOptInBannerDismissed());
 
-  // 初回操作は recommended の解決を待たずに記録する。Push 状態の解決は
+  // 初回入力は recommended の解決を待たずに記録する。Push 状態の解決は
   // Service Worker への非同期照会なので、`recommended` が true になるまで
-  // 待って監視を始めると、それより先に操作した利用者の分を取りこぼし、
-  // 帯が 30 秒タイマーまで出ない。
+  // 待って監視を始めると、それより先に操作した利用者の分を取りこぼす。
+  //
+  // 契機は click（ポインタ）と keydown（キーボード）。理由と、無操作
+  // タイマーを置かない理由は src/config/push-opt-in-banner.ts を参照。
   useEffect(() => {
     if (!isClient || dismissed) return;
 
     const enable = () => {
       setRevealReady(true);
     };
-    // pointerdown / keydown ではなく click / keyup で出す。押下時点で差し込むと
-    // 帯の高さだけページが下へずれ、pointerup が別要素に当たって最初のタップが
-    // 無効になる（click は mousedown と mouseup の共通祖先へ飛ぶ）。
-    // どちらもユーザー入力から 500ms 以内なので CLS には計上されない。
     window.addEventListener("click", enable, { once: true });
-    window.addEventListener("keyup", enable, { once: true });
-    const timer = window.setTimeout(enable, PUSH_OPT_IN_BANNER_REVEAL_IDLE_MS);
+    window.addEventListener("keydown", enable, { once: true });
     return () => {
       window.removeEventListener("click", enable);
-      window.removeEventListener("keyup", enable);
-      window.clearTimeout(timer);
+      window.removeEventListener("keydown", enable);
     };
   }, [isClient, dismissed]);
 

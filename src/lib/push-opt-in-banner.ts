@@ -24,8 +24,13 @@ function defaultWriteStorage(): Pick<Storage, "setItem"> | null {
  * A2HS 帯（`isA2hsDismissed`）と違い恒久 dismiss にはしない。閉じてから
  * `PUSH_OPT_IN_BANNER_DISMISS_DAYS` 日だけ黙り、その後また出す。
  *
- * 端末時計が前後にずれても最大で猶予 1 回分しか狂わないよう、差の絶対値で見る。
- * 未保存・壊れた値は「閉じられていない」に倒す（通知導線を黙って失わせない）。
+ * 未保存・壊れた値・未来の時刻は「閉じられていない」に倒す
+ *（通知導線を黙って失わせない）。未来の時刻に猶予を当てないのは、
+ * 時計が進んだ端末で閉じた後 NTP で補正されると、時計が記録に追いつく
+ * までの分だけ余計に黙るため。記録が未来である間は出す方に倒す。
+ *
+ * なお記録は端末時計そのものなので、時計が狂った状態で閉じた場合の
+ * ずれは原理的に打ち消せない（追いついた後は記録時刻から猶予 1 回分）。
  */
 export function isPushOptInBannerDismissed(
   now: number = Date.now(),
@@ -37,7 +42,8 @@ export function isPushOptInBannerDismissed(
     if (raw === null) return false;
     const dismissedAt = Number(raw);
     if (!Number.isFinite(dismissedAt)) return false;
-    return Math.abs(now - dismissedAt) < PUSH_OPT_IN_BANNER_DISMISS_MS;
+    const age = now - dismissedAt;
+    return age >= 0 && age < PUSH_OPT_IN_BANNER_DISMISS_MS;
   } catch {
     return false;
   }

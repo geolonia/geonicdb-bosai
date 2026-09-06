@@ -77,13 +77,31 @@ describe("push opt-in banner dismissal window", () => {
     expect(isPushOptInBannerDismissed(NOW, storage)).toBe(false);
   });
 
-  it("bounds clock skew: a far-future timestamp does not silence it forever", () => {
-    const storage = fakeStorage({
-      [PUSH_OPT_IN_BANNER_DISMISS_STORAGE_KEY]: String(
-        NOW + PUSH_OPT_IN_BANNER_DISMISS_MS + 1,
-      ),
-    });
+  it("treats any future timestamp as not dismissed", () => {
+    // 時計が進んだ端末で閉じた後 NTP で補正されるケース。未来の時刻を猶予扱いに
+    // すると猶予 2 回分（最大 14 日）黙る。
+    // near-miss: Math.abs(now - dismissedAt) で判定する実装はここで赤になる。
+    for (const skew of [1, 60_000, PUSH_OPT_IN_BANNER_DISMISS_MS - 1]) {
+      const storage = fakeStorage({
+        [PUSH_OPT_IN_BANNER_DISMISS_STORAGE_KEY]: String(NOW + skew),
+      });
+      expect(isPushOptInBannerDismissed(NOW, storage)).toBe(false);
+    }
+  });
+
+  it("fails open while a fast clock's record is still in the future", () => {
+    const storage = fakeStorage();
+    const clockFastBy = 3 * 24 * 60 * 60 * 1000;
+    dismissPushOptInBanner(NOW + clockFastBy, storage); // 時計が 3 日進んでいる
+
+    // 補正直後は「閉じていない」に倒れる（記録が未来なので猶予を当てない）。
+    // 記録が未来のまま猶予を当てると、時計が追いつくまでの分だけ余計に黙る。
     expect(isPushOptInBannerDismissed(NOW, storage)).toBe(false);
+    expect(isPushOptInBannerDismissed(NOW + clockFastBy - 1, storage)).toBe(
+      false,
+    );
+    // 時計が記録に追いついた後は、記録時刻から猶予 1 回分だけ黙る
+    expect(isPushOptInBannerDismissed(NOW + clockFastBy, storage)).toBe(true);
   });
 
   it("survives storage being unavailable (SSR / private mode)", () => {

@@ -493,6 +493,41 @@ describe("PushNotificationOptIn state transition", () => {
     expect(onOptInRecommendedChange).not.toHaveBeenCalledWith(true);
   });
 
+  it("stops recommending while an opt-in request is in flight", async () => {
+    const user = userEvent.setup();
+    let resolveEnable: (state: StoredWebPushState) => void = () => undefined;
+    enableWebPushNotifications.mockImplementation(
+      () =>
+        new Promise<StoredWebPushState>((resolve) => {
+          resolveEnable = resolve;
+        }),
+    );
+    const onOptInRecommendedChange = vi.fn<(recommended: boolean) => void>();
+    render(
+      <PushNotificationOptIn
+        lang="ja"
+        strings={testStrings}
+        onOptInRecommendedChange={onOptInRecommendedChange}
+      />,
+    );
+    await user.click(await findSwitch());
+
+    // 処理中はトグルが disabled なので、帯から飛ばしても focus() が効かず
+    // フォーカスだけ画面上部に取り残される。
+    // near-miss: phase を見ない実装はここで赤になる。
+    await waitFor(() => {
+      expect(onOptInRecommendedChange).toHaveBeenLastCalledWith(false);
+    });
+    expect(screen.getByRole("switch")).toBeDisabled();
+
+    resolveEnable({
+      subscriptionId: "urn:ngsi-ld:Subscription:test",
+      endpoint: "https://fcm.googleapis.com/fcm/send/x",
+      enabledAt: "2026-09-05T00:00:00.000Z",
+      lang: "ja",
+    });
+  });
+
   it("stops recommending when the browser has denied notifications", async () => {
     stubPushApis("denied");
     const onOptInRecommendedChange = vi.fn<(recommended: boolean) => void>();
