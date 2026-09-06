@@ -75,8 +75,12 @@ export function PushOptInBanner({ strings, recommended }: Props) {
   }
   const dismissed = dismissedLocal || dismissedStored;
 
+  // 初回操作は recommended の解決を待たずに記録する。Push 状態の解決は
+  // Service Worker への非同期照会なので、`recommended` が true になるまで
+  // 待って監視を始めると、それより先に操作した利用者の分を取りこぼし、
+  // 帯が 30 秒タイマーまで出ない。
   useEffect(() => {
-    if (!isClient || !recommended || dismissed) return;
+    if (!isClient || dismissed) return;
 
     const enable = () => {
       setRevealReady(true);
@@ -93,7 +97,7 @@ export function PushOptInBanner({ strings, recommended }: Props) {
       window.removeEventListener("keyup", enable);
       window.clearTimeout(timer);
     };
-  }, [isClient, recommended, dismissed]);
+  }, [isClient, dismissed]);
 
   const onDismiss = useCallback(() => {
     dismissPushOptInBanner();

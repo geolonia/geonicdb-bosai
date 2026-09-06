@@ -53,6 +53,7 @@ describe("PushOptInBanner", () => {
     // 当たって click が body へ飛ぶ = 利用者の最初のタップが消える。
     // near-miss: pointerdown / keydown で出す実装はここで赤になる。
     act(() => {
+      window.dispatchEvent(new Event("pointerdown", { bubbles: true }));
       window.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
       window.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true }));
     });
@@ -77,6 +78,20 @@ describe("PushOptInBanner", () => {
     } finally {
       vi.useRealTimers();
     }
+    expect(screen.getByTestId("push-opt-in-banner")).toBeInTheDocument();
+  });
+
+  it("remembers an interaction that happened before the push state resolved", async () => {
+    // Push 状態の解決（SW への非同期照会）より先に操作されることがある。
+    // near-miss: 監視開始を recommended まで待つ実装だとこの操作を取りこぼし、
+    // 帯は 30 秒タイマーまで出ない。
+    const { rerender } = render(
+      <PushOptInBanner strings={testStrings} recommended={false} />,
+    );
+    await revealByInteraction();
+    expect(screen.queryByTestId("push-opt-in-banner")).not.toBeInTheDocument();
+
+    rerender(<PushOptInBanner strings={testStrings} recommended />);
     expect(screen.getByTestId("push-opt-in-banner")).toBeInTheDocument();
   });
 
