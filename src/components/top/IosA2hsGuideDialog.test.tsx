@@ -163,4 +163,53 @@ describe("IosA2hsGuideDialog (#65)", () => {
       showModal.mockRestore();
     }
   });
+
+  /**
+   * #66 CodeRabbit: close() が常に throw しても top-layer が残らず、
+   * 再オープンできること（再マウント復旧）。
+   */
+  it("remounts dialog when close always throws (#66)", async () => {
+    const user = userEvent.setup();
+    const close = vi
+      .spyOn(HTMLDialogElement.prototype, "close")
+      .mockImplementation(() => {
+        throw new DOMException(
+          "Failed to execute 'close' on 'HTMLDialogElement'",
+          "InvalidStateError",
+        );
+      });
+
+    try {
+      render(<GuideHarness />);
+      const opener = screen.getByRole("button", { name: "open-guide" });
+
+      await user.click(opener);
+      await waitFor(() => {
+        expect(screen.getByTestId("ios-a2hs-guide-dialog")).toHaveAttribute(
+          "open",
+        );
+      });
+
+      await user.click(
+        screen.getByRole("button", {
+          name: testStrings.a2hsIosGuideCloseLabel,
+        }),
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("ios-a2hs-guide-dialog")).not.toHaveAttribute(
+          "open",
+        );
+      });
+
+      await user.click(opener);
+      await waitFor(() => {
+        expect(screen.getByTestId("ios-a2hs-guide-dialog")).toHaveAttribute(
+          "open",
+        );
+      });
+    } finally {
+      close.mockRestore();
+    }
+  });
 });
