@@ -11,11 +11,11 @@ describe("resolveGeonicdbPublicConfig", () => {
   it("resolves URL and tenant without an API key", () => {
     const config = resolveGeonicdbPublicConfig({
       NEXT_PUBLIC_GEONICDB_URL: "https://geonicdb.geolonia.com/",
-      NEXT_PUBLIC_GEONICDB_TENANT: "miya",
+      NEXT_PUBLIC_GEONICDB_TENANT: "geolonia",
     });
     expect(config).toEqual({
       baseUrl: "https://geonicdb.geolonia.com",
-      tenant: "miya",
+      tenant: "geolonia",
     });
   });
 
@@ -78,7 +78,7 @@ describe("getGeonicdbPublicClient", () => {
 
   it("creates an anonymous client singleton", () => {
     process.env.NEXT_PUBLIC_GEONICDB_URL = "https://geonicdb.geolonia.com";
-    process.env.NEXT_PUBLIC_GEONICDB_TENANT = "miya";
+    process.env.NEXT_PUBLIC_GEONICDB_TENANT = "geolonia";
     resetGeonicdbPublicClientForTests();
     const a = getGeonicdbPublicClient();
     const b = getGeonicdbPublicClient();
