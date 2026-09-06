@@ -124,7 +124,7 @@ describe("resyncWebPushSubscriptionLang (#61)", () => {
     });
   });
 
-  it("rolls back the new subscription when DELETE of old fails with 5xx", async () => {
+  it("rolls back the new subscription and clears local when DELETE of old fails with 5xx", async () => {
     writeStoredWebPushState({
       subscriptionId: "urn:ngsi-ld:Subscription:old",
       endpoint,
@@ -160,11 +160,8 @@ describe("resyncWebPushSubscriptionLang (#61)", () => {
 
     expect(deleted.some((p) => p.includes("Subscription%3Aold"))).toBe(true);
     expect(deleted.some((p) => p.includes("Subscription%3Anew"))).toBe(true);
-    // ローカルは旧のまま（二重も停止も残さない）
-    expect(readStoredWebPushState()).toMatchObject({
-      subscriptionId: "urn:ngsi-ld:Subscription:old",
-      lang: "ja",
-    });
+    // POST 後の整合不能 → 沈黙障害を避けローカルをクリア（UI オフで再オン可能）
+    expect(readStoredWebPushState()).toBeNull();
   });
 
   it("leaves state unchanged when POST fails", async () => {
@@ -214,5 +211,66 @@ describe("resyncWebPushSubscriptionLang (#61)", () => {
 
     expect(requestRaw).not.toHaveBeenCalled();
     expect(next.subscriptionId).toBe("urn:ngsi-ld:Subscription:same");
+  });
+
+  it("serializes concurrent resyncs so only one remote subscription remains (#61)", async () => {
+    writeStoredWebPushState({
+      subscriptionId: "urn:ngsi-ld:Subscription:old",
+      endpoint,
+      enabledAt: "2026-09-05T00:00:00.000Z",
+      lang: "ja",
+    });
+    stubPushSubscription();
+
+    const alive = new Set<string>(["urn:ngsi-ld:Subscription:old"]);
+    let postSeq = 0;
+    const order: string[] = [];
+    let postInFlight = 0;
+    let maxPostInFlight = 0;
+
+    const requestRaw = vi.fn(
+      async (method: string, path: string, body?: unknown) => {
+        if (method === "POST") {
+          postInFlight += 1;
+          maxPostInFlight = Math.max(maxPostInFlight, postInFlight);
+          const q = (body as { q?: string }).q ?? "";
+          const lang = /language=="([^"]+)"/.exec(q)?.[1] ?? "x";
+          postSeq += 1;
+          const id = `urn:ngsi-ld:Subscription:${lang}-${postSeq}`;
+          order.push(`post:${lang}`);
+          await new Promise((r) => setTimeout(r, 30));
+          alive.add(id);
+          postInFlight -= 1;
+          return new Response(null, {
+            status: 201,
+            headers: { Location: `/ngsi-ld/v1/subscriptions/${id}` },
+          });
+        }
+        const id = decodeURIComponent(
+          path.replace("/ngsi-ld/v1/subscriptions/", ""),
+        );
+        order.push(`del:${id}`);
+        alive.delete(id);
+        return new Response(null, { status: 204 });
+      },
+    );
+
+    const client = { requestRaw };
+    const [enResult, koResult] = await Promise.allSettled([
+      resyncWebPushSubscriptionLang({ lang: "en", env, client }),
+      resyncWebPushSubscriptionLang({ lang: "ko", env, client }),
+    ]);
+
+    expect(enResult.status).toBe("fulfilled");
+    expect(koResult.status).toBe("fulfilled");
+    // 直列化されていれば POST は同時に走らない
+    expect(maxPostInFlight).toBe(1);
+    expect(order[0]).toBe("post:en");
+    // 最終的にリモートは 1 件、localStorage と一致
+    expect(alive.size).toBe(1);
+    const stored = readStoredWebPushState();
+    expect(stored).not.toBeNull();
+    expect(alive.has(stored!.subscriptionId)).toBe(true);
+    expect(stored!.lang).toBe("ko");
   });
 });

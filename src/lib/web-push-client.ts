@@ -10,8 +10,12 @@ import {
   resolveGeonicdbPublicConfig,
   type PublicEnvLike,
 } from "@/lib/geonicdb-public-client";
+import { createSerialQueue } from "@/lib/web-push-sw-logic";
 
 const STORAGE_KEY = "bosai-webpush-subscription";
+
+/** 言語再同期の読取→POST→DELETE→書込を全呼び出し元で直列化する（#61 CodeRabbit） */
+const runWebPushResyncExclusive = createSerialQueue();
 
 export type StoredWebPushState = {
   subscriptionId: string;
@@ -370,12 +374,28 @@ export async function enableWebPushNotifications(options: {
  * 表示言語変更に合わせて GeonicDB 購読の `q` を更新する（#61）。
  *
  * ポリシー `bosai-webpush-proxy-write` は PATCH 非許可のため、POST 新購読 → DELETE 旧購読。
- * 失敗時に通知停止・二重配信を残さない:
- * - POST 失敗 → 旧購読のまま（状態変更なし）
- * - POST 成功・旧 DELETE 失敗 → 新購読をロールバック削除し、旧のまま throw
- * - 旧 DELETE の 404/410 は成功扱い（#52）
+ * 呼び出しは `runWebPushResyncExclusive` で直列化し、並行言語切替で購読が二重に残らないようにする。
+ *
+ * 失敗時のローカル状態（#52 オフ操作との対比）:
+ * - POST 前/POST 失敗 → サーバ未変更。ローカルは旧のまま残す（再試行可能）
+ * - POST 成功後に旧 DELETE が失敗 → 応答消失で旧が既に消えている可能性があり、
+ *   「UI オンなのに通知が来ない」沈黙障害になりうる。ロールバック後も整合を保証できないため
+ *   **ローカルをクリアして UI をオフに倒す**（利用者が再オンで復旧できる）。
+ *   サーバ側に孤児購読が残るリスクは残る（隠さない）。
+ * - 旧 DELETE の 404/410 は成功扱い（#52 と同型の冪等）
  */
 export async function resyncWebPushSubscriptionLang(options: {
+  lang: SiteLanguage;
+  env?: PublicWebPushEnv;
+  client?: WebPushGeonicdbClient;
+  registration?: ServiceWorkerRegistration | null;
+}): Promise<StoredWebPushState> {
+  return runWebPushResyncExclusive(() =>
+    resyncWebPushSubscriptionLangExclusive(options),
+  );
+}
+
+async function resyncWebPushSubscriptionLangExclusive(options: {
   lang: SiteLanguage;
   env?: PublicWebPushEnv;
   client?: WebPushGeonicdbClient;
@@ -426,15 +446,20 @@ export async function resyncWebPushSubscriptionLang(options: {
       client: options.client,
     });
   } catch (error) {
-    // 旧が残ると二重配信になるので、新をロールバックして旧のみの状態へ戻す
+    // 旧が残ると二重配信になるので、新をロールバック削除する。
+    // 旧 DELETE の成否は応答消失と区別できない。ローカルに旧 ID を残すと
+    // 「オン表示・通知なし」になりうるため、整合不能としてローカルをクリアする。
+    // 残存リスク: ロールバック失敗時は旧+新の孤児、ロールバック成功かつ旧が
+    // 実際には残っていた場合は旧の孤児がサーバに残りうる（UI はオフ）。
     try {
       await unregisterWebPushSubscription(newSubscriptionId, {
         env: options.env,
         client: options.client,
       });
     } catch {
-      // ロールバック失敗時は二重のままになりうる。上位で再試行できるよう throw を維持
+      // 新の削除も失敗 → 二重孤児のまま。追跡 ID が無いのでローカルはクリアする。
     }
+    clearStoredWebPushState();
     throw error;
   }
 

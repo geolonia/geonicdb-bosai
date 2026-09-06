@@ -14,6 +14,7 @@ import {
   disableWebPushNotifications,
   enableWebPushNotifications,
   isWebPushConfigured,
+  readStoredWebPushState,
   resolveActiveWebPushState,
   resyncWebPushSubscriptionLang,
   syncServiceWorkerLang,
@@ -128,7 +129,12 @@ export function PushNotificationOptIn({ lang, strings }: Props) {
           setPhase("idle");
         }
       } catch {
-        if (!cancelled) setPhase("error");
+        if (!cancelled) {
+          // 再同期が POST 後に破綻した場合は localStorage がクリアされている
+          // （沈黙障害を避け UI をオフへ。#52 のオフ操作 5xx 保持とは文脈が異なる）
+          setStored(readStoredWebPushState());
+          setPhase("error");
+        }
       }
     })();
     return () => {
