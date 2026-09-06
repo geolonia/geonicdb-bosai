@@ -5,6 +5,22 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      # TypeScript 7.0 は JS API 非同梱。typescript-eslint / generate-sw.mjs が壊れる。
+      # side-by-side alias は next typegen 等が TS6 経由のままなので採用しない。再訪条件は #70。
+      - dependency-name: typescript
+        versions: [">=7"]
+      # ESLint 9 は EOL 済みだが、eslint-plugin-react（eslint-config-next 経由）が
+      # ESLint 10 未対応。settings.react.version 固定は fork 先で遅延クラッシュしうるため不採用。
+      # eslint-plugin-react / eslint-config-next の ESLint 10 対応後に再訪（#70）。
+      - dependency-name: eslint
+        versions: [">=10"]
+      # @types/node 26 は Node 26 の型。CI は node-version: "22"、engines は >=20.9.0。
+      # ランタイム major と揃える。CI の Node を上げるときに同時に解除する（#70）。
+      - dependency-name: "@types/node"
+        versions: [">=23"]
+  # infra/cdk は別 package.json だが、現状 dependabot の監視対象外（directory: / のみ）。
+  # cdk 用の entry を足すときは上記 ignore を同様に付けること（#70）。
   - package-ecosystem: github-actions
     directory: /
     schedule:
