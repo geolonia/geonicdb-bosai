@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LANG_STORAGE_KEY, SITE_LANGUAGES } from "@/config/site-language";
+import { A2HS_DISMISS_STORAGE_KEY } from "@/lib/a2hs";
 import { makeAlertLevel, makeBanner, makeNotice } from "@/test/fixtures";
 import type { BosaiStaticSnapshot } from "@/types/bosai-static-snapshot";
 
@@ -293,5 +295,75 @@ describe("TopPage load states", () => {
     expect(
       alert.compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+  });
+
+  /**
+   * #65 完了条件: 帯を dismiss しても通知トグルから手順ダイアログに到達できる。
+   * TopPage の lift 結線が切れると単体テストは緑のままなので、ここで統合検証する。
+   */
+  it("opens iOS A2HS guide from push opt-in after A2HS banner is dismissed (#65)", async () => {
+    const proto = HTMLDialogElement.prototype;
+    if (typeof proto.showModal !== "function") {
+      proto.showModal = function showModal(this: HTMLDialogElement) {
+        this.setAttribute("open", "");
+      };
+    }
+    if (typeof proto.close !== "function") {
+      proto.close = function close(this: HTMLDialogElement) {
+        this.removeAttribute("open");
+        this.dispatchEvent(new Event("close"));
+      };
+    }
+
+    isWebPushConfiguredMock.mockReturnValue(true);
+    localStorage.setItem(A2HS_DISMISS_STORAGE_KEY, "1");
+    Reflect.deleteProperty(window, "Notification");
+    Reflect.deleteProperty(navigator, "serviceWorker");
+    Reflect.deleteProperty(window, "PushManager");
+    Object.defineProperty(navigator, "userAgent", {
+      configurable: true,
+      value: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+    });
+    Object.defineProperty(navigator, "platform", {
+      configurable: true,
+      value: "iPhone",
+    });
+    Object.defineProperty(navigator, "maxTouchPoints", {
+      configurable: true,
+      value: 5,
+    });
+    Object.defineProperty(navigator, "standalone", {
+      configurable: true,
+      value: false,
+    });
+    window.matchMedia = vi.fn().mockReturnValue({
+      matches: false,
+      media: "",
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }) as unknown as typeof window.matchMedia;
+
+    const user = userEvent.setup();
+    render(<TopPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("バナー見出しJA")).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId("a2hs-prompt")).not.toBeInTheDocument();
+
+    const guideButton = await screen.findByRole("button", {
+      name: UI_STRINGS.ja.a2hsIosGuideOpenLabel,
+    });
+    expect(screen.getByTestId("push-ios-install-hint")).toBeInTheDocument();
+    await user.click(guideButton);
+
+    const dialog = await screen.findByTestId("ios-a2hs-guide-dialog");
+    expect(dialog).toHaveAttribute("open");
+    expect(
+      screen.getByRole("heading", { name: UI_STRINGS.ja.a2hsIosGuideTitle }),
+    ).toBeInTheDocument();
+    const steps = within(dialog).getAllByRole("listitem");
+    expect(steps).toHaveLength(4);
+    expect(steps[3]).toHaveTextContent(UI_STRINGS.ja.a2hsIosGuideStep4);
   });
 });
