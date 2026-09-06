@@ -1,16 +1,78 @@
 # geonicdb-bosai
 
-自治体向け防災サイトのテンプレートリポジトリ。[GeonicDB](https://github.com/geolonia/geonicdb) をバックエンドに、Next.js の静的 export + CDN 配信で住民向けページを提供する。住民ブラウザは `@geolonia/geonicdb-sdk` の `useLdEntities` で GeonicDB へ直接 AJAX する（[`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) 2.1）。
+**自治体の防災サイト／ハザードマップアプリを、フォークして自分たちのデータを差すだけで立ち上げるためのテンプレート。**
 
-- 要件定義: [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md)
-- ガイドライン調査: [`docs/research/guidelines.md`](docs/research/guidelines.md)
-- APIキー・ポリシー: [`docs/geonicdb-setup.md`](docs/geonicdb-setup.md)
-- アクセシビリティ: [`docs/a11y/README.md`](docs/a11y/README.md)
-- セキュリティ運用（プライバシー・依存更新）: [`docs/security-ops.md`](docs/security-ops.md)
+避難所・ハザードマップ・警戒レベルといった「災害時にアクセスが集中し、絶対に落とせない情報」を、静的配信の堅さとリアルタイム更新の速さの両取りで届けます。バックエンドは [GeonicDB](https://github.com/geolonia/geonicdb)（NGSI-LD Context Broker）。フロントは Next.js の静的 export。
 
-## セットアップ
+- デモ／プレビュー: <https://geolonia.github.io/geonicdb-bosai/>
+- ライセンス: **未定**（`LICENSE` 未設置）。フォーク・再配布の条件は決まり次第ここに明記します
 
-Node.js **20.9.0 以上**が必要です。
+---
+
+## なぜこのテンプレートか
+
+### 1. データベースが止まっても、サイトは落ちない
+
+主要情報（緊急バナー・警戒レベル・お知らせ）は**ビルド時に GeonicDB から取得して静的 HTML へ焼き込みます**。住民の初期表示に API 通信は要りません。
+
+| 状況                            | 住民に見えるもの                                                                                          |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| 通常時                          | ビルド時の値を即表示 → WebSocket / REST で最新値へ差し替え                                                |
+| JS 無効・古い端末               | ビルド時の値がそのまま表示される                                                                          |
+| GeonicDB 停止（閲覧中）         | **直近に成功したビルドの値**が表示され続ける                                                              |
+| GeonicDB 停止（定期リビルド中） | 取得全滅ならビルドを失敗させ deploy をスキップ。CDN 上の前回成果物を空データで上書きしない（fail-closed） |
+
+「この情報は HH:MM 時点」という鮮度表示も組み込み済みです。取得失敗時に試行時刻を最終取得と偽ることはしません。
+
+### 2. 更新は即座に届く — WebSocket とプッシュ通知
+
+- 画面を開いている住民には **WebSocket** で緊急バナー・警戒レベル・お知らせを即時反映
+- 画面を閉じている住民には **Web Push**（警戒レベルの変更時のみ、購読者の表示言語に絞って配信）
+- **中間サーバー不要**。静的ホスティングと GeonicDB の 2 者だけで完結します（Lambda もプロキシも置きません）
+- PWA としてホーム画面に追加でき、iOS の Badging API によるバッジ表示にも対応
+
+### 3. 職員向け管理画面を作らなくていい
+
+コンテンツ更新は `geonic` CLI や Claude Desktop（MCP）から GeonicDB の NGSI-LD API を直接叩く運用です。CMS の構築・運用・脆弱性対応が丸ごと不要になります。
+
+権限は XACML ポリシーでサーバー側に寄せ、経路ごとに別のキーを使います。
+
+| 経路                  | キー                                                                                                                       | クライアントへの露出                                          |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| 住民の REST 読み取り  | なし（SDK を `anonymous: true` で初期化）                                                                                  | —                                                             |
+| 住民の WebSocket 購読 | 読み取り専用（`bosai-read`。GET + WS のみ）                                                                                | **意図的に露出**。DPoP 必須 + オリジン限定が前提              |
+| 住民の Web Push 購読  | 購読操作専用（`bosai-webpush-proxy-write`。subscriptions の POST/DELETE/GET + `bosai-*` の GET。エンティティ書き込み不可） | **意図的に露出**。DPoP 必須 + オリジン限定 + レート制限が前提 |
+| 職員の書き込み        | `bosai-staff-write`                                                                                                        | **絶対に埋め込まない**（サーバー／手元の CLI のみ）           |
+
+つまり公開ページに載るのは「読めるだけ・購読できるだけ」のキーに限られ、エンティティを書き換えられるキーはクライアントに一切出しません。
+
+### 4. アクセシビリティが「後付け」でない
+
+- 目標は **JIS X 8341-3:2016 適合レベル AA** および **WCAG 2.2 AA**（改正の先取り）
+- ウェブアクセシビリティ方針・試験結果ページ（JIS 附属書 JB.3.1 の表示事項）の**雛形が同梱**。文言を差し替えるだけで公開できます
+- 色だけに依存しない警戒レベル表示（内閣府公式配色 + 数字 + 文言の併記）、`role="alert"` / `aria-live` の使い分け
+- `npm run test:a11y` で axe による自動検査、CI で Lighthouse のアクセシビリティスコアをブロック条件に設定済み
+
+### 5. セキュリティとパフォーマンスの目標値が最初から入っている
+
+- CSP は `default-src 'none'` 起点の固定ヘッダ。`'unsafe-inline'` / `'unsafe-eval'` なし（インライン script はビルド後に外部化し、残っていれば **ビルドを失敗させる**）
+- HSTS / `X-Content-Type-Options` / `X-Frame-Options` / `Referrer-Policy` / `Permissions-Policy` / COOP / CORP を Response Headers Policy で送出
+- TLS 1.2_2021 以上、ACM 証明書、OCSP Stapling — **Mozilla Observatory A+ / SSL Labs A+ を狙える CDK スタックを同梱**（`infra/cdk`）
+- 災害時トップの HTML ≤ 50KB・CSS ≤ 30KB を CI の **error** 閾値として強制。1 ページ 1.6〜3MB 予算（東京都ガイドライン）
+
+### 6. 多言語 5 言語
+
+日本語 / 英語 / 中国語（簡体字）/ ベトナム語 / 韓国語。UI 文言だけでなく、動的コンテンツも GeonicDB 側の `language` プロパティで言語別に取得します。`lang` 属性の切替、`localStorage` への選好保存込み。
+
+### 7. どこにでも置ける
+
+`output: 'export'` による完全静的エクスポート。S3 + CloudFront、GitHub Pages、その他どの静的ホスティングでも動きます。Node 実行環境は不要です。
+
+---
+
+## 5 分で動かす
+
+Node.js **20.9.0 以上**。
 
 ```bash
 npm install
@@ -18,94 +80,71 @@ test -f .env.local || cp .env.example .env.local
 npm run dev
 ```
 
-`http://localhost:3000` でトップページが表示される。動的データ（緊急バナー・警戒レベル・お知らせ）は `NEXT_PUBLIC_GEONICDB_*` で指定した GeonicDB から匿名 GET する。
+`http://localhost:3000` でトップページが表示されます。`.env.example` の既定値は動作確認用のステージング環境を指しています（運用時は必ず自分たちのテナントへ差し替えます）。
 
-## スクリプト
+自分のテナント・自治体データに差し替える手順は [`docs/setup.md`](docs/setup.md) を参照してください。
 
-| コマンド                          | 内容                                      |
-| --------------------------------- | ----------------------------------------- |
-| `npm run dev`                     | 開発サーバ                                |
-| `npm run build`                   | 静的 export（`out/`）                     |
-| `npm run lint`                    | ESLint                                    |
-| `npm run format` / `format:check` | Prettier                                  |
-| `npm run typecheck`               | TypeScript                                |
-| `npm test`                        | Vitest                                    |
-| `npm run test:a11y`               | トップ主要コンポーネントの axe 検査       |
-| `npm run setup:geonicdb`          | XACML ポリシー・職員 API キー作成（冪等） |
+---
 
-## アクセシビリティ
+## 収録済みの機能
 
-目標は **JIS X 8341-3:2016 適合レベル AA** および **WCAG 2.2 AA**（追加達成基準の先行対応）です。根拠は障害者差別解消法（合理的配慮の提供義務）と要件 N-01〜N-08（`docs/spec/requirements-spec-v1.1.md` 5.1）。
+- 緊急バナー（重大度バリアント + 内閣府配色、常時領域確保）
+- 警戒レベル 1〜5 表示（色 + 数字 + 文言）
+- 新着・お知らせ一覧（更新日時の明示）
+- クイックリンク 4 カード（デジタル庁の 4 局面）
+- 多言語 5 言語切替（`ja` / `en` / `zh-CN` / `vi` / `ko`）
+- Web Push 通知 + PWA（ホーム画面追加・バッジ）
+- アクセシビリティ方針 / 試験結果ページの雛形
+- CloudFront セキュリティヘッダ・TLS の CDK スタック
 
-### サイト上の公開ページ（雛形）
+要件の全体像は [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md)、進行中の開発は [Issues](https://github.com/geolonia/geonicdb-bosai/issues) を参照してください。
 
-| パス                           | 内容                                     |
-| ------------------------------ | ---------------------------------------- |
-| `/accessibility/`              | ウェブアクセシビリティ方針               |
-| `/accessibility/test-results/` | 試験結果（JIS 附属書 JB.3.1 の表示事項） |
+---
 
-文言の編集は `src/config/accessibility-content.ts` で行います。`【要記入】` を自治体の実値に置き換えてください。**試験前に「適合」と名乗らない**でください（WAIC 対応度表記ガイドライン）。
+## ドキュメント
 
-### チェックリスト・支援技術シナリオ
+### 導入・運用
 
-| ドキュメント                                                                     | 用途                                                                                    |
-| -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| [`docs/a11y/wcag22-aa-checklist.md`](docs/a11y/wcag22-aa-checklist.md)           | WCAG 2.2 追加基準（N-02）と N-01〜N-08 の記入用。完全な達成基準一覧は WAIC 配布物へ委譲 |
-| [`docs/a11y/assistive-tech-scenarios.md`](docs/a11y/assistive-tech-scenarios.md) | NVDA / VoiceOver / TalkBack の主要シナリオ                                              |
+| ドキュメント                                           | 内容                                                                               |
+| ------------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| [`docs/setup.md`](docs/setup.md)                       | **セットアップ手順**（開発環境・環境変数・npm スクリプト・自治体向けカスタマイズ） |
+| [`docs/geonicdb-setup.md`](docs/geonicdb-setup.md)     | GeonicDB 側の XACML ポリシー・API キー作成                                         |
+| [`docs/deployment.md`](docs/deployment.md)             | デプロイ・CDN キャッシュ・CSP・TLS・Web Push の運用                                |
+| [`docs/availability-ops.md`](docs/availability-ops.md) | 定期リビルド・最終公開状態の維持・負荷試験                                         |
+| [`docs/security-ops.md`](docs/security-ops.md)         | プライバシー・依存更新のセキュリティ運用                                           |
+| [`docs/a11y/README.md`](docs/a11y/README.md)           | アクセシビリティ試験の進め方・チェックリスト                                       |
 
-導入時の流れ:
+### 仕様
 
-1. 方針ページの対象範囲・担当部署・達成期限を更新する
-2. WAIC「[試験実施ガイドライン](https://waic.jp/docs/jis2016/test-guidelines/)」に従いページを選び、手動試験と支援技術シナリオを実施する
-3. チェックリストと `/accessibility/test-results/` を更新して公開する
-4. 地図・PDF・動画を追加したら N-04 / N-06 / N-07 の代替提供を同じチェックリストで確認する
+| ドキュメント                                                                 | 内容                                             |
+| ---------------------------------------------------------------------------- | ------------------------------------------------ |
+| [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md)                               | 要件定義（目的・アーキテクチャ・MVP スコープ）   |
+| [`docs/spec/requirements-spec-v1.1.md`](docs/spec/requirements-spec-v1.1.md) | 要件仕様書 BOUSAI-WEB-SPEC-001                   |
+| [`docs/pages/top-page.md`](docs/pages/top-page.md)                           | トップページ仕様                                 |
+| [`docs/data-model.md`](docs/data-model.md)                                   | NGSI-LD エンティティのデータモデル               |
+| [`docs/i18n.md`](docs/i18n.md)                                               | 多言語対応仕様                                   |
+| [`docs/frontend-best-practices.md`](docs/frontend-best-practices.md)         | フロントエンド実装方針                           |
+| [`docs/research/guidelines.md`](docs/research/guidelines.md)                 | 国内外の防災サイトガイドライン調査（設計の出典） |
 
-`npm run test:a11y` はコンポーネント単位の自動検査です。**JIS 試験の代替にはなりません**。
+---
 
-## GeonicDB（住民向け・匿名読み取り）
+## アーキテクチャ（1 枚図）
 
-公開ページは SDK を `anonymous: true` で初期化し、API キーをクライアントに埋め込みません。読み取り可否はテナント側の XACML ポリシー `bosai-public-read`（`role: anonymous`、`entityType: bosai-*`、GET のみ）で制御します。
-
-`.env.local`（または `.env`）に次を設定します（**秘密情報ではない**）:
-
-```bash
-NEXT_PUBLIC_GEONICDB_URL=https://geonicdb.geolonia.com
-NEXT_PUBLIC_GEONICDB_TENANT=miya
+```text
+[職員]                      [GeonicDB]                    [ビルド / CDN]        [住民のブラウザ]
+  |  NGSI-LD Entity 更新        |                                |                      |
+  |  (geonic CLI /              |  ビルド時スナップショット ---->  |  静的 HTML へ埋込      |
+  |   Claude Desktop MCP) --->  |  （匿名 GET）                   |  （定期リビルド）      |
+  |  bosai-staff-write          |                                |                      |
+  |                            |  WebSocket / REST 差分 <--------|----------------------|
+  |                            |  bosai-public-read で GET 許可   |  初期表示は埋込値      |
+  |                            |  Web Push（警戒レベル変更時）      |  失敗時も埋込値を維持   |
 ```
 
-## GeonicDB（職員向け・書き込み）
+詳細は [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) 2.1 節。
 
-職員が `geonic` CLI / Claude Desktop MCP で書き込むためのポリシー・API キーは次で作成できます。
+---
 
-```bash
-# 前提: geonic auth login 済み、対象テナント選択済み
-npm run setup:geonicdb
-```
+## コントリビュート
 
-詳細は [`docs/geonicdb-setup.md`](docs/geonicdb-setup.md)。作成した `bosai-staff-write` は `.env` の `GEONICDB_API_KEY` に設定します（公開ページには使いません）。`bosai-public-read`（匿名読み取り）の作成には `tenant_admin` が必要で、権限が無い場合は警告してスキップします（手動で `geonic admin policies create`）。
-
-## 環境変数
-
-`.env.example` を参照。`NEXT_PUBLIC_*` は住民向け匿名読み取り、`GEONICDB_*`（非 PUBLIC）は職員向け経路用です。
-
-## 通知オン推奨バナー
-
-通知がオフの利用者にだけ、ヘッダーの上へ「通知をオンにすることをおすすめします」という帯を出します。
-テキストをクリックするとフッターの通知トグルへ移動し、トグル本体にフォーカスが載ります。
-オン・処理中・非対応・通知が許可されていない場合は出しません。
-
-つまみは `src/config/push-opt-in-banner.ts`:
-
-| 定数                              | 既定 | 意味                               |
-| --------------------------------- | ---- | ---------------------------------- |
-| `PUSH_OPT_IN_BANNER_DISMISS_DAYS` | `7`  | 帯を閉じてから再表示するまでの日数 |
-
-帯はヘッダーより上の**文書フロー**に入るため、差し込むとページ全体が下へずれます
-（アクセシビリティ方針で「固定オーバーレイは置かない」と公表しているので out-of-flow にはしません）。
-そのため**初回のユーザー入力（`click` / `keydown`）まで表示しません** — ずれが入力から 500ms 以内に
-収まり、CLS に計上されないためです。無操作タイマーでの表示は行いません
-（`AddToHomeScreenPrompt` の無操作タイマーは `position: fixed` + body の padding 予約が前提で
-「出しても何もずれない」ため成立する手であり、この帯には流用できません）。
-
-代償として、一度も tap / キー入力しない利用者には帯が出ません。その利用者は帯が出ても通知を
-オンにできないため実害はなく、フッターのトグルは常設です。
+作業は必ず git worktree を切って行います（[`CLAUDE.md`](CLAUDE.md)）。issue には優先度ラベル（`Priority: Emerg/High/Middle/Low`）を必ず付けてください。
