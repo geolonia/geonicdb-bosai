@@ -42,11 +42,19 @@ npm run dev
 | `NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY` | Web Push 購読操作用（任意） | **クライアントに露出する**（下記の制約必須） |
 | `GEONICDB_URL` / `GEONICDB_TENANT` / `GEONICDB_API_KEY` | 職員向け書き込み経路（CLI・将来の管理画面） | **はい**（公開ページには使わない） |
 
-`NEXT_PUBLIC_*` のキーはクライアントバンドルに含まれ第三者から見えます。次を満たすキーだけを設定してください。
+`NEXT_PUBLIC_*` のキーはクライアントバンドルに含まれ第三者から見えます。**露出する前提で、経路ごとに最小権限のキーを分けて発行してください。**
 
-- 読み取り専用ポリシー（`bosai-read` / `bosai-webpush-proxy-write`）。エンティティ書き込み権限を持つキーは**絶対に設定しない**
+| キー | 付与するポリシー | 権限の範囲 |
+| --- | --- | --- |
+| `NEXT_PUBLIC_GEONICDB_WS_API_KEY` | `bosai-read` | **読み取り専用**（GET + WS のみ。書き込みは 403） |
+| `NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY` | `bosai-webpush-proxy-write` | **購読操作専用**（subscriptions の POST/DELETE/GET + `bosai-*` の GET）。読み取り専用ではないが、**エンティティ書き込みは不可**。配信時の認可判定に対象エンティティの GET が要るため GET を含む |
+
+どちらのキーにも次を必須とします。
+
 - DPoP 必須（`--dpop-required`）
 - オリジン限定（`--origins` にサイトの実ドメイン。`'*'` にしない）
+- Web Push キーはレート制限（`rateLimit.perMinute=30`）
+- エンティティを書き換えられるキー（`bosai-write` 系 / `bosai-staff-write`）は**絶対に設定しない**
 
 未設定の場合、WS 購読はスキップされ REST の匿名読み取りのみで動作します（Web Push キー未設定なら通知オプトイン UI は表示されません）。
 
@@ -54,7 +62,9 @@ npm run dev
 
 ### 住民向け（匿名読み取り）
 
-公開ページは SDK を `anonymous: true` で初期化し、API キーをクライアントに埋め込みません。読み取り可否はテナント側の XACML ポリシー `bosai-public-read`（`role: anonymous`、`entityType: bosai-*`、GET のみ）で制御します。
+公開ページの **REST 取得**は SDK を `anonymous: true` で初期化し、API キーを使いません。読み取り可否はテナント側の XACML ポリシー `bosai-public-read`（`role: anonymous`、`entityType: bosai-*`、GET のみ）で制御します。
+
+**WebSocket 購読と Web Push 購読は匿名モードでは動きません**（SDK の `connect()` はトークンを要求し、subscriptions の作成にも認可が要ります）。この 2 経路だけは上記の公開キーを使い、キーはクライアントに露出する前提で最小権限に絞ります。
 
 ### 職員向け（書き込み）
 
