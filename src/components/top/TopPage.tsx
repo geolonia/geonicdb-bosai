@@ -252,8 +252,7 @@ export function TopPage({ initialSnapshot }: TopPageProps = {}) {
         ) : (
           <AlertLevelPlaceholder strings={strings} />
         )}
-        {/* 付加 UI は緊急バナー・警戒レベルより後（WCAG 1.3.2 / #55） */}
-        <PushNotificationOptIn lang={lang} strings={strings} />
+        {/* A2HS は緊急バナー・警戒レベルより後（WCAG 1.3.2 / #55）。通知トグルはフッター末尾（#63）。 */}
         <OptionalFeatureBoundary>
           <AddToHomeScreenPrompt strings={strings} />
         </OptionalFeatureBoundary>
@@ -296,7 +295,9 @@ export function TopPage({ initialSnapshot }: TopPageProps = {}) {
         linksLabel={strings.footerLinksLabel}
         contactLabel={strings.footerContact}
         contactValue={strings.footerContactValue}
-      />
+      >
+        <PushNotificationOptIn lang={lang} strings={strings} />
+      </SiteFooter>
     </>
   );
 }

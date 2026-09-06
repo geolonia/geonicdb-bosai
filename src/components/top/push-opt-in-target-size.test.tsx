@@ -36,4 +36,13 @@ describe("push-opt-in switch hit target (#56 / WCAG 2.5.8)", () => {
     expect(track).toMatch(/height:\s*1\.75rem\b/);
     expect(track).toMatch(/pointer-events:\s*none\b/);
   });
+
+  it("resets width/padding when nested in the footer (#63)", () => {
+    const nested = extractRuleBody(".site-footer .push-opt-in");
+    expect(nested).toMatch(/max-width:\s*none\b/);
+    expect(nested).toMatch(/margin:\s*0\b/);
+    expect(nested).toMatch(/padding:\s*0\.75rem\s+0\s+0\b/);
+    // near-miss: 本文用の横 padding を残すと .site-footer__inner と二重になる
+    expect(nested).not.toMatch(/padding:\s*0\.75rem\s+1rem/);
+  });
 });

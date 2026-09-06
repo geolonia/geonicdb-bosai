@@ -6,6 +6,10 @@ import { makeAlertLevel, makeBanner, makeNotice } from "@/test/fixtures";
 import type { BosaiStaticSnapshot } from "@/types/bosai-static-snapshot";
 
 const useLdEntitiesMock = vi.hoisted(() => vi.fn());
+const isWebPushConfiguredMock = vi.hoisted(() => vi.fn(() => false));
+const resolveActiveWebPushStateMock = vi.hoisted(() =>
+  vi.fn(async () => null),
+);
 
 vi.mock("@geolonia/geonicdb-sdk/react", () => ({
   useLdEntities: (...args: unknown[]) => useLdEntitiesMock(...args),
@@ -21,7 +25,19 @@ vi.mock("@/lib/geonicdb-public-client", async () => {
   };
 });
 
+vi.mock("@/lib/web-push-client", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/web-push-client")>(
+    "@/lib/web-push-client",
+  );
+  return {
+    ...actual,
+    isWebPushConfigured: () => isWebPushConfiguredMock(),
+    resolveActiveWebPushState: () => resolveActiveWebPushStateMock(),
+  };
+});
+
 import { TopPage } from "@/components/top/TopPage";
+import { UI_STRINGS } from "@/config/ui-strings";
 
 const bannerJa = makeBanner("notice", {
   heading: "バナー見出しJA",
@@ -84,6 +100,10 @@ describe("TopPage load states", () => {
 
   afterEach(() => {
     useLdEntitiesMock.mockReset();
+    isWebPushConfiguredMock.mockReset();
+    isWebPushConfiguredMock.mockReturnValue(false);
+    resolveActiveWebPushStateMock.mockReset();
+    resolveActiveWebPushStateMock.mockResolvedValue(null);
     localStorage.clear();
   });
 
@@ -231,6 +251,49 @@ describe("TopPage load states", () => {
     ).toBeTruthy();
     expect(
       alert.compareDocumentPosition(a2hs) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("places push notification toggle at the bottom of the footer (#63)", async () => {
+    isWebPushConfiguredMock.mockReturnValue(true);
+    Object.defineProperty(window, "Notification", {
+      configurable: true,
+      value: { permission: "default" },
+    });
+    Object.defineProperty(navigator, "serviceWorker", {
+      configurable: true,
+      value: {
+        getRegistration: async () => ({
+          pushManager: { getSubscription: async () => null },
+        }),
+      },
+    });
+    Object.defineProperty(window, "PushManager", {
+      configurable: true,
+      value: function PushManager() {},
+    });
+
+    const { container } = render(<TopPage />);
+    const toggle = await screen.findByRole("switch", {
+      name: UI_STRINGS.ja.pushToggleLabel,
+    });
+    const footer = container.querySelector("footer.site-footer");
+    const main = container.querySelector("main.top-main");
+    const contact = container.querySelector(".site-footer__contact");
+    const alert = screen.getByText("レベル1ラベル");
+
+    expect(footer).not.toBeNull();
+    expect(main).not.toBeNull();
+    expect(contact).not.toBeNull();
+    expect(footer!.contains(toggle)).toBe(true);
+    expect(main!.contains(toggle)).toBe(false);
+    expect(
+      contact!.compareDocumentPosition(toggle) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    // DOM 順: 警戒レベルより後（WCAG 1.3.2 退行防止）
+    expect(
+      alert.compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
 });
