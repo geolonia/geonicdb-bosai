@@ -11,8 +11,9 @@ type State = {
 };
 
 /**
- * 付加 UI（A2HS 等）の例外を隔離する。
- * 失敗時は null を返し、親（緊急バナー・警戒レベル等）の描画は継続する。
+ * 付加 UI（A2HS・通知オプトイン・iOS 手順ダイアログ等）の例外を隔離する。
+ * 失敗時は null を返し、親（緊急バナー・警戒レベル・フッター連絡先等）の描画は継続する。
+ * 付加 UI ごとに別インスタンスにすること（共有すると片方の例外で他も消える）。
  */
 export class OptionalFeatureBoundary extends Component<Props, State> {
   state: State = { failed: false };

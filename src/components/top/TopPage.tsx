@@ -311,18 +311,23 @@ export function TopPage({ initialSnapshot }: TopPageProps = {}) {
         contactLabel={strings.footerContact}
         contactValue={strings.footerContactValue}
       >
-        <PushNotificationOptIn
-          lang={lang}
-          strings={strings}
-          onOpenIosGuide={openIosGuide}
-        />
+        <OptionalFeatureBoundary>
+          <PushNotificationOptIn
+            lang={lang}
+            strings={strings}
+            onOpenIosGuide={openIosGuide}
+          />
+        </OptionalFeatureBoundary>
       </SiteFooter>
-      <IosA2hsGuideDialog
-        strings={strings}
-        open={iosGuideOpen}
-        onClose={closeIosGuide}
-        returnFocusRef={iosGuideReturnFocusRef}
-      />
+      {/* Push トグル用とは別インスタンス。共有すると片方の例外で両方消える。 */}
+      <OptionalFeatureBoundary>
+        <IosA2hsGuideDialog
+          strings={strings}
+          open={iosGuideOpen}
+          onClose={closeIosGuide}
+          returnFocusRef={iosGuideReturnFocusRef}
+        />
+      </OptionalFeatureBoundary>
     </>
   );
 }

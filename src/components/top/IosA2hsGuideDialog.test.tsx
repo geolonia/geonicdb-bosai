@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useRef, useState } from "react";
 import { IosA2hsGuideDialog } from "@/components/top/IosA2hsGuideDialog";
 import { SITE_LANGUAGES } from "@/config/site-language";
@@ -116,5 +116,100 @@ describe("IosA2hsGuideDialog (#65)", () => {
     expect(testStrings.a2hsIosGuideStep4).toMatch(
       /ホーム画面|Home Screen|主屏幕|Màn hình chính|홈 화면/,
     );
+  });
+
+  /**
+   * #66: showModal が InvalidStateError 等で throw しても親は落ちない。
+   * open を戻さないと次のクリックが効かないので、失敗後に再オープンできることまで固定する。
+   */
+  it("swallows showModal failure and allows reopen (#66)", async () => {
+    const user = userEvent.setup();
+    const nativeShow =
+      HTMLDialogElement.prototype.showModal ??
+      function showModal(this: HTMLDialogElement) {
+        this.setAttribute("open", "");
+      };
+
+    const showModal = vi
+      .spyOn(HTMLDialogElement.prototype, "showModal")
+      .mockImplementationOnce(function throwOnce() {
+        throw new DOMException(
+          "Failed to execute 'showModal' on 'HTMLDialogElement': The element already has an 'open' attribute",
+          "InvalidStateError",
+        );
+      })
+      .mockImplementation(function showModal(
+        this: HTMLDialogElement,
+        ...args: []
+      ) {
+        return nativeShow.apply(this, args);
+      });
+
+    try {
+      render(<GuideHarness />);
+      const opener = screen.getByRole("button", { name: "open-guide" });
+      const dialog = screen.getByTestId("ios-a2hs-guide-dialog");
+
+      await user.click(opener);
+      await waitFor(() => {
+        expect(dialog).not.toHaveAttribute("open");
+      });
+      // near-miss: open state が true のまま詰まると 2 回目が効かない
+      await user.click(opener);
+      await waitFor(() => {
+        expect(dialog).toHaveAttribute("open");
+      });
+    } finally {
+      showModal.mockRestore();
+    }
+  });
+
+  /**
+   * #66 CodeRabbit: close() が常に throw しても top-layer が残らず、
+   * 再オープンできること（再マウント復旧）。
+   */
+  it("remounts dialog when close always throws (#66)", async () => {
+    const user = userEvent.setup();
+    const close = vi
+      .spyOn(HTMLDialogElement.prototype, "close")
+      .mockImplementation(() => {
+        throw new DOMException(
+          "Failed to execute 'close' on 'HTMLDialogElement'",
+          "InvalidStateError",
+        );
+      });
+
+    try {
+      render(<GuideHarness />);
+      const opener = screen.getByRole("button", { name: "open-guide" });
+
+      await user.click(opener);
+      await waitFor(() => {
+        expect(screen.getByTestId("ios-a2hs-guide-dialog")).toHaveAttribute(
+          "open",
+        );
+      });
+
+      await user.click(
+        screen.getByRole("button", {
+          name: testStrings.a2hsIosGuideCloseLabel,
+        }),
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("ios-a2hs-guide-dialog")).not.toHaveAttribute(
+          "open",
+        );
+      });
+
+      await user.click(opener);
+      await waitFor(() => {
+        expect(screen.getByTestId("ios-a2hs-guide-dialog")).toHaveAttribute(
+          "open",
+        );
+      });
+    } finally {
+      close.mockRestore();
+    }
   });
 });

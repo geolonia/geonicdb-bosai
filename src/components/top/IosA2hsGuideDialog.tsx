@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useId, useRef, type RefObject } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
 import type { UiStrings } from "@/config/ui-strings";
 
 type Props = {
@@ -64,6 +71,16 @@ export function IosA2hsGuideDialog({
 }: Props) {
   const titleId = useId();
   const dialogRef = useRef<HTMLDialogElement>(null);
+  /** close() 失敗時に <dialog> を再生成して top-layer を外す */
+  const [dialogEpoch, setDialogEpoch] = useState(0);
+
+  const remountDialog = useCallback(() => {
+    setDialogEpoch((n) => n + 1);
+    const target = returnFocusRef.current;
+    requestAnimationFrame(() => {
+      target?.focus();
+    });
+  }, [returnFocusRef]);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -71,15 +88,30 @@ export function IosA2hsGuideDialog({
 
     if (open) {
       if (!dialog.open) {
-        dialog.showModal();
+        try {
+          dialog.showModal();
+        } catch {
+          // showModal 失敗（未実装・InvalidStateError 等）でも親ツリーは落とさない。
+          // open を戻さないと次のクリックが効かなくなるので親へ閉じを通知する。
+          onClose();
+        }
       }
       return;
     }
 
     if (dialog.open) {
-      dialog.close();
+      try {
+        dialog.close();
+      } catch {
+        // close 失敗のままでは top-layer が残りページ操作不能になる。
+        // 属性を外しつつ、再マウントは effect 同期 setState を避けて次ティックへ送る。
+        dialog.removeAttribute("open");
+        setTimeout(() => {
+          remountDialog();
+        }, 0);
+      }
     }
-  }, [open]);
+  }, [open, onClose, dialogEpoch, remountDialog]);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -97,10 +129,11 @@ export function IosA2hsGuideDialog({
     return () => {
       dialog.removeEventListener("close", handleNativeClose);
     };
-  }, [onClose, returnFocusRef]);
+  }, [onClose, returnFocusRef, dialogEpoch]);
 
   return (
     <dialog
+      key={dialogEpoch}
       ref={dialogRef}
       className="ios-a2hs-guide"
       aria-labelledby={titleId}
@@ -125,7 +158,12 @@ export function IosA2hsGuideDialog({
           type="button"
           className="ios-a2hs-guide__close"
           onClick={() => {
-            dialogRef.current?.close();
+            try {
+              dialogRef.current?.close();
+            } catch {
+              onClose();
+              remountDialog();
+            }
           }}
         >
           {strings.a2hsIosGuideCloseLabel}
