@@ -7,9 +7,7 @@ import type { BosaiStaticSnapshot } from "@/types/bosai-static-snapshot";
 
 const useLdEntitiesMock = vi.hoisted(() => vi.fn());
 const isWebPushConfiguredMock = vi.hoisted(() => vi.fn(() => false));
-const resolveActiveWebPushStateMock = vi.hoisted(() =>
-  vi.fn(async () => null),
-);
+const resolveActiveWebPushStateMock = vi.hoisted(() => vi.fn(async () => null));
 
 vi.mock("@geolonia/geonicdb-sdk/react", () => ({
   useLdEntities: (...args: unknown[]) => useLdEntitiesMock(...args),
