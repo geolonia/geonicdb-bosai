@@ -12,6 +12,9 @@ import {
 } from "@/lib/geonicdb-public-client";
 import { createSerialQueue } from "@/lib/web-push-sw-logic";
 
+/** applicationServerKey 用に base64url → Uint8Array。SDK 実装との重複を避け re-export する。 */
+export { urlBase64ToUint8Array } from "@geolonia/geonicdb-sdk";
+
 const STORAGE_KEY = "bosai-webpush-subscription";
 
 /** 言語再同期の読取→POST→DELETE→書込を全呼び出し元で直列化する（#61 CodeRabbit） */
@@ -31,30 +34,18 @@ export type WebPushGeonicdbClient = {
   requestRaw(method: string, path: string, body?: unknown): Promise<Response>;
 };
 
-/** VAPID 公開鍵取得（認証不要）。 */
-export async function fetchVapidPublicKey(
-  env: PublicWebPushEnv = {
-    NEXT_PUBLIC_GEONICDB_URL: process.env.NEXT_PUBLIC_GEONICDB_URL,
-  },
-  fetchFn: typeof fetch = fetch,
-): Promise<string> {
-  const { baseUrl } = resolveGeonicdbPublicConfig({
-    NEXT_PUBLIC_GEONICDB_URL: env.NEXT_PUBLIC_GEONICDB_URL,
-    NEXT_PUBLIC_GEONICDB_TENANT: env.NEXT_PUBLIC_GEONICDB_TENANT,
-  });
-  const response = await fetchFn(`${baseUrl}/.well-known/webpush-vapid-key`, {
-    method: "GET",
-    headers: { Accept: "application/json" },
-  });
-  if (!response.ok) {
-    throw new Error(`VAPID key fetch failed: ${response.status}`);
-  }
-  const json = (await response.json()) as { publicKey?: unknown };
-  if (typeof json.publicKey !== "string" || !json.publicKey.trim()) {
-    throw new Error("VAPID publicKey missing");
-  }
-  return json.publicKey.trim();
-}
+/**
+ * @internal `enableWebPushNotifications` 専用のテスト注入用。
+ * `subscribeWebPush` は SDK の GeonicDB インスタンスメソッド（VAPID 鍵取得 +
+ * 既存 PushSubscription の鍵一致チェック + 不一致なら再 subscribe を内蔵）。
+ * `getGeonicdbWebPushClient()` が返す実インスタンスはそのまま満たす。
+ */
+export type WebPushEnableClient = WebPushGeonicdbClient & {
+  subscribeWebPush(options?: {
+    applicationServerKey?: string;
+    serviceWorkerRegistration?: ServiceWorkerRegistration;
+  }): Promise<PushSubscription>;
+};
 
 /**
  * Web Push 購読が有効か（サブスクリプション操作用 API キーの有無）。
@@ -73,18 +64,6 @@ export function isWebPushConfigured(
   } catch {
     return false;
   }
-}
-
-/** applicationServerKey 用に base64url → Uint8Array */
-export function urlBase64ToUint8Array(base64String: string): Uint8Array {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const raw = atob(base64);
-  const output = new Uint8Array(raw.length);
-  for (let i = 0; i < raw.length; i += 1) {
-    output[i] = raw.charCodeAt(i);
-  }
-  return output;
 }
 
 export function readStoredWebPushState(
@@ -277,8 +256,7 @@ export async function resolveActiveWebPushState(
 export async function enableWebPushNotifications(options: {
   lang: SiteLanguage;
   env?: PublicWebPushEnv;
-  fetchFn?: typeof fetch;
-  client?: WebPushGeonicdbClient;
+  client?: WebPushEnableClient;
 }): Promise<StoredWebPushState> {
   if (typeof window === "undefined" || !("Notification" in window)) {
     throw new Error("Notifications are not supported");
@@ -312,14 +290,25 @@ export async function enableWebPushNotifications(options: {
   await navigator.serviceWorker.ready;
   await syncServiceWorkerLang(registration, options.lang);
 
-  const existingSub = await registration.pushManager.getSubscription();
+  const client =
+    options.client ??
+    getGeonicdbWebPushClient(options.env) ??
+    (() => {
+      throw new Error("NEXT_PUBLIC_GEONICDB_WEBPUSH_API_KEY is not set");
+    })();
+
+  // ブラウザ側の取得/再利用/再subscribeはSDK（GeonicDB#subscribeWebPush）に一本化する。
+  // VAPID鍵の取得と、既存 PushSubscription が現在の鍵とまだ一致するかの検証を内蔵しており、
+  // 鍵ローテーション後に古い購読を無条件再利用してしまう退行を防げる（endpoint文字列の
+  // 一致だけを見ていた旧実装にはこの検証が無かった）。
+  const subscription = await client.subscribeWebPush({
+    serviceWorkerRegistration: registration,
+  });
+  const json = subscription.toJSON();
+  const endpoint = json.endpoint ?? subscription.endpoint;
+
   const stored = readStoredWebPushState();
-  if (
-    existingSub &&
-    stored &&
-    existingSub.endpoint === stored.endpoint &&
-    stored.subscriptionId
-  ) {
+  if (stored && stored.endpoint === endpoint && stored.subscriptionId) {
     if (stored.lang === options.lang) {
       return stored;
     }
@@ -336,28 +325,17 @@ export async function enableWebPushNotifications(options: {
     return resyncWebPushSubscriptionLang({
       lang: options.lang,
       env: options.env,
-      client: options.client,
+      client,
       registration,
     });
   }
 
-  // 既存 PushSubscription がある場合は VAPID 取得をスキップ（localStorage 再同期のみ）
-  let subscription = existingSub;
-  if (!subscription) {
-    const vapidKey = await fetchVapidPublicKey(options.env, options.fetchFn);
-    subscription = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(vapidKey) as BufferSource,
-    });
-  }
-  const json = subscription.toJSON();
-  const endpoint = json.endpoint ?? subscription.endpoint;
   const subscriptionId = await registerWebPushSubscription(
     {
       endpoint,
       keys: json.keys,
     },
-    { lang: options.lang, env: options.env, client: options.client },
+    { lang: options.lang, env: options.env, client },
   );
 
   const state: StoredWebPushState = {
