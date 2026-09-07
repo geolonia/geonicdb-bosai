@@ -125,4 +125,19 @@ describe("UI_STRINGS i18n coverage", () => {
     expect(UI_STRINGS.vi.siteTitle).toMatch(/thiên tai/i);
     expect(UI_STRINGS.ko.siteTitle).toBe("방재 정보");
   });
+
+  // 緊急バナーの平時ラベルと一覧の見出しが同じ語だと、画面に「お知らせ」が
+  // 2箇所並んで別物だと分からなくなる。両者は必ず違う語にする。
+  it("never reuses the same word for the banner neutral label and the news heading", () => {
+    for (const lang of SITE_LANGUAGES) {
+      expect(UI_STRINGS[lang].bannerVariants.notice).not.toBe(
+        UI_STRINGS[lang].newsHeading,
+      );
+    }
+  });
+
+  it("labels the news section as お知らせ and the neutral banner as 現在の状況 (ja)", () => {
+    expect(UI_STRINGS.ja.newsHeading).toBe("お知らせ");
+    expect(UI_STRINGS.ja.bannerVariants.notice).toBe("現在の状況");
+  });
 });
