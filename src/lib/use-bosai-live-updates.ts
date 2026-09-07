@@ -2,7 +2,7 @@ import {
   BOSAI_LIVE_ENTITY_TYPES,
   type BosaiLiveEntityType,
 } from "@/lib/bosai-live-entity-types";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { getGeonicdbWsClient } from "@/lib/geonicdb-public-client";
 
 export { BOSAI_LIVE_ENTITY_TYPES, type BosaiLiveEntityType };
@@ -12,6 +12,15 @@ export type BosaiLiveUpdateHandlers = {
   "bosai-EmergencyBanner": () => void;
   "bosai-AlertLevel": () => void;
 };
+
+/**
+ * 復帰の取りこぼし回収をまとめる時間窓（ミリ秒）。
+ *
+ * bfcache 復帰では `visibilitychange` と `pageshow` が連続で発火し、WS の再接続が続けば
+ * `subscribed` も重なる。同じ「復帰」に対して3リソースを何度も取り直さないよう、
+ * この窓の中の2回目以降は捨てる。窓を跨いだ復帰は常に再取得する（取りこぼしを増やさない）。
+ */
+export const RESUME_REFETCH_DEDUPE_MS = 1000;
 
 /**
  * bosai-Notice / bosai-EmergencyBanner / bosai-AlertLevel の3タイプをWebSocketで購読し、
@@ -32,7 +41,13 @@ export function useBosaiLiveUpdates(handlers: BosaiLiveUpdateHandlers): void {
   const onBanner = handlers["bosai-EmergencyBanner"];
   const onAlertLevel = handlers["bosai-AlertLevel"];
 
-  const refetchAll = useCallback(() => {
+  const lastCatchUpAtRef = useRef(Number.NEGATIVE_INFINITY);
+
+  /** 復帰・再接続時の取りこぼし回収。短時間に重なった呼び出しは1回にまとめる。 */
+  const refetchCatchUp = useCallback(() => {
+    const now = Date.now();
+    if (now - lastCatchUpAtRef.current < RESUME_REFETCH_DEDUPE_MS) return;
+    lastCatchUpAtRef.current = now;
     onNotice();
     onBanner();
     onAlertLevel();
@@ -44,13 +59,13 @@ export function useBosaiLiveUpdates(handlers: BosaiLiveUpdateHandlers): void {
 
     const handleVisibilityChange = () => {
       if (document.visibilityState !== "visible") return;
-      refetchAll();
+      refetchCatchUp();
     };
     // bfcache からの復帰では visibilitychange が発火しないことがある。
     // 初回ロードでの二重取得を避けるため persisted のときだけ拾う。
     const handlePageShow = (event: PageTransitionEvent) => {
       if (!event.persisted) return;
-      refetchAll();
+      refetchCatchUp();
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
@@ -60,7 +75,7 @@ export function useBosaiLiveUpdates(handlers: BosaiLiveUpdateHandlers): void {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("pageshow", handlePageShow);
     };
-  }, [refetchAll]);
+  }, [refetchCatchUp]);
 
   useEffect(() => {
     const client = getGeonicdbWsClient();
@@ -83,7 +98,7 @@ export function useBosaiLiveUpdates(handlers: BosaiLiveUpdateHandlers): void {
         sawFirstSubscribed = true;
         return;
       }
-      refetchAll();
+      refetchCatchUp();
     };
 
     client.on("entityCreated", handleEvent);
@@ -110,5 +125,5 @@ export function useBosaiLiveUpdates(handlers: BosaiLiveUpdateHandlers): void {
       client.off("subscribed", handleSubscribed);
       client.disconnect();
     };
-  }, [onNotice, onBanner, onAlertLevel, refetchAll]);
+  }, [onNotice, onBanner, onAlertLevel, refetchCatchUp]);
 }

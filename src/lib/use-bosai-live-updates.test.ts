@@ -14,7 +14,8 @@ vi.mock("@/lib/geonicdb-public-client", async () => {
   };
 });
 
-const { useBosaiLiveUpdates } = await import("@/lib/use-bosai-live-updates");
+const { useBosaiLiveUpdates, RESUME_REFETCH_DEDUPE_MS } =
+  await import("@/lib/use-bosai-live-updates");
 
 type Listener = (event: unknown) => void;
 
@@ -184,6 +185,66 @@ describe("useBosaiLiveUpdates: 復帰時の取りこぼし回収 (#83)", () => {
       client.emit("subscribed");
     });
     expect(callCounts(handlers)).toEqual([1, 1, 1]);
+  });
+
+  it("bfcache 復帰で visibilitychange と pageshow が連続しても再取得は1回", async () => {
+    getGeonicdbWsClientMock.mockReturnValue(null);
+    const handlers = createHandlers();
+
+    renderHook(() => useBosaiLiveUpdates(handlers));
+    await act(async () => {});
+
+    setVisibility("visible");
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+      window.dispatchEvent(
+        new PageTransitionEvent("pageshow", { persisted: true }),
+      );
+    });
+
+    expect(callCounts(handlers)).toEqual([1, 1, 1]);
+  });
+
+  it("復帰直後の subscribed は同じ復帰としてまとめる", async () => {
+    const client = createWsClientStub();
+    getGeonicdbWsClientMock.mockReturnValue(client);
+    const handlers = createHandlers();
+
+    renderHook(() => useBosaiLiveUpdates(handlers));
+    await act(async () => {});
+
+    act(() => {
+      client.emit("subscribed"); // 初回（初期取得と重複するので無視される）
+    });
+    setVisibility("visible");
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+      client.emit("subscribed"); // 再接続後の購読確立
+    });
+
+    expect(callCounts(handlers)).toEqual([1, 1, 1]);
+  });
+
+  it("時間窓を跨いだ復帰は再取得する", async () => {
+    getGeonicdbWsClientMock.mockReturnValue(null);
+    const handlers = createHandlers();
+    let now = 1_000_000;
+    vi.spyOn(Date, "now").mockImplementation(() => now);
+
+    renderHook(() => useBosaiLiveUpdates(handlers));
+    await act(async () => {});
+
+    setVisibility("visible");
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    expect(callCounts(handlers)).toEqual([1, 1, 1]);
+
+    now += RESUME_REFETCH_DEDUPE_MS;
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    expect(callCounts(handlers)).toEqual([2, 2, 2]);
   });
 
   it("アンマウント後はイベントリスナーを残さない", async () => {
