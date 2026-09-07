@@ -91,6 +91,38 @@ describe("resolveBosaiResourceView", () => {
     });
   });
 
+  it("keeps the live value during a refetch instead of flashing the snapshot (#85)", () => {
+    const live = makeBanner("advisory", { heading: "live" });
+    const view = resolveBosaiResourceView({
+      liveLoading: true,
+      liveError: null,
+      liveData: live,
+      snapshot: { ok: true, data: banner, fetchedAt },
+    });
+    expect(view).toEqual({
+      kind: "ready",
+      data: live,
+      stale: false,
+      asOf: null,
+    });
+  });
+
+  it("near-miss: refetch that already failed falls back to the snapshot (#85)", () => {
+    const live = makeBanner("advisory", { heading: "live" });
+    const view = resolveBosaiResourceView({
+      liveLoading: true,
+      liveError: new Error("network"),
+      liveData: live,
+      snapshot: { ok: true, data: banner, fetchedAt },
+    });
+    expect(view).toEqual({
+      kind: "ready",
+      data: banner,
+      stale: true,
+      asOf: fetchedAt,
+    });
+  });
+
   it("live empty success (entity cleared) must not revive snapshot", () => {
     const view = resolveBosaiResourceView({
       liveLoading: false,

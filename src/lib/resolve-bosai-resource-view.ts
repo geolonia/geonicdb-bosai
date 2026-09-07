@@ -12,7 +12,8 @@ export type BosaiResourceView<T> =
  *
  * - ライブ成功（data あり）→ 最新として表示（stale=false）
  * - ライブ空成功（error なし・data null）→ empty（古いスナップショットを出さない）
- * - ライブ loading / 失敗 + スナップショット成功 → stale 表示（N-10）
+ * - **再取得中でもライブ値を保持していれば、そのライブ値を出し続ける**（issue #85）
+ * - ライブ loading（ライブ値なし）/ 失敗 + スナップショット成功 → stale 表示（N-10）
  * - どちらも無し → error
  */
 export function resolveBosaiResourceView<T>(args: {
@@ -21,6 +22,13 @@ export function resolveBosaiResourceView<T>(args: {
   liveData: T | null;
   snapshot: BosaiResourceResult<T> | undefined;
 }): BosaiResourceView<T> {
+  // 復帰時の再取得中にスナップショット（ビルド時の古い値）へ落ちると、警戒レベルの
+  // 数字と色が一瞬古いものへ戻って見える（#85）。SDK の refetch は loading を立てるが
+  // 直前の entities は保持するので、手元のライブ値をそのまま出し続ける。
+  if (args.liveLoading && args.liveData != null && !args.liveError) {
+    return { kind: "ready", data: args.liveData, stale: false, asOf: null };
+  }
+
   if (args.liveLoading) {
     if (args.snapshot?.ok) {
       return {
