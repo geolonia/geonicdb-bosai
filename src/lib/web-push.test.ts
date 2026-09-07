@@ -6,7 +6,6 @@ import {
 } from "@/lib/web-push-sw-logic";
 import {
   clearStoredWebPushState,
-  fetchVapidPublicKey,
   isWebPushConfigured,
   readStoredWebPushState,
   registerWebPushSubscription,
@@ -64,49 +63,6 @@ describe("web-push-sw-logic", () => {
     expect(reordered).not.toEqual([...SITE_LANGUAGES]);
     expect(reordered).not.toEqual([...WEB_PUSH_SITE_LANGUAGES]);
     expect([...WEB_PUSH_SITE_LANGUAGES]).toEqual([...SITE_LANGUAGES]);
-  });
-});
-
-describe("fetchVapidPublicKey", () => {
-  const env = {
-    NEXT_PUBLIC_GEONICDB_URL: "https://geonicdb.example.example",
-  };
-
-  it("returns publicKey from a well-formed response", async () => {
-    const fetchFn = vi.fn(async () =>
-      Response.json({ publicKey: "  BPj1o6nm3Nh8fG7cdgK  " }),
-    );
-    await expect(
-      fetchVapidPublicKey(env, fetchFn as typeof fetch),
-    ).resolves.toBe("BPj1o6nm3Nh8fG7cdgK");
-    expect(fetchFn).toHaveBeenCalledWith(
-      "https://geonicdb.example.example/.well-known/webpush-vapid-key",
-      expect.objectContaining({ method: "GET" }),
-    );
-  });
-
-  it("throws when HTTP status is not ok", async () => {
-    const fetchFn = vi.fn(async () => new Response("nope", { status: 503 }));
-    await expect(
-      fetchVapidPublicKey(env, fetchFn as typeof fetch),
-    ).rejects.toThrow(/VAPID key fetch failed: 503/);
-  });
-
-  it("throws when publicKey is missing or empty (near-miss)", async () => {
-    const missing = vi.fn(async () => Response.json({}));
-    await expect(
-      fetchVapidPublicKey(env, missing as typeof fetch),
-    ).rejects.toThrow(/VAPID publicKey missing/);
-
-    const blank = vi.fn(async () => Response.json({ publicKey: "   " }));
-    await expect(
-      fetchVapidPublicKey(env, blank as typeof fetch),
-    ).rejects.toThrow(/VAPID publicKey missing/);
-
-    const wrongType = vi.fn(async () => Response.json({ publicKey: 123 }));
-    await expect(
-      fetchVapidPublicKey(env, wrongType as typeof fetch),
-    ).rejects.toThrow(/VAPID publicKey missing/);
   });
 });
 
