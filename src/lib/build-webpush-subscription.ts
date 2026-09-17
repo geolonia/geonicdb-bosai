@@ -3,6 +3,7 @@
  * GeonicDB #3014: notification.endpoint.protocol=webpush + webpush.keys。
  * （旧 Lambda プロキシからフロントへ移設。issue #39）
  */
+import { toNgsiLdWebPushEndpoint } from "@geolonia/geonicdb-sdk";
 import { isSiteLanguage, type SiteLanguage } from "@/config/site-language";
 import { languagePropertyQuery } from "@/lib/geonicdb-public-client";
 import {
@@ -189,6 +190,12 @@ export function buildNgsiLdWebPushSubscription(
     throw new ValidationError("lang must be a SITE_LANGUAGES value");
   }
   const site = options.siteOrigin?.replace(/\/+$/, "") ?? "";
+  // SDK の純関数（#3014/#3060）。endpoint は呼び出し元の parsePushSubscription で
+  // 既に SSRF 拒否リスト検証済みなので、ここでの再検証は不要。
+  const { uri, webpush } = toNgsiLdWebPushEndpoint(subscription, {
+    urgency: "high",
+    ttl: 86_400,
+  });
   return {
     type: "Subscription",
     description: site
@@ -201,16 +208,9 @@ export function buildNgsiLdWebPushSubscription(
     notification: {
       attributes: ["language"],
       endpoint: {
-        uri: subscription.endpoint,
+        uri,
         protocol: "webpush",
-        webpush: {
-          keys: {
-            p256dh: subscription.keys.p256dh,
-            auth: subscription.keys.auth,
-          },
-          urgency: "high",
-          ttl: 86_400,
-        },
+        webpush,
       },
     },
   };
