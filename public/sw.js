@@ -167,8 +167,33 @@ async function clearAppBadgeSafelyWithNav(nav) {
     }
 }
 /**
- * 未読件数を 0 に書き戻したうえでバッジを消す。
- * cache.put 等が失敗しても clearBadge には必ず到達する（#45 検収指摘）。
+ * 本アプリが出した通知のうち、通知シェードに残っているものをすべて閉じる。
+ * `notificationclick` 以外（アプリを直接開く等）でフォアグラウンドに来た場合、
+ * 従来はバッジだけ消えて通知シェードには古い通知が残り続けていた
+ * （Android で「既読にならない」ように見える主因）。
+ * 個々の close() 失敗・未対応環境は無視し、可能な限り閉じる。
+ */
+async function closeAllNotifications(source) {
+    if (!source || typeof source.getNotifications !== "function")
+        return;
+    try {
+        const notifications = await source.getNotifications();
+        for (const notification of notifications) {
+            try {
+                notification.close();
+            }
+            catch (_a) {
+                // 個別の close 失敗は他の通知を閉じる妨げにしない
+            }
+        }
+    }
+    catch (_b) {
+        // getNotifications 失敗（未対応環境等）は無視
+    }
+}
+/**
+ * 未読件数を 0 に書き戻し、通知シェードの残存通知を閉じたうえでバッジを消す。
+ * cache.put / 通知クローズが失敗しても clearBadge には必ず到達する（#45 検収指摘を踏襲）。
  */
 async function resetUnreadBadgeState(deps) {
     try {
@@ -176,6 +201,12 @@ async function resetUnreadBadgeState(deps) {
     }
     catch (_a) {
         // Cache 書き込み失敗はバッジ消去を阻害しない
+    }
+    try {
+        await deps.closeNotifications();
+    }
+    catch (_b) {
+        // 通知クローズ失敗はバッジ消去を阻害しない
     }
     await deps.clearBadge();
 }
@@ -223,6 +254,10 @@ async function setAppBadgeSafely(count) {
 async function clearAppBadgeSafely() {
     await clearAppBadgeSafelyWithNav(self.navigator);
 }
+/** 通知シェードに残る本アプリの通知をすべて閉じる（Android で「既読にならない」問題の対策）。 */
+async function closeStaleNotifications() {
+    await closeAllNotifications(self.registration);
+}
 async function readStoredLang() {
     try {
         const cache = await caches.open(META_CACHE);
@@ -264,6 +299,7 @@ async function resetUnreadBadge() {
         await resetUnreadBadgeState({
             writeUnreadCount,
             clearBadge: clearAppBadgeSafely,
+            closeNotifications: closeStaleNotifications,
         });
     });
 }

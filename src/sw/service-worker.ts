@@ -13,6 +13,7 @@ import {
   WEB_PUSH_UNREAD_COUNT_CACHE_PATH,
   bumpUnreadCountState,
   clearAppBadgeSafely as clearAppBadgeSafelyWithNav,
+  closeAllNotifications,
   createSerialQueue,
   extractEntityTypeFromPushPayload,
   normalizePushLang,
@@ -55,6 +56,11 @@ async function clearAppBadgeSafely(): Promise<void> {
   await clearAppBadgeSafelyWithNav(self.navigator);
 }
 
+/** 通知シェードに残る本アプリの通知をすべて閉じる（Android で「既読にならない」問題の対策）。 */
+async function closeStaleNotifications(): Promise<void> {
+  await closeAllNotifications(self.registration);
+}
+
 async function readStoredLang(): Promise<WebPushSiteLanguage> {
   try {
     const cache = await caches.open(META_CACHE);
@@ -95,6 +101,7 @@ async function resetUnreadBadge(): Promise<void> {
     await resetUnreadBadgeState({
       writeUnreadCount,
       clearBadge: clearAppBadgeSafely,
+      closeNotifications: closeStaleNotifications,
     });
   });
 }

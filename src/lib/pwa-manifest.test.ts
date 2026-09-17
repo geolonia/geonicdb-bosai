@@ -143,7 +143,7 @@ describe("setAppBadgeSafely / clearAppBadgeSafely", () => {
     await expect(clearAppBadgeSafely({})).resolves.toBeUndefined();
   });
 
-  it("clears badge even when unread count write fails (#45 audit)", async () => {
+  it("clears badge even when unread count write and notification close both fail (#45 audit)", async () => {
     const { resetUnreadBadgeState, clearAppBadgeSafely } =
       await import("@/lib/web-push-sw-logic");
     const clearAppBadge = vi.fn(async () => undefined);
@@ -153,9 +153,23 @@ describe("setAppBadgeSafely / clearAppBadgeSafely", () => {
           throw new Error("cache.put failed");
         },
         clearBadge: () => clearAppBadgeSafely({ clearAppBadge }),
+        closeNotifications: async () => {
+          throw new Error("getNotifications failed");
+        },
       }),
     ).resolves.toBeUndefined();
     expect(clearAppBadge).toHaveBeenCalledTimes(1);
+  });
+
+  it("closes stale notifications when resetting the unread badge", async () => {
+    const { resetUnreadBadgeState } = await import("@/lib/web-push-sw-logic");
+    const closeNotifications = vi.fn(async () => undefined);
+    await resetUnreadBadgeState({
+      writeUnreadCount: async () => undefined,
+      clearBadge: async () => undefined,
+      closeNotifications,
+    });
+    expect(closeNotifications).toHaveBeenCalledTimes(1);
   });
 
   it("serializes concurrent unread bumps to final count 2 (#45 CodeRabbit)", async () => {
@@ -206,5 +220,51 @@ describe("setAppBadgeSafely / clearAppBadgeSafely", () => {
     await Promise.all([bump(), bump()]);
     // 直列化なしでは両方 0→1 になり最終 1（取りこぼし）
     expect(stored).toBe(1);
+  });
+});
+
+describe("closeAllNotifications (通知シェード残留対策)", () => {
+  it("closes every notification returned by getNotifications", async () => {
+    const { closeAllNotifications } = await import("@/lib/web-push-sw-logic");
+    const close1 = vi.fn();
+    const close2 = vi.fn();
+    await closeAllNotifications({
+      getNotifications: async () => [{ close: close1 }, { close: close2 }],
+    });
+    expect(close1).toHaveBeenCalledTimes(1);
+    expect(close2).toHaveBeenCalledTimes(1);
+  });
+
+  it("no-ops when the source is missing or unsupported", async () => {
+    const { closeAllNotifications } = await import("@/lib/web-push-sw-logic");
+    await expect(closeAllNotifications(null)).resolves.toBeUndefined();
+    await expect(closeAllNotifications({})).resolves.toBeUndefined();
+  });
+
+  it("swallows getNotifications rejection", async () => {
+    const { closeAllNotifications } = await import("@/lib/web-push-sw-logic");
+    await expect(
+      closeAllNotifications({
+        getNotifications: async () => {
+          throw new Error("unsupported");
+        },
+      }),
+    ).resolves.toBeUndefined();
+  });
+
+  it("near-miss: one notification's close() throwing must not skip the others", async () => {
+    const { closeAllNotifications } = await import("@/lib/web-push-sw-logic");
+    const closeOk = vi.fn();
+    await closeAllNotifications({
+      getNotifications: async () => [
+        {
+          close: () => {
+            throw new Error("already closed");
+          },
+        },
+        { close: closeOk },
+      ],
+    });
+    expect(closeOk).toHaveBeenCalledTimes(1);
   });
 });
