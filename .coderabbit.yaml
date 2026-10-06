@@ -18,6 +18,7 @@
 # 本ファイル追加の経緯: geonicdb-bosai では未設定のため既定 request_changes_workflow=false
 # のまま COMMENTED のみとなり、main ruleset の required_approving_review_count:1 を満たせず
 # --admin バイパスが常態化していた（issue #36 / PR #38 で恒久対応）。
+inheritance: true
 language: ja-JP
 reviews:
   # PR 作成時・push 時の自動レビューを有効化
